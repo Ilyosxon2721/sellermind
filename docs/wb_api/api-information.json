@@ -1,0 +1,1474 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Общее",
+    "version": "general",
+    "x-file-name": "general",
+    "description": "В этом разделе:\n  - [общая информация о WB API](./api-information#tag/Vvedenie)\n  - как [начать работу с WB API](./api-information#tag/Vvedenie/Kak-nachat-rabotu-s-API)\n  - как [авторизоваться](./api-information#tag/Avtorizaciya) и [создавать токены](./api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token)\n  - основные [статус-коды ответов](./api-information#tag/Vvedenie/Status-kody-HTTP)\n  - [лимиты запросов](./api-information#tag/Vvedenie/Limity-zaprosov)\n  - как обратиться в [поддержку](./api-information#tag/Vvedenie/Podderzhka)\n\nС помощью методов этого раздела вы можете:\n  - проверить [подключение к WB API](./api-information#tag/Proverka-podklyucheniya-k-WB-API/paths/~1ping/get)\n  - получить [новости портала продавцов](./api-information#tag/API-novostej/paths/~1api~1communications~1v2~1news/get)\n  - получить [информацию о продавце](./api-information#tag/Informaciya-o-prodavce/paths/~1api~1v1~1seller-info/get)\n  - [управлять пользователями продавца](./api-information#tag/Upravlenie-polzovatelyami-prodavca)\n"
+  },
+  "security": [
+    {
+      "HeaderApiKey": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Общее",
+      "description": "<div class=\"api-description\">\n\nВ этом разделе:\n  - [общая информация о WB API](./api-information#tag/Vvedenie)\n  - как [начать работу с WB API](./api-information#tag/Vvedenie/Kak-nachat-rabotu-s-API)\n  - как [авторизоваться](./api-information#tag/Avtorizaciya) и [создавать токены](./api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token)\n  - основные [статус-коды ответов](./api-information#tag/Vvedenie/Status-kody-HTTP)\n  - [лимиты запросов](./api-information#tag/Vvedenie/Limity-zaprosov)\n  - как обратиться в [поддержку](./api-information#tag/Vvedenie/Podderzhka)\n\nС помощью методов этого раздела вы можете:\n  - проверить [подключение к WB API](./api-information#tag/Proverka-podklyucheniya-k-WB-API/paths/~1ping/get)\n  - получить [новости портала продавцов](./api-information#tag/API-novostej/paths/~1api~1communications~1v2~1news/get)\n  - получить [информацию о продавце](./api-information#tag/Informaciya-o-prodavce/paths/~1api~1v1~1seller-info/get)\n  - [управлять пользователями продавца](./api-information#tag/Upravlenie-polzovatelyami-prodavca)\n\n\n</div>",
+      "x-traitTag": true
+    },
+    {
+      "name": "Введение",
+      "description": "Wildberries API предоставляет продавцам инструменты для управления магазином и получения оперативной и статистической информации по протоколу HTTP REST API.<br><br>\n\nГлавное преимущество API — возможность автоматизировать процессы за счет интеграции с информационными системами продавца: например, ERP, WMS, OMS, CRM. С WB API продавец может не управлять магазином через интерфейс сайта вручную. <br><br>\n\nИспользование API для работы с магазином на Wildberries — это отличный способ:\n  - автоматизировать рутинные процессы\n  - получить доступ к актуальной информации\n  - оптимизировать управление ассортиментом\n\nДокументация API предоставлена в формате Swagger OpenAPI и может быть использована для импорта в другие инструменты — например, Postman — или генерации клиентского кода на различных языках программирования с помощью Swagger CodeGen.<br><br>\n\nДля ручного тестирования API вы можете использовать:\n  - Под ОС Windows — [PostMan](https://www.postman.com)\n  - Под ОС Linux — [curl](https://curl.se)\n\n# Как начать работу с API\n\n  1. Зарегистрируйтесь в [личном кабинете Продавца](https://seller.wildberries.ru/).\n  2. Перейдите в настройки магазина и [создайте API-токен](./api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token). Токен позволит получить доступ к WB API. Система токенов позволит вам контролировать, кто и как взаимодействует с вашими данными через API.\n  3. Разработайте интеграцию с API с помощью собственных разработчиков или внешних специалистов. Вы также можете подключить партнёрские сервисы из нашего [каталога решений для бизнеса](https://seller.wildberries.ru/auth-services).\n\n<div class=\"description_important\">\n  Используйте метод <a href='./api-information#tag/Proverka-podklyucheniya-k-WB-API'>проверки подключения</a>, чтобы узнать, успешно ли доходят запросы до API и правильно ли настроен API-токен.\n</div>\n\nПрактические советы:\n  - **Используйте документацию**. <br>[Официальная документация WB API](./api-information) поможет разобраться в функциональности и возможностях API. В ней приводятся примеры возможных запросов и ответов, список возможных ошибок, лимиты запросов, правила безопасности и так далее.\n  - **Регулярно проверяйте работу интеграции**. <br>Следите, корректно ли вы передаете данные и какие вы получаете ответы, чтобы вовремя дорабатывать интеграцию. Не забывайте про ограничения и учитывайте лимиты на количество запросов.\n  - **Храните API-токен в безопасности**. <br>Не передавайте его третьим лицам без необходимости. Используйте только доверенные сервисы. При обнаружении подозрительной активности немедленно удалите и замените токен.\n  - При необходимости обращайтесь в [техническую поддержку](./api-information#tag/Vvedenie/Podderzhka).\n  - Следите за новостями и изменениями WB API в:\n    - [журнале изменений](https://dev.wildberries.ru/release-notes)\n    - [Telegram-канале](https://t.me/wb_api_notifications)\n    - [новостной ленте Wildberries](https://seller.wildberries.ru/news-v2/news-list)\n\n# Поддержка\n\nТехническая поддержка происходит через диалоги в [личном кабинете продавца](https://seller.wildberries.ru/). При создании нового обращения в техподдержку используйте категорию **API**.\n\n# Статус-коды HTTP\n\nОсновные статус-коды ответов на запросы в WB API:\n\n| Код | Описание | Как решить |\n| --- | --- | --- |\n| **200** | Успешно | |\n| **204** | Удалено/Обновлено/Добавлено | |\n| **400** | Неправильный запрос | Проверьте синтаксис запроса |\n| **401** | Пользователь не авторизован | Проверьте токен авторизации. Категория токена должна совпадать с категорией API. Также токен может:<br />• быть просрочен<br />• быть некорректным<br />• отсутствовать в запросе |\n| **402** | Требуется платёж| Ошибка означает, что на балансе сервиса из [Каталога](https://dev.wildberries.ru/business-solutions) недостаточно средств |\n| **403** | Доступ запрещён | Токен не должен быть сгенерирован удалённым пользователем. Доступ к методу не должен быть заблокирован. Если вы хотите использовать методы [Джема](https://seller.wildberries.ru/monetization/jam), проверьте подписку в личном кабинете |\n| **404** | Не найдено | Проверьте URL запроса |\n| **409** | Ошибка сохранения для части ссылок/обновления статуса/добавления сборочного задания/т.д. | Проверьте данные запроса. Они должны отвечать требованиям и ограничениям сервиса |\n| **413** | Превышен лимит объёма данных в запросе | Уменьшите количество объектов в запросе |\n| **422** | Отсутствие в запросе параметра nmId/Размер ставки не изменен/т.д. | Проверьте данные запроса. Данные запроса не должны противоречить друг другу |\n| **429** | Слишком много запросов | Проверьте лимиты запросов и повторите запрос позже |\n| **5ХХ** | Внутренние ошибки сервиса | Сервис недоступен. Повторите запрос позже или обратитесь в техническую поддержку |\n\n<div class=\"description_important\">\n  Обращайте внимание на поле <code>details</code> в ошибках <code>404</code> и <code>429</code> — туда мы добавляем полезную информацию по использованию методов\n</div>\n\nПример ошибки:\n\n```json\n{\n  \"title\": \"path not found\",\n  \"detail\": \"Please consult the https://dev.wildberries.ru/openapi/api-information\",\n  ...\n  \"status\": 404,\n  \"statusText\": \"Not Found\",\n  \"timestamp\": \"2025-04-24T07:25:28Z\"\n}\n```\n\n# Лимиты запросов\n\nВ WB API есть ограничения на скорость отправки запросов. Для равномерного распределения нагрузки используется алгоритм `token bucket`. Лимиты для конкретных методов API указаны в документации.<br><br>\n\nНапример:\n\n<div class=\"description_limit\">\n<a href='./api-information#tag/Vvedenie/Limity-zaprosov'>Лимит запросов</a> на один аккаунт продавца для всех методов категории <strong>Маркетплейс</strong>:\n\n| Тип токена | Период | Лимит | Интервал | Всплеск |\n| --- | --- | --- | --- | --- |\n| Персональный | 1 минута | 300 запросов | 200 миллисекунд | 20 запросов |\n| Сервисный | 1 минута | 300 запросов | 200 миллисекунд | 20 запросов |\n| Базовый | 1 минута | 150 запросов | 200 миллисекунд | 10 запросов |\n| Тестовый | 1 минута | 150 запросов | 200 миллисекунд | 10 запросов |\n\nОдин запрос с кодом ответа <code>409</code> учитывается как 5 запросов\n</div>\n\n- **Период** — временной интервал, в течение которого можно отправить максимальное количество запросов по лимиту.\n- **Лимит** — максимальное количество запросов за период. В примере за одну минуту можно отправить до 300 запросов. Запросы должны быть равномерно распределены по времени.\n- **Интервал** — промежуток времени для пауз между запросами. В примере должен составлять `60 секунд/300 запросов` — `200 миллисекунд` или `0.2 секунды`. Используйте интервал, чтобы равномерно распределить отправку запросов.\n- **Всплеск** — `burst`, максимальное количество запросов, которое можно отправить одновременно, без интервальных пауз. Допустимый всплеск также возвращается в ответе в заголовке `X-Ratelimit-Remaining`. Он встречается во всех статусах ответов, кроме ошибки `429`.\n\n`X-Ratelimit-Remaining` — это количество запросов, которое можно выполнить на данный момент без пауз. Значение `X-Ratelimit-Remaining` уменьшается на единицу после каждого запроса. Если `X-Ratelimit-Remaining` равен `0` и вы сделали следующий запрос без задержки, в ответ вы получите ошибку `429`. Значение `X-Ratelimit-Remaining` восстанавливается со временем.\n\n<div class=\"description_important\">\n  Есть случаи, когда один запрос может быть равен нескольким. Например, если вы отправляете запросы категории <a href=\"./api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token\">Маркетплейс</a>, запрос с ошибкой <code>409</code> будет равен 10 запросам с другими статусами. Тогда значение <code>X-Ratelimit-Remaining</code> снизится сразу на 10 единиц.\n</div>\n\nЕсли вы превысите скорость выполнения запросов, вы получите ошибку `429`. В этом случае следующий запрос вы сможете сделать только после небольшого ожидания. Чтобы понять, сколько времени вам нужно ждать, используйте заголовки ответа `429`:\n\n  - `X-Ratelimit-Retry` — через сколько секунд вы можете повторить запрос. Если вы сделаете попытку раньше, вы все равно будете получать ошибку `429`.\n  - `X-Ratelimit-Limit` — максимальное значение всплеска запросов — `burst`, которое будет восстановлено через `X-Ratelimit-Reset` секунд.\n  - `X-Ratelimit-Reset` — через сколько секунд допустимый всплеск запросов восстановится до максимального значения, указанного в `X-Ratelimit-Limit`.\n\nПример ответа:\n\n```sh\nHTTP/1.1 429 Too Many Requests\n...\nX-Ratelimit-Reset: 29\nX-Ratelimit-Retry: 2\n...\nX-Ratelimit-Limit: 10\n```\n"
+    },
+    {
+      "name": "Авторизация",
+      "description": "Чтобы авторизоваться в API, вам понадобится токен. Он действует 180 дней после создания. Добавляйте токен в заголовок запроса `Authorization`.\n\n<div class=\"description_important\">\n  По пункту 9.9.6 оферты запрещена интеграция с порталом продавца без <a href=\"https://dev.wildberries.ru\">WB API</a>\n</div>\n\n# Правила использования токенов доступа к API\n\n<div class=\"description_auth\">\n  Порядок и основания отзыва токенов доступа предусмотрены в <a href=\"https://legal.wildberries.ru/soglashenie-o-razmeschenii-avtorizovannykh-servisov-na-platforme-wb-api/country/ru/lang/ru/\">Соглашении о размещении Авторизованных сервисов на платформе WB API</a>\n</div>\n\n<div class=\"description_ref\">\n  Подробнее о токенах можно узнать в <a href=\"https://seller.wildberries.ru/instructions/ru/ru/material/api-integration-with-token\">инструкции в справочном центре</a>\n</div>\n\nДля авторизации доступно четыре типа токенов:\n\n<div class=\"description_important\">\n  Доступ к методам WB API зависит от выбранного типа токена\n</div>\n\n<div class=\"description_limit\">\n  Для разных типов токенов лимиты запросов могут отличаться\n</div>\n\n1. **Персональный токен**\n\n- **Назначение:** Эксклюзивный токен с расширенными возможностями. Предназначен для того, чтобы предоставлять доступ к данным продавца только вашим собственным программам — в том числе корпоративным системам (on-premise), развёрнутым на собственной или арендованной инфраструктуре.<br />Расширенные возможности означают, что со временем по персональному токену появится доступ к дополнительным категориям данных продавца, которые недоступны в базовом токене. Мы заранее расскажем об этом в новостях.\n- **Подходит для:**\n  - собственных программных продуктов или систем компании, размещённых на своих или арендованных серверах\n  - готовых ERP/CRM-систем в редакции on-premise, включая локальные (коробочные) версии 1С, развёрнутые на серверах компании или на компьютерах пользователей\n- **Ограничения:** Персональный токен даёт доступ к чувствительной информации, поэтому его нельзя передавать третьим лицам или использовать в облачных сервисах. При создании токена система покажет предупреждение об ответственности — его нужно принять, чтобы продолжить.<br />Настройки токена вы выбираете самостоятельно. Если не уверены, какие параметры указать, уточните у разработчика или IT-специалиста, который отвечает за подключаемую систему.\n\n2. **Сервисный токен**\n\n- **Назначение:** Специальный токен для подключения конкретного облачного сервиса из официального [Каталога готовых решений для бизнеса](https://dev.wildberries.ru/business-solutions) на **Wildberries**.\n- **Особенности:** При создании токена вы выбираете сервис из [Каталога](https://dev.wildberries.ru/business-solutions), после чего все необходимые настройки, в том числе категории данных и уровни доступа, заполняются автоматически. Вам останется только подтвердить создание токена и передать его сервису.\n- **Ограничения:** Привязан к конкретному сервису и работает только с ним.\n\n3. **Базовый токен**\n\n- **Назначение:** Вспомогательный токен, который предоставляет доступ к ограниченному набору данных продавца и используется во всех случаях, когда не подходит сервисный или персональный токен.\n- **Подходит для:**\n  - тестирования интеграции на реальных данных перед запуском\n  - остальных случаев, когда вы не можете использовать сервисный или персональный токен\n- **Ограничения:** Можно работать с ограниченным набором данных.\n\n4. **Тестовый токен**\n\n- **Назначение:** Специальный токен для безопасного тестирования и отладки интеграций в изолированной среде — [песочнице WB API](https://dev.wildberries.ru/sandbox).\n- **Подходит для:**\n  - разработки и отладки интеграций без риска для реальных данных\n  - изучения возможностей API и экспериментов с методами\n  - проверки новых функций перед запуском в рабочей среде\n- **Ограничения:** Тестовый токен работает только с песочницей и даёт доступ к сгенерированным тестовым данным. Реальные данные магазина при этом недоступны.  |\n\n# Как создать персональный, базовый или тестовый токен\n\n<div class=\"description_ref\">\n  Подробнее о создании <strong>Сервисного токена</strong> можно узнать в <a href=\"https://seller.wildberries.ru/instructions/ru/ru/material/how-to-create-update-or-delete-a-wb-api-token?categoryId=api-integration&goBackOption=prevRoute#%D0%BA%D0%B0%D0%BA-%D1%81%D0%BE%D0%B7%D0%B4%D0%B0%D1%82%D1%8C-%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81%D0%BD%D1%8B%D0%B9-%D1%82%D0%BE%D0%BA%D0%B5%D0%BD\">инструкции в справочном центре</a>\n</div>\n\n1. В личном кабинете перейдите в раздел [Интеграции по API](https://seller.wildberries.ru/api-integrations).\n2. Нажмите **+ Создать токен**. Откроется окно создания токена с двумя вкладками. Для всех типов токенов, кроме сервисного, выберите вкладку **Для интеграции вручную**.\n3. Выберите тип токена.\n4. Для базового и персонального токенов:\n  - Заполните название токена\n  - Выберите, с какими категориями API вы будете работать\n  - Задайте уровень доступа к данным: **Чтение и запись** или **Только чтение**\n\n| Категория | Методы |\n|---------------|-----------------------|\n| Контент | [Категории, предметы и характеристики](./work-with-products#tag/Kategorii-predmety-i-harakteristiki)<br />[Создание карточек товаров](./work-with-products#tag/Sozdanie-kartochek-tovarov)<br />[Карточки товаров](./work-with-products#tag/Kartochki-tovarov)<br />[Медиафайлы](./work-with-products#tag/Mediafajly)<br />[Ярлыки](./work-with-products#tag/Yarlyki) |\n| Аналитика | [Воронка продаж](./analytics#tag/Voronka-prodazh)<br />[Поисковые запросы по вашим товарам](./analytics#tag/Poiskovye-zaprosy-po-vashim-tovaram)<br />[История остатков](./analytics#tag/Istoriya-ostatkov)<br />[Аналитика продавца CSV](./analytics#tag/Analitika-prodavca-CSV)<br />[Отчёт об остатках на складах](./reports#tag/Otchyot-ob-ostatkah-na-skladah)<br />[Отчёт о товарах с обязательной маркировкой](./reports#tag/Otchyot-o-tovarah-c-obyazatelnoj-markirovkoj)<br />[Отчёты об удержаниях](./reports#tag/Otchyoty-ob-uderzhaniyah)<br />[Платная приёмка](./reports#tag/Platnaya-priyomka)<br />[Платное хранение](./reports#tag/Platnoe-hranenie)<br />[Продажи по регионам](./reports#tag/Prodazhi-po-regionam)<br />[Доля бренда в продажах](./reports#tag/Dolya-brenda-v-prodazhah)<br />[Скрытые товары](./reports#tag/Skrytye-tovary)<br />[Отчёт о возвратах и перемещении товаров](./reports#tag/Otchyot-o-vozvratah-i-peremeshenii-tovarov) |\n| Цены и скидки | [Цены и скидки](./work-with-products#tag/Ceny-i-skidki)<br />[Календарь акций](./promotion#tag/Kalendar-akcij) |\n| Маркетплейс | [Заказы FBS](./orders-fbs)<br />[Склады продавца](./work-with-products#tag/Sklady-prodavca)<br />[Остатки](./work-with-products#tag/Ostatki-na-skladah-prodavca)<br />[Заказы DBS](./orders-dbs)<br />[Самовывоз](./in-store-pickup) |\n| Статистика | [Основные отчёты](./reports#tag/Osnovnye-otchyoty)<br />[Финансовые отчёты](./financial-reports-and-accounting#tag/Finansovye-otchyoty) |\n| Продвижение | [Кампании](./promotion#tag/Kampanii)<br />[Создание кампаний](./promotion#tag/Sozdanie-kampanij)<br />[Управление кампаниями](./promotion#tag/Upravlenie-kampaniyami)<br />[Параметры кампаний](./promotion#tag/Parametry-kampanij)<br />[Финансы](./promotion#tag/Finansy)<br />[Медиа](./promotion#tag/Media)<br />[Статистика](./promotion#tag/Statistika) |\n| Вопросы и отзывы | [Вопросы](./user-communication#tag/Voprosy)<br />[Отзывы](./user-communication#tag/Otzyvy)<br />[Закреплённые отзывы](././user-communication#tag/Zakreplyonnye-otzyvy) |\n| Чат с покупателями | [Чат с покупателями](./user-communication#tag/Chat-s-pokupatelyami) |\n| Поставки | [Поставки FBW](./orders-fbw#tag/Postavki-FBW) |\n| Возвраты | [Возвраты покупателями](./user-communication#tag/Vozvraty-pokupatelyami) |\n| Документы | [Документы](./financial-reports-and-accounting#tag/Dokumenty) |\n| Финансы | [Баланс](./financial-reports-and-accounting#tag/Balans) |\n| Пользователи | [Управление пользователями продавца](./api-information#tag/Upravlenie-polzovatelyami-prodavca) |\n\n<div class=\"description_important\">\n  Выбирайте только те категории, с которыми вы планируете работать. Например, если вы будете только загружать карточки товаров, выберите одну категорию — Контент. Если токен попадёт в чужие руки, по нему нельзя будет получить доступ к другим категориям API вашего магазина.\n</div>\n\n5. Добавьте комментарий к токену по желанию. Для персонального токена отметьте чекбокс **Я понимаю, что не следует передавать токен третьим лицам**.\n6. Нажмите **Создать**. Появится окно с вашим токеном.\n7. Нажмите кнопку **Скопировать и закрыть** — окно закроется, токен будет скопирован в буфер обмена. После этого токен нельзя будет посмотреть в личном кабинете.\n8. Сохраните токен в безопасном месте. Если вы потеряли токен, создайте новый.\n\n<div class=\"description_important\">\n  Если у вас несколько сервисов (интеграций) для работы с разными категориями, создайте для них отдельные токены. Это позволит предоставить доступ только к необходимым категориям, а также более гибко и безопасно управлять интеграциями.\n</div>\n\n# Как устроен токен\n\nТокен представляет собой JWT согласно [RFC 7519](https://www.rfc-editor.org/rfc/rfc7519). Чтобы проверить, действителен ли ваш токен и какие категории методов API по нему доступны, вы можете [декодировать его](/jwt?utm_source=dev-portal&utm_campaign=api-information&utm_content=cta-link).\n\n<div class=\"description_important\">\n  Рекомендуем не просматривать токен с помощью внешних онлайн-инструментов, чтобы он не попал в чужие руки\n</div>\n\n**Поля токенов**<br><br>\n\nТип токена можно определить по списку полей из `payload` токена после декодирования:\n\n| Токен              | Значение `acc` | Значение `for`      | Значение `t` |\n| ------------------ | -------------- | ------------------- | ------------ |\n| Базовый токен      | `1`            | Поле отсутствует    | `false`      |\n| Тестовый токен     | `2`            | Поле отсутствует    | `true`       |\n| Персональный токен | `3`            | `self`              | `false`      |\n| Сервисный токен    | `4`            | `asid:{ID сервиса}` | `false`      |\n\nДругие поля:\n\n| Поле       | Тип          | Описание                                                         |\n| ---------- | ------------ | ---------------------------------------------------------------------------- |\n| **id**   | UUIDv4 | Уникальный ID токена                                              |\n| **s**    | uint   | Битовая маска свойств токена                                                 |\n| **sid**  | UUIDv4 | Уникальный ID продавца на Wildberries, которому принадлежит токен |\n| **exp**  | uint   | Время жизни токена. Соответствует стандарту [RFC 7519: JSON Web Token (JWT)](https://www.rfc-editor.org/rfc/rfc7519#section-4.1.4) |\n\nОстальные поля `payload` служебные и могут быть удалены.<br><br>\n\n**Поле `s`**<br><br>\n\nПоле `s` — это битовая маска, то есть целое число, каждый бит которого означает наличие или отсутствие какого-то свойства.<br><br>\n\n[Подробнее про битовую маску](https://ru.wikipedia.org/wiki/%D0%91%D0%B8%D1%82%D0%BE%D0%B2%D0%B0%D1%8F_%D0%BC%D0%B0%D1%81%D0%BA%D0%B0)\n<br><br>\n**Значения бит**\n\nПозиция бита отсчитывается от 0, где 0 — это младший бит.\n\n| Позиция бита | Свойство (если бит равен 1) |\n| ------------ | ---------------------------------------|\n| 1| Доступ к категории **Контент**|\n| 2| Доступ к категории **Аналитика**|\n| 3| Доступ к категории **Цены и скидки**|\n| 4| Доступ к категории **Маркетплейс**|\n| 5| Доступ к категории **Статистика**|\n| 6| Доступ к категории **Продвижение**|\n| 7| Доступ к категории **Вопросы и отзывы**|\n| 9| Доступ к категории **Чат с покупателями**|\n| 10| Доступ к категории **Поставки**|\n| 11| Доступ к категории **Возвраты покупателями**|\n| 12| Доступ к категории **Документы**|\n| 13| Доступ к категории **Финансы**|\n| 16| Доступ к категории **Пользователи**|\n| 30| Токен только на чтение|\n\n# Декодирование токена\n\nДекодирование токена позволяет проверить, является ли токен действительным и к каким категориям методов API имеется доступ. Вы можете декодировать токен на [отдельной странице портала разработчиков](/jwt?utm_source=dev-portal&utm_campaign=api-information&utm_content=cta-link).\n"
+    },
+    {
+      "name": "Проверка подключения к WB API",
+      "description": "<div class=\"description_auth\">\n\n  Проверить подключение можно с <a href=\"./api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token\">токеном</a> любой категории\n</div>\n"
+    },
+    {
+      "name": "API новостей",
+      "description": "<div class=\"description_auth\">\n\n\n\n  Новости портала продавцов можно получить с <a href=\"./api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token\">токеном</a> любой категории\n</div>\n"
+    },
+    {
+      "name": "Информация о продавце",
+      "description": "<div class=\"description_auth\">\n\n\n  Информацию о продавце можно получить с <a href=\"./api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token\">токеном</a> любой категории\n</div>\n"
+    },
+    {
+      "name": "Управление пользователями продавца",
+      "description": "<div class=\"description_auth\">\n  Для доступа к методам используйте <a href=\"./api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token\">токен</a> для категории <strong>Пользователи</strong>\n</div>\n\nС помощью этих методов вы можете:\n  - [Создать приглашение для пользователя](./api-information#tag/Upravlenie-polzovatelyami-prodavca/paths/~1api~1v1~1invite/post) с доступом к профилю продавца\n  - [Получить список активных или приглашённых пользователей продавца](./api-information#tag/Upravlenie-polzovatelyami-prodavca/paths/~1api~1v1~1users/get)\n  - [Изменить права доступа пользователей](./api-information#tag/Upravlenie-polzovatelyami-prodavca/paths/~1api~1v1~1users~1access/put) к профилю продавца\n  - [Закрыть доступ пользователю](./api-information#tag/Upravlenie-polzovatelyami-prodavca/paths/~1api~1v1~1user/delete) к профилю продавца\n\nУправлять доступом пользователей можно только с токеном активного владельца профиля продавца.\n"
+    }
+  ],
+  "paths": {
+    "/ping": {
+      "servers": [
+        {
+          "url": "https://common-api.wildberries.ru"
+        }
+      ],
+      "get": {
+        "x-readonly-method": true,
+        "x-category": "all",
+        "tags": [
+          "Проверка подключения к WB API"
+        ],
+        "security": [
+          {
+            "HeaderApiKey": []
+          }
+        ],
+        "summary": "Проверка подключения{{ /ping }}",
+        "description": "<div class='description-title'><span>Описание метода</span></div>\n\nМетод проверяет:\n  1. Успешно ли запрос доходит до WB API\n  2. Валидность токена авторизации и URL запроса\n  3. Совпадают ли категория токена и сервис\n\n<div class=\"description_important\">\n  Метод не предназначен для проверки доступности сервисов WB\n</div>\n\nУ каждого сервиса есть свой вариант метода в зависимости от домена:\n\n| Категория | URL запроса |\n|---------------|-----------------------|\n| Контент | `https://content-api.wildberries.ru/ping`<br>`https://content-api-sandbox.wildberries.ru/ping` |\n| Аналитика | `https://seller-analytics-api.wildberries.ru/ping` |\n| Цены и скидки | `https://discounts-prices-api.wildberries.ru/ping`<br>`https://discounts-prices-api-sandbox.wildberries.ru/ping` |\n| Маркетплейс | `https://marketplace-api.wildberries.ru/ping` |\n| Статистика | `https://statistics-api.wildberries.ru/ping`<br>`https://statistics-api-sandbox.wildberries.ru/ping` |\n| Продвижение | `https://advert-api.wildberries.ru/ping`<br>`https://advert-api-sandbox.wildberries.ru/ping` |\n| Вопросы и отзывы | `https://feedbacks-api.wildberries.ru/ping`<br>`https://feedbacks-api-sandbox.wildberries.ru/ping` |\n| Чат с покупателями | `https://buyer-chat-api.wildberries.ru/ping` |\n| Поставки | `https://supplies-api.wildberries.ru/ping` |\n| Возвраты покупателями | `https://returns-api.wildberries.ru/ping` |\n| Документы | `https://documents-api.wildberries.ru/ping` |\n| Финансы | `https://finance-api.wildberries.ru/ping` |\n| Тарифы, Новости, Информация о продавце | `https://common-api.wildberries.ru/ping` |\n| Управление пользователями продавца | `https://user-management-api.wildberries.ru/ping` |\n\n<div class=\"description_limit\">\n  Максимум 3 запроса за 30 <a href='./api-information#tag/Vvedenie/Limity-zaprosov'>секунд</a>. Если попытаться автоматизировать использование метода, запросы будут временно заблокированы. Лимит действует отдельно для каждого варианта метода в зависимости от домена\n</div>\n",
+        "responses": {
+          "200": {
+            "description": "<span class='response__value response__value_success'>Успешно</span>",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "TS": {
+                      "type": "string",
+                      "description": "Timestamp запроса"
+                    },
+                    "Status": {
+                      "type": "string",
+                      "enum": [
+                        "OK"
+                      ],
+                      "description": "Статус"
+                    }
+                  }
+                },
+                "example": {
+                  "TS": "2024-08-16T11:19:05+03:00",
+                  "Status": "OK"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401",
+            "description": "<span class='response__value '></span>"
+          },
+          "429": {
+            "$ref": "#/components/responses/429",
+            "description": "<span class='response__value '></span>"
+          }
+        }
+      }
+    },
+    "/api/communications/v2/news": {
+      "servers": [
+        {
+          "url": "https://common-api.wildberries.ru"
+        }
+      ],
+      "get": {
+        "x-readonly-method": true,
+        "x-category": "commonapi",
+        "tags": [
+          "API новостей"
+        ],
+        "security": [
+          {
+            "HeaderApiKey": []
+          }
+        ],
+        "summary": "Получение новостей портала продавцов{{ /api/communications/v2/news }}",
+        "description": "<div class='description-title'><span>Описание метода</span></div>\n\nМетод позволяет получать новости портала продавцов. <br> Для получения успешного ответа необходимо указать\nодин из параметров `from` или `fromID`. <br> За один запрос можно получить не более 100 новостей.\n\n<div class=\"description_limit\">\n<a href='./api-information#tag/Vvedenie/Limity-zaprosov'>Лимит запросов</a> на один аккаунт продавца:\n\n| Период | Лимит | Интервал | Всплеск |\n| --- | --- | --- | --- |\n| 1 мин | 1 запрос | 1 мин | 10 запросов |\n</div>\n",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2025-02-06"
+            },
+            "description": "Дата, от которой необходимо выдать новости"
+          },
+          {
+            "in": "query",
+            "name": "fromID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "uint64"
+            },
+            "description": "ID новости, начиная с которой — включая её — нужно получить список новостей",
+            "example": 7369
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "<span class='response__value response__value_success'>Успешно</span>",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "description": "Новости",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "content": {
+                            "type": "string",
+                            "description": "Текст новости",
+                            "format": "plaintext"
+                          },
+                          "date": {
+                            "format": "date-time",
+                            "type": "string",
+                            "description": "Дата и время публикации новости"
+                          },
+                          "header": {
+                            "type": "string",
+                            "description": "Заголовок новости"
+                          },
+                          "id": {
+                            "type": "integer",
+                            "description": "ID новости"
+                          },
+                          "types": {
+                            "type": "array",
+                            "description": "Теги новости",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "integer",
+                                  "description": "ID тега"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "description": "Название тега"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "data": [
+                    {
+                      "content": "Теперь в кампаниях ВБ.Медиа вы можете размещать баннеры для пользователей, которые взаимодействовали\nс товарами из определённой категории: покупали, искали, добавляли в корзину и избранное. Также можно\nвыбрать период, за который хотите учитывать эти действия.Например, вы продаёте обувь. Рекламу можно\nпоказать людям, которые добавляли в корзину или избранное товары из этой категории за последние 14\nдней. Возможно, пользователи, которые попадают под этот критерий, уже совершили покупку. Поэтому вы\nможете уточнить настройки показа: добавить параметр «Не покупал товар из категории „Обувь“ в последние\n14 дней». Так вероятность того, что ваш баннер приведёт к покупке, будет выше.Чтобы запустить рекламу,\nсоздайте в кабинете ВБ.Медиа кампанию «По показам» и на шаге 4 включите «Поведенческие параметры».\nЭти параметры можно комбинировать с таргетированием по предполагаемым интересам, полу, возрасту и\nрегиону.Подробнее о том, как настроить таргетинг, — в инструкции «По показам».Запустить рекламу на\nWildberries\n",
+                      "date": "2025-02-05T14:10:35+03:00",
+                      "header": "Новые настройки кампаний в ВБ.Медиа: таргетируйте рекламу в зависимости от того, как аудитория\nиспользует сервисы Wildberries\n",
+                      "id": 7369,
+                      "types": [
+                        {
+                          "id": 4,
+                          "name": "Маркетинг"
+                        }
+                      ]
+                    },
+                    {
+                      "content": "Добавили получение отчётов по текстам поисковых запросов в формате CSV. В описания методов «Создать\nотчёт» и «Получить отчёт» добавили описания и примеры моделей: • запросов — SearchReportTextReq, •\nуспешных ответов (статус-код 200) — SearchReportTextRes.В ответ метода «Поисковые запросы по товару»\nдобавили 8 полей и структуры price и medianPosition. Узнать больше можно в Журнале изменений.Эти методы\nдоступны только с подпиской «Джем»\n",
+                      "date": "2025-02-06T18:14:58+03:00",
+                      "header": "Изменения в API «Аналитики и данных»",
+                      "id": 7373,
+                      "types": [
+                        {
+                          "id": 8,
+                          "name": "API"
+                        },
+                        {
+                          "id": 41,
+                          "name": "Аналитика продавца"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "<span class='response__value '>Неправильный запрос</span>"
+          },
+          "401": {
+            "$ref": "#/components/responses/401",
+            "description": "<span class='response__value '></span>"
+          },
+          "429": {
+            "$ref": "#/components/responses/429",
+            "description": "<span class='response__value '></span>"
+          }
+        }
+      }
+    },
+    "/api/v1/seller-info": {
+      "servers": [
+        {
+          "url": "https://common-api.wildberries.ru"
+        }
+      ],
+      "get": {
+        "x-readonly-method": true,
+        "x-category": "commonapi",
+        "tags": [
+          "Информация о продавце"
+        ],
+        "security": [
+          {
+            "HeaderApiKey": []
+          }
+        ],
+        "summary": "Получение информации о продавце{{ /api/v1/seller-info }}",
+        "description": "<div class='description-title'><span>Описание метода</span></div>\n\nМетод позволяет получать наименование продавца и ID его профиля.\n<br> В запросе можно использовать любой токен, у которого не выбрана опция **Тестовый контур**.\n\n<div class=\"description_limit\">\n<a href='./api-information#tag/Vvedenie/Limity-zaprosov'>Лимит запросов</a> на один аккаунт продавца:\n\n| Период | Лимит | Интервал | Всплеск |\n| --- | --- | --- | --- |\n| 1 мин | 1 запрос | 1 мин | 10 запросов |\n</div>\n",
+        "responses": {
+          "200": {
+            "description": "<span class='response__value response__value_success'>Успешно</span>",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "Наименование продавца"
+                    },
+                    "sid": {
+                      "format": "UUID",
+                      "type": "string",
+                      "description": "Уникальный ID продавца на Wildberries, [находящийся в публичном поле токена](./api-information#tag/Avtorizaciya/Kak-ustroen-token)"
+                    },
+                    "tin": {
+                      "type": "string",
+                      "description": "ИНН"
+                    },
+                    "tradeMark": {
+                      "type": "string",
+                      "description": "Торговое наименование продавца"
+                    }
+                  }
+                },
+                "example": {
+                  "name": "ИП Кружинин В. Р.",
+                  "sid": "e8923014-e233-47q8-898e-3cc86d67ea61",
+                  "tin": "1234567890",
+                  "tradeMark": "Flax Store"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401",
+            "description": "<span class='response__value '></span>"
+          },
+          "402": {
+            "$ref": "#/components/responses/402",
+            "description": "<span class='response__value '></span>"
+          },
+          "429": {
+            "$ref": "#/components/responses/429",
+            "description": "<span class='response__value '></span>"
+          }
+        }
+      }
+    },
+    "/api/v1/invite": {
+      "servers": [
+        {
+          "url": "https://user-management-api.wildberries.ru"
+        }
+      ],
+      "post": {
+        "x-readonly-method": false,
+        "x-category": "usermanagement",
+        "x-token-types": [
+          "personal"
+        ],
+        "tags": [
+          "Управление пользователями продавца"
+        ],
+        "security": [
+          {
+            "HeaderApiKey": []
+          }
+        ],
+        "summary": "Создать приглашение для нового пользователя{{ /api/v1/invite }}",
+        "description": "<div class='description-title'><span>Описание метода</span></div>\n\n<div class=\"description_token\">\nМетод доступен по<strong> Персональному</strong> <a href=\"./api-information#tag/Avtorizaciya/Pravila-ispolzovaniya-tokenov-dostupa-k-API\">токену</a>\n</div>\n\nМетод создаёт приглашение для нового пользователя с настройкой доступов к разделам профиля продавца.<br>\nКак выдаются права доступа:\n- Если `access` пустой (`[]`) или не указан — по умолчанию выдаются все доступы, кроме доступов к витрине (`showcase`) и **Джем** (`changeJam`)\n- Если в `access` указана часть разделов профиля, то кроме тех доступов, что указаны в запросе, также выдаются все доступы по умолчанию\n- Если в `access` перечислены все возможные разделы, доступы будут выданы согласно запросу, без доступов по умолчанию\n- Если в `access` дважды указан один и тот же раздел (`code`):\n  - при разных значениях `disabled` (`true` и `false`) доступ не будет выдан\n  - при одинаковых значениях `\"disabled\": true` доступ не будет выдан\n  - при одинаковых значениях `\"disabled\": false` доступ будет выдан\n\n<div class=\"description_limit\">\n<a href='./api-information#tag/Vvedenie/Limity-zaprosov'>Лимит запросов</a> на один аккаунт продавца:\n\n| Период | Лимит | Интервал | Всплеск |\n| --- | --- | --- | --- |\n| 1 сек | 1 запрос | 1 сек | 5 запросов |\n</div>\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/createInviteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "<span class='response__value response__value_success'>Успешно</span>",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/createInviteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "<span class='response__value '>Неправильный запрос</span>",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401",
+            "description": "<span class='response__value '></span>"
+          },
+          "429": {
+            "$ref": "#/components/responses/429",
+            "description": "<span class='response__value '></span>"
+          }
+        }
+      }
+    },
+    "/api/v1/users": {
+      "servers": [
+        {
+          "url": "https://user-management-api.wildberries.ru"
+        }
+      ],
+      "get": {
+        "x-readonly-method": true,
+        "x-category": "usermanagement",
+        "x-token-types": [
+          "personal"
+        ],
+        "tags": [
+          "Управление пользователями продавца"
+        ],
+        "security": [
+          {
+            "HeaderApiKey": []
+          }
+        ],
+        "summary": "Получить список активных или приглашённых пользователей продавца{{ /api/v1/users }}",
+        "description": "<div class='description-title'><span>Описание метода</span></div>\n\n<div class=\"description_token\">\nМетод доступен по<strong> Персональному</strong> <a href=\"./api-information#tag/Avtorizaciya/Pravila-ispolzovaniya-tokenov-dostupa-k-API\">токену</a>\n</div>\n\nМетод возвращает список активных или приглашённых пользователей профиля продавца.<br><br>\nЧтобы выбрать список, укажите значение параметра `isInviteOnly`:\n  - `isInviteOnly=true` — список приглашённых пользователей, которые ещё не активировали доступ\n  - `isInviteOnly=false` или не указан — список активных пользователей\n\nПо каждому пользователю можно получить:\n  - роль пользователя\n  - разделы, к которым есть доступы\n  - статус приглашения\n\nСписок приглашённых пользователей в ответе всегда отсортирован по дате создания: от новых до старых.\n\n<div class=\"description_limit\">\n<a href='./api-information#tag/Vvedenie/Limity-zaprosov'>Лимит запросов</a> на один аккаунт продавца:\n\n| Период | Лимит | Интервал | Всплеск |\n| --- | --- | --- | --- |\n| 1 сек | 1 запрос | 1 сек | 5 запросов |\n</div>\n",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "maximum": 100,
+              "default": 100
+            },
+            "description": "Количество активных или приглашённых пользователей в ответе"
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 0
+            },
+            "description": "Сколько элементов пропустить. Например, для значения 10 ответ начнется с 11 элемента\n"
+          },
+          {
+            "in": "query",
+            "name": "isInviteOnly",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "- `true` — список приглашённых пользователей, которые ещё не активировали доступ\n- `false` или не указан — список активных пользователей профиля продавца\n"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "<span class='response__value response__value_success'>Успешно</span>",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/getUsersResponse"
+                },
+                "examples": {
+                  "invitesOnly": {
+                    "summary": "isInviteOnly=true",
+                    "description": "Список приглашённых пользователей",
+                    "value": {
+                      "total": 2,
+                      "countInResponse": 2,
+                      "users": [
+                        {
+                          "id": 0,
+                          "role": "",
+                          "position": "Аналитик",
+                          "phone": "79998888888",
+                          "email": "",
+                          "isOwner": false,
+                          "firstName": "",
+                          "secondName": "",
+                          "patronymic": "",
+                          "goodsReturn": false,
+                          "isInvitee": true,
+                          "inviteeInfo": {
+                            "phoneNumber": "79998888888",
+                            "position": "Аналитик",
+                            "inviteUuid": "00000000-0000-4000-8000-000000000001",
+                            "expiredAt": "2025-12-01T00:00:00Z",
+                            "isActive": true
+                          },
+                          "access": [
+                            {
+                              "code": "supply",
+                              "disabled": true
+                            },
+                            {
+                              "code": "changeJam",
+                              "disabled": true
+                            },
+                            {
+                              "code": "showcase",
+                              "disabled": false
+                            },
+                            {
+                              "code": "suppliersDocuments",
+                              "disabled": false
+                            },
+                            {
+                              "code": "discountPrice",
+                              "disabled": true
+                            },
+                            {
+                              "code": "feedbacks",
+                              "disabled": false
+                            },
+                            {
+                              "code": "questions",
+                              "disabled": false
+                            },
+                            {
+                              "code": "wbPoint",
+                              "disabled": false
+                            },
+                            {
+                              "code": "brands",
+                              "disabled": true
+                            },
+                            {
+                              "code": "pointsForReviews",
+                              "disabled": false
+                            },
+                            {
+                              "code": "pinFeedbacks",
+                              "disabled": false
+                            },
+                            {
+                              "code": "finance",
+                              "disabled": true
+                            },
+                            {
+                              "code": "feedbacksQuestions",
+                              "disabled": false
+                            },
+                            {
+                              "code": "balance",
+                              "disabled": false
+                            },
+                            {
+                              "code": "oldAnalyticsReports",
+                              "disabled": false
+                            },
+                            {
+                              "code": "marketplace",
+                              "disabled": false
+                            }
+                          ]
+                        },
+                        {
+                          "id": 0,
+                          "role": "",
+                          "position": "",
+                          "phone": "7999XXXX102",
+                          "email": "",
+                          "isOwner": false,
+                          "firstName": "",
+                          "secondName": "",
+                          "patronymic": "",
+                          "goodsReturn": false,
+                          "isInvitee": true,
+                          "inviteeInfo": {
+                            "phoneNumber": "79996666666",
+                            "position": "Аналитик",
+                            "inviteUuid": "00000000-0000-4000-8000-000000000002",
+                            "expiredAt": "2025-12-10T00:00:00Z",
+                            "isActive": false
+                          },
+                          "access": [
+                            {
+                              "code": "supply",
+                              "disabled": true
+                            },
+                            {
+                              "code": "changeJam",
+                              "disabled": true
+                            },
+                            {
+                              "code": "showcase",
+                              "disabled": false
+                            },
+                            {
+                              "code": "suppliersDocuments",
+                              "disabled": false
+                            },
+                            {
+                              "code": "discountPrice",
+                              "disabled": true
+                            },
+                            {
+                              "code": "feedbacks",
+                              "disabled": false
+                            },
+                            {
+                              "code": "questions",
+                              "disabled": false
+                            },
+                            {
+                              "code": "wbPoint",
+                              "disabled": false
+                            },
+                            {
+                              "code": "brands",
+                              "disabled": true
+                            },
+                            {
+                              "code": "pointsForReviews",
+                              "disabled": false
+                            },
+                            {
+                              "code": "pinFeedbacks",
+                              "disabled": false
+                            },
+                            {
+                              "code": "finance",
+                              "disabled": true
+                            },
+                            {
+                              "code": "feedbacksQuestions",
+                              "disabled": false
+                            },
+                            {
+                              "code": "balance",
+                              "disabled": false
+                            },
+                            {
+                              "code": "oldAnalyticsReports",
+                              "disabled": false
+                            },
+                            {
+                              "code": "marketplace",
+                              "disabled": false
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "usersOnly": {
+                    "summary": "isInviteOnly=false",
+                    "description": "Список активных пользователей",
+                    "value": {
+                      "total": 2,
+                      "countInResponse": 2,
+                      "users": [
+                        {
+                          "id": 1001,
+                          "role": "user",
+                          "position": "Аналитик",
+                          "phone": "79999999999",
+                          "email": "user1@example.com",
+                          "isOwner": true,
+                          "firstName": "Иван",
+                          "secondName": "Иванов",
+                          "patronymic": "",
+                          "goodsReturn": true,
+                          "isInvitee": false,
+                          "inviteeInfo": null,
+                          "access": [
+                            {
+                              "code": "supply",
+                              "disabled": true
+                            },
+                            {
+                              "code": "changeJam",
+                              "disabled": true
+                            },
+                            {
+                              "code": "showcase",
+                              "disabled": false
+                            },
+                            {
+                              "code": "suppliersDocuments",
+                              "disabled": false
+                            },
+                            {
+                              "code": "discountPrice",
+                              "disabled": true
+                            },
+                            {
+                              "code": "feedbacks",
+                              "disabled": false
+                            },
+                            {
+                              "code": "questions",
+                              "disabled": false
+                            },
+                            {
+                              "code": "wbPoint",
+                              "disabled": false
+                            },
+                            {
+                              "code": "brands",
+                              "disabled": true
+                            },
+                            {
+                              "code": "pointsForReviews",
+                              "disabled": false
+                            },
+                            {
+                              "code": "pinFeedbacks",
+                              "disabled": false
+                            },
+                            {
+                              "code": "finance",
+                              "disabled": true
+                            },
+                            {
+                              "code": "feedbacksQuestions",
+                              "disabled": false
+                            },
+                            {
+                              "code": "balance",
+                              "disabled": false
+                            },
+                            {
+                              "code": "oldAnalyticsReports",
+                              "disabled": false
+                            },
+                            {
+                              "code": "marketplace",
+                              "disabled": false
+                            }
+                          ]
+                        },
+                        {
+                          "id": 1002,
+                          "role": "user",
+                          "position": "Менеджер",
+                          "phone": "79997777777",
+                          "email": "user2@example.com",
+                          "isOwner": false,
+                          "firstName": "Владимир",
+                          "secondName": "Смирнов",
+                          "patronymic": "",
+                          "goodsReturn": true,
+                          "isInvitee": true,
+                          "inviteeInfo": {
+                            "phoneNumber": "79997777777",
+                            "position": "Менеджер",
+                            "inviteUuid": "00000000-0000-4000-8000-000000000001",
+                            "expiredAt": "2025-12-01T00:00:00Z",
+                            "isActive": true
+                          },
+                          "access": [
+                            {
+                              "code": "supply",
+                              "disabled": true
+                            },
+                            {
+                              "code": "changeJam",
+                              "disabled": true
+                            },
+                            {
+                              "code": "showcase",
+                              "disabled": false
+                            },
+                            {
+                              "code": "suppliersDocuments",
+                              "disabled": false
+                            },
+                            {
+                              "code": "discountPrice",
+                              "disabled": true
+                            },
+                            {
+                              "code": "feedbacks",
+                              "disabled": false
+                            },
+                            {
+                              "code": "questions",
+                              "disabled": false
+                            },
+                            {
+                              "code": "wbPoint",
+                              "disabled": false
+                            },
+                            {
+                              "code": "brands",
+                              "disabled": true
+                            },
+                            {
+                              "code": "pointsForReviews",
+                              "disabled": false
+                            },
+                            {
+                              "code": "pinFeedbacks",
+                              "disabled": false
+                            },
+                            {
+                              "code": "finance",
+                              "disabled": true
+                            },
+                            {
+                              "code": "feedbacksQuestions",
+                              "disabled": false
+                            },
+                            {
+                              "code": "balance",
+                              "disabled": false
+                            },
+                            {
+                              "code": "oldAnalyticsReports",
+                              "disabled": false
+                            },
+                            {
+                              "code": "marketplace",
+                              "disabled": false
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "<span class='response__value '>Неправильный запрос</span>",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401",
+            "description": "<span class='response__value '></span>"
+          },
+          "429": {
+            "$ref": "#/components/responses/429",
+            "description": "<span class='response__value '></span>"
+          }
+        }
+      }
+    },
+    "/api/v1/users/access": {
+      "servers": [
+        {
+          "url": "https://user-management-api.wildberries.ru"
+        }
+      ],
+      "put": {
+        "x-readonly-method": false,
+        "x-category": "usermanagement",
+        "x-token-types": [
+          "personal"
+        ],
+        "tags": [
+          "Управление пользователями продавца"
+        ],
+        "security": [
+          {
+            "HeaderApiKey": []
+          }
+        ],
+        "summary": "Изменить права доступа пользователей{{ /api/v1/users/access }}",
+        "description": "<div class='description-title'><span>Описание метода</span></div>\n\n<div class=\"description_token\">\nМетод доступен по<strong> Персональному</strong> <a href=\"./api-information#tag/Avtorizaciya/Pravila-ispolzovaniya-tokenov-dostupa-k-API\">токену</a>\n</div>\n\nМетод меняет права доступа одному или нескольким пользователям.<br>\n<br>\nОбновляются только права доступа, переданные в параметрах запроса. Остальные поля остаются без изменений.\n\n<div class=\"description_limit\">\n<a href='./api-information#tag/Vvedenie/Limity-zaprosov'>Лимит запросов</a> на один аккаунт продавца:\n\n| Период | Лимит | Интервал | Всплеск |\n| --- | --- | --- | --- |\n| 1 сек | 1 запрос | 1 сек | 5 запросов |\n</div>\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateUserAccessRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "<span class='response__value response__value_success'>Успешно</span>"
+          },
+          "400": {
+            "description": "<span class='response__value '>Неправильный запрос</span>",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401",
+            "description": "<span class='response__value '></span>"
+          },
+          "429": {
+            "$ref": "#/components/responses/429",
+            "description": "<span class='response__value '></span>"
+          }
+        }
+      }
+    },
+    "/api/v1/user": {
+      "servers": [
+        {
+          "url": "https://user-management-api.wildberries.ru"
+        }
+      ],
+      "delete": {
+        "x-readonly-method": false,
+        "x-category": "usermanagement",
+        "x-token-types": [
+          "personal"
+        ],
+        "tags": [
+          "Управление пользователями продавца"
+        ],
+        "security": [
+          {
+            "HeaderApiKey": []
+          }
+        ],
+        "summary": "Удалить пользователя{{ /api/v1/user }}",
+        "description": "<div class='description-title'><span>Описание метода</span></div>\n\n<div class=\"description_token\">\nМетод доступен по<strong> Персональному</strong> <a href=\"./api-information#tag/Avtorizaciya/Pravila-ispolzovaniya-tokenov-dostupa-k-API\">токену</a>\n</div>\n\nМетод удаляет пользователя из [списка сотрудников продавца](./api-information#tag/Upravlenie-polzovatelyami-prodavca/paths/~1api~1v1~1users/get). Этому пользователю будет закрыт доступ в профиль продавца.\n\n<div class=\"description_limit\">\n<a href='./api-information#tag/Vvedenie/Limity-zaprosov'>Лимит запросов</a> на один аккаунт продавца:\n\n| Период | Лимит | Интервал | Всплеск |\n| --- | --- | --- | --- |\n| 1 сек | 1 запрос | 1 сек | 10 запросов |\n</div>\n",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "deletedUserID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "ID пользователя, которому будет закрыт доступ"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "<span class='response__value response__value_success'>Успешно</span>"
+          },
+          "400": {
+            "description": "<span class='response__value '>Неправильный запрос</span>",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401",
+            "description": "<span class='response__value '></span>"
+          },
+          "429": {
+            "$ref": "#/components/responses/429",
+            "description": "<span class='response__value '></span>"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "HeaderApiKey": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header"
+      }
+    },
+    "schemas": {
+      "Access": {
+        "type": "array",
+        "description": "Настройки доступа к разделам профиля продавца",
+        "items": {
+          "type": "object",
+          "required": [
+            "code",
+            "disabled"
+          ],
+          "properties": {
+            "code": {
+              "type": "string",
+              "description": "Код раздела профиля продавца, к которому пользователь получит доступ:\n* `balance` — Просмотр баланса и вывод средств\n* `brands` — Управление брендами\n* `changeJam` — Доступ к подключению подписки **Джем**: **А/Б тесты**, отметки на фото, автозапуски видео, сравнение карточек\n* `discountPrice` — Изменение цен на товары, управление скидками и акциями\n* `finance` — Финансовая аналитика. Статистика по балансу, финансовые отчёты, история платежей\n* `showcase` — Управление витриной магазина\n* `suppliersDocuments` — Просмотр и скачивание документов по работе с площадкой\n* `supply` — Создание и управление поставками FBW\n* `feedbacksQuestions` — Просмотр и ответы на вопросы и отзывы покупателей, жалобы на отзывы\n* `questions` — Просмотр и ответы на вопросы покупателей\n* `pinFeedbacks` — Возможность закреплять и откреплять отзывы\n* `pointsForReviews` — Баллы за отзывы\n* `feedbacks` — Просмотр и ответы на отзывы покупателей\n* `wbPoint` — WB Point\n* `oldAnalyticsReports` — Отчёты\n* `marketplace` — Свой склад\n",
+              "enum": [
+                "balance",
+                "brands",
+                "changeJam",
+                "discountPrice",
+                "finance",
+                "showcase",
+                "suppliersDocuments",
+                "supply",
+                "feedbacksQuestions",
+                "questions",
+                "pinFeedbacks",
+                "pointsForReviews",
+                "feedbacks",
+                "wbPoint",
+                "oldAnalyticsReports",
+                "marketplace"
+              ]
+            },
+            "disabled": {
+              "type": "boolean",
+              "description": "* `true` — доступ к разделу запрещён\n* `false` — доступ к разделу разрешён\n"
+            }
+          }
+        },
+        "example": [
+          {
+            "code": "balance",
+            "disabled": false
+          },
+          {
+            "code": "pointsForReviews",
+            "disabled": false
+          },
+          {
+            "code": "brands",
+            "disabled": true
+          },
+          {
+            "code": "finance",
+            "disabled": true
+          },
+          {
+            "code": "supply",
+            "disabled": true
+          }
+        ]
+      },
+      "getUsersResponse": {
+        "type": "object",
+        "required": [
+          "users",
+          "total",
+          "countInResponse"
+        ],
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Общее количество активных или приглашённых пользователей"
+          },
+          "countInResponse": {
+            "type": "integer",
+            "description": "Количество активных или приглашённых пользователей на текущей странице"
+          },
+          "users": {
+            "type": "array",
+            "description": "Информация о пользователях",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "role",
+                "position",
+                "phone",
+                "email",
+                "isOwner",
+                "firstName",
+                "secondName",
+                "patronymic",
+                "goodsReturn",
+                "isInvitee",
+                "inviteeInfo",
+                "access"
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "description": "ID пользователя"
+                },
+                "role": {
+                  "type": "string",
+                  "description": "Роль пользователя:\n  * `user` — пользователь, который активировал доступ\n  * ` ` (пустая строка) — пользователь, который не активировал доступ\n",
+                  "enum": [
+                    "user",
+                    ""
+                  ]
+                },
+                "position": {
+                  "type": "string",
+                  "description": "Должность пользователя"
+                },
+                "phone": {
+                  "type": "string",
+                  "description": "Номер телефона пользователя"
+                },
+                "email": {
+                  "type": "string",
+                  "description": "Email пользователя"
+                },
+                "isOwner": {
+                  "type": "boolean",
+                  "description": "Является ли пользователь владельцем профиля продавца"
+                },
+                "firstName": {
+                  "type": "string",
+                  "description": "Имя пользователя"
+                },
+                "secondName": {
+                  "type": "string",
+                  "description": "Фамилия пользователя"
+                },
+                "patronymic": {
+                  "type": "string",
+                  "description": "Отчество пользователя"
+                },
+                "goodsReturn": {
+                  "type": "boolean",
+                  "description": "Может ли пользователь одобрять возвраты товаров"
+                },
+                "isInvitee": {
+                  "type": "boolean",
+                  "description": "Приглашён ли пользователь"
+                },
+                "inviteeInfo": {
+                  "type": "object",
+                  "nullable": true,
+                  "description": "Информация о приглашении, если пользователь приглашён",
+                  "properties": {
+                    "phoneNumber": {
+                      "type": "string",
+                      "description": "Номер телефона приглашённого пользователя"
+                    },
+                    "position": {
+                      "type": "string",
+                      "description": "Должность приглашённого пользователя"
+                    },
+                    "inviteUuid": {
+                      "type": "string",
+                      "description": "ID приглашения",
+                      "format": "UUID"
+                    },
+                    "expiredAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "Дата и время окончания срока действия приглашения"
+                    },
+                    "isActive": {
+                      "type": "boolean",
+                      "description": "- `true` — приглашение активно\n- `false` — приглашение неактивно\n"
+                    }
+                  }
+                },
+                "access": {
+                  "$ref": "#/components/schemas/Access"
+                }
+              }
+            }
+          }
+        }
+      },
+      "createInviteRequest": {
+        "type": "object",
+        "required": [
+          "invite"
+        ],
+        "properties": {
+          "access": {
+            "$ref": "#/components/schemas/Access"
+          },
+          "invite": {
+            "type": "object",
+            "required": [
+              "phoneNumber"
+            ],
+            "properties": {
+              "phoneNumber": {
+                "type": "string",
+                "description": "Номер телефона пользователя для приглашения.\n<details><summary><strong>Поддерживаются номера телефонов из стран:</strong></summary>• Азербайджан<br>• Армения<br>• Барбадос<br>• Беларусь<br>• Бразилия<br>• Гонконг<br>• Грузия<br>• Италия<br>• Казахстан<br>• Китай<br>• Кыргызстан<br>• Макао<br>• ОАЭ<br>• Россия<br>• Сербия<br>• Таджикистан<br>• Турция<br>• Узбекистан<br>• Чехия<br>• Швеция</details>\n"
+              },
+              "position": {
+                "type": "string",
+                "maxLength": 150,
+                "description": "Должность пользователя"
+              }
+            }
+          }
+        },
+        "example": {
+          "access": [
+            {
+              "code": "balance",
+              "disabled": false
+            },
+            {
+              "code": "pointsForReviews",
+              "disabled": false
+            },
+            {
+              "code": "brands",
+              "disabled": true
+            },
+            {
+              "code": "finance",
+              "disabled": true
+            },
+            {
+              "code": "supply",
+              "disabled": true
+            }
+          ],
+          "invite": {
+            "phoneNumber": "79999999999",
+            "position": "Менеджер"
+          }
+        }
+      },
+      "createInviteResponse": {
+        "type": "object",
+        "required": [
+          "inviteID",
+          "expiredAt",
+          "isSuccess",
+          "inviteUrl"
+        ],
+        "description": "Данные приглашения",
+        "properties": {
+          "inviteID": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID приглашения"
+          },
+          "expiredAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Дата и время окончания срока действия приглашения"
+          },
+          "isSuccess": {
+            "type": "boolean",
+            "description": "- `true` — приглашение создано успешно\n- `false` — повторите запрос\n"
+          },
+          "inviteUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL приглашения, по которому должен перейти пользователь"
+          }
+        },
+        "example": {
+          "inviteID": "741b8aa6-08ac-4782-8a9d-d931bcbbf608",
+          "expiredAt": "2025-10-06T10:56:04.335060746Z",
+          "isSuccess": true,
+          "inviteUrl": "https://seller.wildberries.ru/supplier-settings/supplier-card?inviteId=e5a813c7-65e0-4599-a550-a6b3d85661ed"
+        }
+      },
+      "updateUserAccessRequest": {
+        "type": "object",
+        "required": [
+          "usersAccesses"
+        ],
+        "properties": {
+          "usersAccesses": {
+            "type": "array",
+            "description": "Настройки доступа для пользователя",
+            "items": {
+              "$ref": "#/components/schemas/UserAccess"
+            }
+          }
+        },
+        "example": {
+          "usersAccesses": [
+            {
+              "userId": 42334965,
+              "access": [
+                {
+                  "code": "balance",
+                  "disabled": false
+                },
+                {
+                  "code": "finance",
+                  "disabled": true
+                },
+                {
+                  "code": "feedbacks",
+                  "disabled": false
+                }
+              ]
+            },
+            {
+              "userId": 52334965,
+              "access": [
+                {
+                  "code": "balance",
+                  "disabled": true
+                },
+                {
+                  "code": "changeJam",
+                  "disabled": false
+                },
+                {
+                  "code": "showcase",
+                  "disabled": false
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "UserAccess": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "description": "ID пользователя"
+          },
+          "access": {
+            "$ref": "#/components/schemas/Access"
+          }
+        }
+      },
+      "errorResponse": {
+        "type": "object",
+        "required": [
+          "title",
+          "detail",
+          "requestId",
+          "origin",
+          "status"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Заголовок ошибки"
+          },
+          "detail": {
+            "type": "string",
+            "description": "Детали ошибки"
+          },
+          "requestId": {
+            "type": "string",
+            "description": "ID запроса"
+          },
+          "origin": {
+            "type": "string",
+            "description": "Название внутреннего сервиса"
+          },
+          "status": {
+            "type": "number",
+            "description": "HTTP статус-код"
+          }
+        },
+        "example": {
+          "title": "Bad Request",
+          "status": 400,
+          "detail": "bad request cause: user is not in current supplier",
+          "requestId": "c479c04d0b576a9ba0b20fdf235004c2",
+          "origin": "public-acl"
+        }
+      }
+    },
+    "responses": {
+      "401": {
+        "description": "<span class='response__value '>Не авторизован</span>",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "description": "Заголовок ошибки"
+                },
+                "detail": {
+                  "type": "string",
+                  "description": "Детали ошибки"
+                },
+                "code": {
+                  "type": "string",
+                  "description": "Внутренний код ошибки"
+                },
+                "requestId": {
+                  "type": "string",
+                  "description": "Уникальный ID запроса"
+                },
+                "origin": {
+                  "type": "string",
+                  "description": "ID внутреннего сервиса WB"
+                },
+                "status": {
+                  "type": "number",
+                  "description": "HTTP статус-код"
+                },
+                "statusText": {
+                  "type": "string",
+                  "description": "Расшифровка HTTP статус-кода"
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Дата и время запроса"
+                }
+              }
+            },
+            "example": {
+              "title": "unauthorized",
+              "detail": "token problem; token is malformed: could not base64 decode signature: illegal base64 data at input byte 84",
+              "code": "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75",
+              "requestId": "7b80742415072fe8b6b7f7761f1d1211",
+              "origin": "s2s-api-auth-catalog",
+              "status": 401,
+              "statusText": "Unauthorized",
+              "timestamp": "2024-09-30T06:52:38Z"
+            }
+          }
+        }
+      },
+      "402": {
+        "description": "<span class='response__value '>Требуется платёж</span>",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "description": "Заголовок ошибки"
+                },
+                "detail": {
+                  "type": "string",
+                  "description": "Детали ошибки. Ошибка означает, что на балансе сервиса из [Каталога](https://dev.wildberries.ru/business-solutions) недостаточно средств"
+                }
+              }
+            },
+            "example": {
+              "title": "payment required",
+              "detail": "please top up your balance in your company personal account https://dev.wildberries.ru/company"
+            }
+          }
+        }
+      },
+      "429": {
+        "description": "<span class='response__value '>Слишком много запросов</span>",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "description": "Заголовок ошибки"
+                },
+                "detail": {
+                  "type": "string",
+                  "description": "Детали ошибки"
+                },
+                "code": {
+                  "type": "string",
+                  "description": "Внутренний код ошибки"
+                },
+                "requestId": {
+                  "type": "string",
+                  "description": "Уникальный ID запроса"
+                },
+                "origin": {
+                  "type": "string",
+                  "description": "ID внутреннего сервиса WB"
+                },
+                "status": {
+                  "type": "number",
+                  "description": "HTTP статус-код"
+                },
+                "statusText": {
+                  "type": "string",
+                  "description": "Расшифровка HTTP статус-кода"
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Дата и время запроса"
+                }
+              }
+            },
+            "example": {
+              "title": "too many requests",
+              "detail": "limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489",
+              "code": "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]",
+              "requestId": "9d3c02cc698f8b041c661a7c28bed293",
+              "origin": "s2s-api-auth-catalog",
+              "status": 429,
+              "statusText": "Too Many Requests",
+              "timestamp": "2024-09-30T06:52:38Z"
+            }
+          }
+        }
+      }
+    }
+  }
+}
