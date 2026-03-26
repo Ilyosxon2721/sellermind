@@ -380,10 +380,10 @@ class YandexMarketController extends Controller
             ], 422);
         }
 
-        if (! in_array($sourceAccount->marketplace, ['wb', 'ozon'])) {
+        if (! in_array($sourceAccount->marketplace, ['wb', 'ozon', 'uzum'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Копирование поддерживается из Wildberries и Ozon',
+                'message' => 'Копирование поддерживается из Wildberries, Ozon и Uzum',
             ], 422);
         }
 
@@ -399,6 +399,7 @@ class YandexMarketController extends Controller
             $sourceName = match ($sourceAccount->marketplace) {
                 'wb' => 'Wildberries',
                 'ozon' => 'Ozon',
+                'uzum' => 'Uzum',
                 default => $sourceAccount->marketplace,
             };
 
