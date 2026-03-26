@@ -81,7 +81,35 @@
                                        :max="new Date().toISOString().split('T')[0]">
                             </div>
 
-                            <!-- 3. Компания продавца -->
+                            <!-- 3. Тип продажи -->
+                            <div>
+                                <label class="form-label">Тип продажи *</label>
+                                <div class="grid grid-cols-3 gap-2 mt-1">
+                                    <label class="relative flex flex-col items-center p-3 border-2 rounded-lg cursor-pointer transition-colors"
+                                           :class="sale.sale_type === 'retail' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
+                                        <input type="radio" value="retail" x-model="sale.sale_type" class="sr-only">
+                                        <span class="text-lg">🛒</span>
+                                        <span class="text-sm font-medium mt-1">Розница</span>
+                                        <span class="text-xs text-gray-400 text-center mt-0.5">Штучная продажа покупателю</span>
+                                    </label>
+                                    <label class="relative flex flex-col items-center p-3 border-2 rounded-lg cursor-pointer transition-colors"
+                                           :class="sale.sale_type === 'wholesale' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
+                                        <input type="radio" value="wholesale" x-model="sale.sale_type" class="sr-only">
+                                        <span class="text-lg">📦</span>
+                                        <span class="text-sm font-medium mt-1">Опт</span>
+                                        <span class="text-xs text-gray-400 text-center mt-0.5">Крупная партия контрагенту</span>
+                                    </label>
+                                    <label class="relative flex flex-col items-center p-3 border-2 rounded-lg cursor-pointer transition-colors"
+                                           :class="sale.sale_type === 'direct' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
+                                        <input type="radio" value="direct" x-model="sale.sale_type" class="sr-only">
+                                        <span class="text-lg">🤝</span>
+                                        <span class="text-sm font-medium mt-1">Прямая</span>
+                                        <span class="text-xs text-gray-400 text-center mt-0.5">Instagram, звонок, знакомые</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- 4. Компания продавца -->
                             <div>
                                 <label class="form-label">Компания продавца *</label>
                                 <select class="form-select" x-model="sale.company_id" @change="onCompanyChange()">
@@ -447,6 +475,7 @@ function saleCreatePage() {
         sale: {
             sale_number: '',
             sale_date: new Date().toISOString().split('T')[0],
+            sale_type: 'retail',
             company_id: '',
             company_name: '',
             counterparty_id: null,
@@ -774,7 +803,7 @@ function saleCreatePage() {
 
                 const payload = {
                     type: 'manual',
-                    source: 'manual',
+                    source: this.sale.sale_type || 'manual',
                     sale_number: this.sale.sale_number,
                     company_id: parseInt(this.sale.company_id) || null,
                     counterparty_id: this.sale.counterparty_id || null,
@@ -782,6 +811,7 @@ function saleCreatePage() {
                     currency: this.sale.currency,
                     notes: this.sale.notes,
                     status: status,
+                    metadata: { sale_type: this.sale.sale_type },
                     items: allItems
                 };
 
@@ -899,6 +929,27 @@ function saleCreatePage() {
                     <div>
                         <label class="native-caption text-gray-500">Дата продажи</label>
                         <input type="date" class="native-input w-full mt-1" x-model="sale.sale_date">
+                    </div>
+
+                    <div>
+                        <label class="native-caption text-gray-500">Тип продажи</label>
+                        <div class="grid grid-cols-3 gap-2 mt-1">
+                            <label class="flex flex-col items-center p-2 border-2 rounded-lg cursor-pointer text-center"
+                                   :class="sale.sale_type === 'retail' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'">
+                                <input type="radio" value="retail" x-model="sale.sale_type" class="sr-only">
+                                <span class="text-sm">🛒 Розница</span>
+                            </label>
+                            <label class="flex flex-col items-center p-2 border-2 rounded-lg cursor-pointer text-center"
+                                   :class="sale.sale_type === 'wholesale' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'">
+                                <input type="radio" value="wholesale" x-model="sale.sale_type" class="sr-only">
+                                <span class="text-sm">📦 Опт</span>
+                            </label>
+                            <label class="flex flex-col items-center p-2 border-2 rounded-lg cursor-pointer text-center"
+                                   :class="sale.sale_type === 'direct' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'">
+                                <input type="radio" value="direct" x-model="sale.sale_type" class="sr-only">
+                                <span class="text-sm">🤝 Прямая</span>
+                            </label>
+                        </div>
                     </div>
 
                     <div>
