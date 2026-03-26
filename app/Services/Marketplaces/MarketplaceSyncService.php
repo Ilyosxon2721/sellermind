@@ -349,6 +349,34 @@ class MarketplaceSyncService
                 return;
             }
 
+            // Для Yandex Market используем YandexMarketClient с собственной моделью YandexMarketOrder
+            if ($account->marketplace === 'ym') {
+                BroadcastHelper::safeAll(new MarketplaceSyncProgress(
+                    $account->company_id,
+                    $account->id,
+                    'progress',
+                    'Загрузка заказов Yandex Market...',
+                    25
+                ));
+
+                $ymHttpClient = app(\App\Services\Marketplaces\YandexMarket\YandexMarketHttpClient::class);
+                $ymClient = new \App\Services\Marketplaces\YandexMarket\YandexMarketClient($ymHttpClient);
+                $stats = $ymClient->syncOrders($account, $from, $to);
+
+                BroadcastHelper::safeAll(new MarketplaceSyncProgress(
+                    $account->company_id,
+                    $account->id,
+                    'completed',
+                    "Синхронизация Yandex Market завершена: {$stats['synced']} из {$stats['total']} заказов",
+                    100,
+                    ['synced' => $stats['synced'], 'total' => $stats['total']]
+                ));
+
+                $log->markAsSuccess("YM orders synced: {$stats['synced']} of {$stats['total']}, errors: " . count($stats['errors']));
+
+                return;
+            }
+
             // Для Uzum используем новый UzumOrderSyncService
             if ($account->marketplace === 'uzum' || $account->isUzum()) {
                 BroadcastHelper::safeAll(new MarketplaceSyncProgress(
