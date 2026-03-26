@@ -197,6 +197,31 @@ function kpiPage(config) {
             this.aiReasoning = '';
             this.showPlanModal = true;
         },
+        copyPlan(p) {
+            var nextMonth = parseInt(p.period_month) + 1;
+            var nextYear = parseInt(p.period_year);
+            if (nextMonth > 12) { nextMonth = 1; nextYear++; }
+
+            this.planForm = {
+                id: null,
+                employee_id: p.employee_id,
+                kpi_sales_sphere_id: p.kpi_sales_sphere_id,
+                kpi_bonus_scale_id: p.kpi_bonus_scale_id,
+                period_year: nextYear,
+                period_month: nextMonth,
+                target_revenue: p.target_revenue,
+                target_margin: p.target_margin,
+                target_orders: p.target_orders,
+                weight_revenue: p.weight_revenue,
+                weight_margin: p.weight_margin,
+                weight_orders: p.weight_orders,
+                currency: p.currency || 'UZS',
+                notes: ''
+            };
+            this.aiReasoning = '';
+            this.showPlanModal = true;
+            this.notify('План скопирован на ' + this.monthName(nextMonth) + ' ' + nextYear);
+        },
         editPlan(p) {
             this.planForm = {
                 id: p.id,

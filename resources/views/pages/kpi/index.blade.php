@@ -370,6 +370,7 @@
                                                 <template x-if="p.status === 'calculated'">
                                                     <button @click="approvePlan(p.id)" class="text-green-600 hover:text-green-800 text-xs font-medium">{{ __('kpi.plans.approve') }}</button>
                                                 </template>
+                                                <button @click="copyPlan(p)" class="text-gray-500 hover:text-gray-700 text-xs font-medium" title="Копировать на след. месяц">Копировать</button>
                                                 <template x-if="p.status !== 'approved'">
                                                     <button @click="deletePlan(p.id)" class="text-red-500 hover:text-red-700 text-xs font-medium ml-2">{{ __('kpi.plans.delete') }}</button>
                                                 </template>
