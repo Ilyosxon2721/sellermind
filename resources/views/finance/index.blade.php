@@ -219,12 +219,24 @@
                     <div x-show="overview.balance?.cash_accounts?.length > 0" class="mt-4 pt-4 border-t border-slate-700">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-sm text-slate-400">Денежные счета</span>
-                            <button @click="showCashAccountsModal = true" class="text-xs text-blue-400 hover:text-blue-300">Управление</button>
+                            <button @click="activeTab = 'accounts'; loadCashAccounts()" class="text-xs text-blue-400 hover:text-blue-300">Управление</button>
                         </div>
                         <div class="space-y-1 text-sm">
                             <template x-for="acc in overview.balance?.cash_accounts || []" :key="acc.id">
-                                <div class="flex justify-between">
-                                    <span class="text-slate-300" x-text="acc.name"></span>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-300 flex items-center gap-1.5">
+                                        <template x-if="acc.marketplace">
+                                            <span class="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded"
+                                                :class="{
+                                                    'bg-purple-500/20 text-purple-300': acc.marketplace === 'wb',
+                                                    'bg-blue-500/20 text-blue-300': acc.marketplace === 'ozon',
+                                                    'bg-yellow-500/20 text-yellow-300': acc.marketplace === 'uzum',
+                                                    'bg-red-500/20 text-red-300': acc.marketplace === 'ym',
+                                                }"
+                                                x-text="({wb:'WB', ozon:'Ozon', uzum:'Uzum', ym:'YM'})[acc.marketplace] || acc.marketplace"></span>
+                                        </template>
+                                        <span x-text="acc.name"></span>
+                                    </span>
                                     <span class="text-white font-medium" x-text="formatMoney(acc.balance) + ' ' + acc.currency_code"></span>
                                 </div>
                             </template>
@@ -562,7 +574,7 @@
                                     <div class="flex items-center space-x-2 mb-3">
                                         <div class="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">Y</div>
                                         <span class="font-medium text-yellow-700">Yandex Market</span>
-                                        <span class="text-xs text-gray-400 ml-auto">RUB → UZS</span>
+                                        <span class="text-xs text-gray-400 ml-auto">UZS</span>
                                     </div>
                                     <div class="space-y-2 text-sm">
                                         <div class="flex justify-between items-center">
@@ -581,7 +593,6 @@
                                             <span class="text-gray-600">Отменены</span>
                                             <span class="font-medium text-red-600" x-text="(marketplaceIncome.marketplaces?.yandex?.cancelled?.count || 0) + ' шт / ' + formatMoney(marketplaceIncome.marketplaces?.yandex?.cancelled?.amount || 0)"></span>
                                         </div>
-                                        <div class="text-xs text-gray-400 text-right pt-1" x-text="'(' + formatMoney(marketplaceIncome.marketplaces?.yandex?.sold?.amount_rub || 0) + ' ₽)'"></div>
                                     </div>
                                 </div>
 
@@ -1453,7 +1464,19 @@
                                         </template>
                                     </div>
                                     <div>
-                                        <div class="font-medium text-gray-900" x-text="account.name"></div>
+                                        <div class="font-medium text-gray-900 flex items-center gap-1.5">
+                                            <template x-if="account.marketplace">
+                                                <span class="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded"
+                                                    :class="{
+                                                        'bg-purple-100 text-purple-700': account.marketplace === 'wb',
+                                                        'bg-blue-100 text-blue-700': account.marketplace === 'ozon',
+                                                        'bg-yellow-100 text-yellow-700': account.marketplace === 'uzum',
+                                                        'bg-red-100 text-red-700': account.marketplace === 'ym',
+                                                    }"
+                                                    x-text="({wb:'WB', ozon:'Ozon', uzum:'Uzum', ym:'YM'})[account.marketplace] || account.marketplace"></span>
+                                            </template>
+                                            <span x-text="account.name"></span>
+                                        </div>
                                         <div class="text-xs text-gray-500" x-text="getAccountTypeName(account.type)"></div>
                                     </div>
                                 </div>
@@ -1466,9 +1489,17 @@
                                  x-text="formatMoney(account.balance) + ' ' + currencySymbol(account.currency_code)"></div>
                             <div class="flex items-center justify-between text-xs text-gray-500">
                                 <span x-text="account.currency_code"></span>
-                                <template x-if="account.marketplace">
-                                    <span class="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded" x-text="account.marketplace.toUpperCase()"></span>
-                                </template>
+                                <div class="flex items-center gap-2">
+                                    <template x-if="account.marketplace">
+                                        <span class="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded" x-text="account.marketplace.toUpperCase()"></span>
+                                    </template>
+                                    <button class="p-1 text-gray-400 hover:text-blue-600 rounded" @click.stop="editCashAccount(account)" title="Редактировать">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    </button>
+                                    <button class="p-1 text-gray-400 hover:text-red-600 rounded" @click.stop="deleteCashAccount(account)" title="Удалить">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </template>
@@ -2398,7 +2429,7 @@
     <div x-show="showCashAccountModal" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showCashAccountModal = false">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-6" @click.stop>
             <div class="flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-gray-900">Новый денежный счёт</h3>
+                <h3 class="text-lg font-semibold text-gray-900" x-text="editingCashAccountId ? 'Редактировать счёт' : 'Новый денежный счёт'"></h3>
                 <button class="text-gray-400 hover:text-gray-600" @click="showCashAccountModal = false">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
@@ -2457,7 +2488,7 @@
             <div class="flex justify-end space-x-3">
                 <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showCashAccountModal = false">Отмена</button>
                 <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl disabled:opacity-50" :disabled="savingCashAccount || !cashAccountForm.name" @click="saveCashAccount()">
-                    <span x-show="!savingCashAccount">Создать</span>
+                    <span x-show="!savingCashAccount" x-text="editingCashAccountId ? 'Сохранить' : 'Создать'"></span>
                     <span x-show="savingCashAccount">Сохранение...</span>
                 </button>
             </div>
@@ -2885,6 +2916,7 @@ function financePage() {
         selectedCashAccount: null,
         accountTransactions: [],
         showCashAccountModal: false,
+        editingCashAccountId: null,
         showTransferModal: false,
         showIncomeModal: false,
         showAccountExpenseModal: false,
@@ -3188,7 +3220,43 @@ function financePage() {
         },
 
         resetCashAccountForm() {
+            this.editingCashAccountId = null;
             this.cashAccountForm = { name: '', type: 'cash', currency_code: 'UZS', initial_balance: 0, bank_name: '', account_number: '', bik: '', card_number: '' };
+        },
+
+        editCashAccount(account) {
+            this.editingCashAccountId = account.id;
+            this.cashAccountForm = {
+                name: account.name || '',
+                type: account.type || 'cash',
+                currency_code: account.currency_code || 'UZS',
+                initial_balance: account.initial_balance || 0,
+                bank_name: account.bank_name || '',
+                account_number: account.account_number || '',
+                bik: account.bik || '',
+                card_number: account.card_number || '',
+            };
+            this.showCashAccountModal = true;
+        },
+
+        async deleteCashAccount(account) {
+            if (!confirm(`Удалить счёт «${account.name}»?\n\nСчёт можно удалить только если по нему нет транзакций.`)) return;
+            try {
+                const resp = await fetch(`/api/finance/cash-accounts/${account.id}`, {
+                    method: 'DELETE',
+                    headers: this.getAuthHeaders()
+                });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.showToast('Счёт удалён', 'success');
+                    if (this.selectedCashAccount?.id === account.id) this.selectedCashAccount = null;
+                    await this.loadCashAccounts();
+                } else {
+                    alert(json.message || 'Не удалось удалить счёт. Возможно, по нему есть транзакции.');
+                }
+            } catch (e) {
+                alert('Ошибка при удалении: ' + e.message);
+            }
         },
 
         async selectCashAccount(account) {
@@ -3211,22 +3279,27 @@ function financePage() {
         async saveCashAccount() {
             this.savingCashAccount = true;
             try {
-                const resp = await fetch('/api/finance/cash-accounts', {
-                    method: 'POST',
+                const isEdit = !!this.editingCashAccountId;
+                const url = isEdit
+                    ? `/api/finance/cash-accounts/${this.editingCashAccountId}`
+                    : '/api/finance/cash-accounts';
+                const resp = await fetch(url, {
+                    method: isEdit ? 'PUT' : 'POST',
                     headers: this.getAuthHeaders(),
                     body: JSON.stringify(this.cashAccountForm)
                 });
                 const json = await resp.json();
                 if (resp.ok && !json.errors) {
-                    this.showToast('Счёт успешно создан', 'success');
+                    this.showToast(isEdit ? 'Счёт обновлён' : 'Счёт создан', 'success');
                     this.showCashAccountModal = false;
+                    this.editingCashAccountId = null;
                     await this.loadCashAccounts();
                 } else {
-                    this.showToast(json.message || 'Ошибка создания счёта', 'error');
+                    this.showToast(json.message || 'Ошибка сохранения счёта', 'error');
                 }
             } catch (e) {
                 console.error('Failed to save cash account:', e);
-                this.showToast('Ошибка создания счёта', 'error');
+                this.showToast('Ошибка сохранения счёта', 'error');
             }
             this.savingCashAccount = false;
         },

@@ -637,9 +637,23 @@
                                                                         Загрузка...
                                                                     </span>
                                                                 </template>
-                                                                <!-- Не в FBS/DBS системе -->
+                                                                <!-- Не в FBS/DBS системе — кнопка подключения -->
                                                                 <template x-if="!skuSchemesLoading && !skuSchemes[String(sku.skuId)]">
-                                                                    <span class="text-[10px] text-gray-400 italic">Не подключён к FBS/DBS</span>
+                                                                    <div class="flex items-center gap-2">
+                                                                        <button @click.stop="connectToScheme(sku.skuId)"
+                                                                                :disabled="togglingScheme === sku.skuId + '_connect'"
+                                                                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-purple-300 text-[11px] font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 transition-all">
+                                                                            <svg x-show="togglingScheme === sku.skuId + '_connect'" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                                                            <svg x-show="togglingScheme !== sku.skuId + '_connect'" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                                                            Подключить FBS
+                                                                        </button>
+                                                                        <template x-if="skuSchemesError">
+                                                                            <div class="flex items-center gap-1">
+                                                                                <span class="text-[10px] text-red-500" x-text="skuSchemesError"></span>
+                                                                                <button @click.stop="loadSkuSchemes()" class="text-[10px] text-purple-600 hover:text-purple-800 underline">Повторить</button>
+                                                                            </div>
+                                                                        </template>
+                                                                    </div>
                                                                 </template>
                                                                 <!-- FBS toggle -->
                                                                 <template x-if="!skuSchemesLoading && skuSchemes[String(sku.skuId)]">
@@ -1096,6 +1110,7 @@ function uzumProducts(accountId) {
         _stocksSince: null,
         skuSchemes: {},
         skuSchemesLoading: false,
+        skuSchemesError: null,
         togglingScheme: null,
         seoModalOpen: false,
         seoLoading: false,
@@ -1445,12 +1460,26 @@ function uzumProducts(accountId) {
             this.skuLinks = []; this.skuSchemes = {}; this.skuSchemesLoading = true; this.loadProductLinks(); this.loadSkuSchemes();
             if (!item.raw_payload) this.loadRaw(item.id);
         },
-        async loadSkuSchemes(showLoading = true) {
+        async loadSkuSchemes(showLoading = true, refresh = false) {
             if (showLoading) this.skuSchemesLoading = true;
+            this.skuSchemesError = null;
             try {
-                const r = await fetch(`/api/uzum/accounts/${this.accountId}/sku-schemes`, { headers: this.getHeaders(), credentials: 'include' });
-                if (r.ok) { this.skuSchemes = (await r.json()).schemes || {}; }
-            } catch {} finally { if (showLoading) this.skuSchemesLoading = false; }
+                const url = `/api/marketplace/uzum/accounts/${this.accountId}/sku-schemes` + (refresh ? '?refresh=1' : '');
+                const r = await fetch(url, { headers: this.getHeaders(), credentials: 'include' });
+                if (r.ok) {
+                    const data = await r.json();
+                    this.skuSchemes = data.schemes || {};
+                } else {
+                    const err = await r.json().catch(() => ({}));
+                    this.skuSchemesError = err.error || err.message || `Ошибка ${r.status}`;
+                    console.error('loadSkuSchemes error:', this.skuSchemesError);
+                }
+            } catch (e) {
+                this.skuSchemesError = e.message || 'Ошибка соединения';
+                console.error('loadSkuSchemes exception:', e);
+            } finally {
+                if (showLoading) this.skuSchemesLoading = false;
+            }
         },
         async toggleScheme(skuId, type) {
             const key = String(skuId);
@@ -1460,7 +1489,7 @@ function uzumProducts(accountId) {
             const newDbs = type === 'dbs' ? !scheme.dbsLinked : scheme.dbsLinked;
             this.togglingScheme = skuId + '_' + type;
             try {
-                const r = await fetch(`/api/uzum/accounts/${this.accountId}/sku-schemes/${skuId}`, {
+                const r = await fetch(`/api/marketplace/uzum/accounts/${this.accountId}/sku-schemes/${skuId}`, {
                     method: 'POST', headers: this.getHeaders(), credentials: 'include',
                     body: JSON.stringify({ fbsLinked: newFbs, dbsLinked: newDbs }),
                 });
@@ -1471,6 +1500,23 @@ function uzumProducts(accountId) {
                     alert(data.message || 'Ошибка изменения схемы');
                 }
             } catch { alert('Ошибка соединения'); } finally { this.togglingScheme = null; }
+        },
+        async connectToScheme(skuId) {
+            this.togglingScheme = skuId + '_connect';
+            try {
+                const r = await fetch(`/api/marketplace/uzum/accounts/${this.accountId}/sku-schemes/${skuId}`, {
+                    method: 'POST', headers: this.getHeaders(), credentials: 'include',
+                    body: JSON.stringify({ fbsLinked: true, dbsLinked: false }),
+                });
+                const data = await r.json();
+                if (r.ok) {
+                    // Перезагружаем с ?refresh=1 чтобы сбросить серверный кэш
+                    await this.loadSkuSchemes(false, true);
+                } else {
+                    alert(data.message || 'Ошибка подключения к FBS/DBS');
+                }
+            } catch { alert('Ошибка соединения'); }
+            finally { this.togglingScheme = null; }
         },
         async loadRaw(id) {
             try {
@@ -1543,7 +1589,7 @@ function uzumProducts(accountId) {
             const skuIds = (this.selected.raw_payload.skuList || []).map(s => s.skuId).filter(Boolean);
             this.productDbsToggling = true;
             try {
-                const r = await fetch(`/api/uzum/accounts/${this.accountId}/sku-schemes/bulk`, {
+                const r = await fetch(`/api/marketplace/uzum/accounts/${this.accountId}/sku-schemes/bulk`, {
                     method: 'POST', headers: this.getHeaders(), credentials: 'include',
                     body: JSON.stringify({ dbs: newDbs, sku_ids: skuIds }),
                 });
@@ -1583,7 +1629,7 @@ function uzumProducts(accountId) {
             const newDbs = state ? !state.isOn : true;
             this.allDbsToggling = true;
             try {
-                const r = await fetch(`/api/uzum/accounts/${this.accountId}/sku-schemes/bulk`, {
+                const r = await fetch(`/api/marketplace/uzum/accounts/${this.accountId}/sku-schemes/bulk`, {
                     method: 'POST', headers: this.getHeaders(), credentials: 'include',
                     body: JSON.stringify({ dbs: newDbs }),
                 });

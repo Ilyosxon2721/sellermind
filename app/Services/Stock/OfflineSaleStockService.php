@@ -202,52 +202,53 @@ final class OfflineSaleStockService
     protected function convertReserveToSold(OfflineSale $sale): array
     {
         try {
-            // Получаем активные резервы
-            $reservations = StockReservation::where('source_type', 'offline_sale')
-                ->where('source_id', $sale->id)
-                ->where('status', StockReservation::STATUS_ACTIVE)
-                ->get();
+            return DB::transaction(function () use ($sale) {
+                // Получаем активные резервы
+                $reservations = StockReservation::where('source_type', 'offline_sale')
+                    ->where('source_id', $sale->id)
+                    ->where('status', StockReservation::STATUS_ACTIVE)
+                    ->get();
 
-            // Создаём ledger entries для фактического списания
-            foreach ($reservations as $reservation) {
-                StockLedger::create([
-                    'company_id' => $reservation->company_id,
-                    'occurred_at' => now(),
-                    'warehouse_id' => $reservation->warehouse_id,
-                    'sku_id' => $reservation->sku_id,
-                    'qty_delta' => -$reservation->qty,
-                    'cost_delta' => 0,
-                    'currency_code' => 'UZS',
-                    'source_type' => 'offline_sale_sold',
-                    'source_id' => $sale->id,
+                // Создаём ledger entries для фактического списания
+                foreach ($reservations as $reservation) {
+                    StockLedger::create([
+                        'company_id' => $reservation->company_id,
+                        'occurred_at' => now(),
+                        'warehouse_id' => $reservation->warehouse_id,
+                        'sku_id' => $reservation->sku_id,
+                        'qty_delta' => -$reservation->qty,
+                        'cost_delta' => 0,
+                        'currency_code' => 'UZS',
+                        'source_type' => 'offline_sale_sold',
+                        'source_id' => $sale->id,
+                    ]);
+
+                    Log::info('OfflineSaleStockService: Ledger entry created on sold', [
+                        'sale_id' => $sale->id,
+                        'sku_id' => $reservation->sku_id,
+                        'qty' => -$reservation->qty,
+                    ]);
+                }
+
+                // Переводим резервы в CONSUMED
+                $this->consumeStockReservations($sale);
+
+                $sale->update([
+                    'stock_status' => 'sold',
+                    'stock_sold_at' => now(),
                 ]);
 
-                Log::info('OfflineSaleStockService: Ledger entry created on sold', [
+                Log::info('OfflineSaleStockService: Reserve converted to sold', [
                     'sale_id' => $sale->id,
-                    'sku_id' => $reservation->sku_id,
-                    'qty' => -$reservation->qty,
+                    'reservations_count' => $reservations->count(),
                 ]);
-            }
 
-            // Переводим резервы в CONSUMED
-            $this->consumeStockReservations($sale);
-
-            $sale->update([
-                'stock_status' => 'sold',
-                'stock_sold_at' => now(),
-            ]);
-
-            Log::info('OfflineSaleStockService: Reserve converted to sold', [
-                'sale_id' => $sale->id,
-                'reservations_count' => $reservations->count(),
-            ]);
-
-            return [
-                'success' => true,
-                'action' => 'sold',
-                'message' => 'Reserve converted to sold',
-            ];
-
+                return [
+                    'success' => true,
+                    'action' => 'sold',
+                    'message' => 'Reserve converted to sold',
+                ];
+            });
         } catch (\Throwable $e) {
             Log::error('OfflineSaleStockService: Failed to convert reserve to sold', [
                 'sale_id' => $sale->id,
@@ -521,12 +522,16 @@ final class OfflineSaleStockService
 
         // Priority 3: Создать склад по умолчанию
         try {
-            $warehouse = Warehouse::create([
-                'company_id' => $companyId,
-                'name' => 'Склад по умолчанию',
-                'code' => 'DEFAULT',
-                'is_active' => true,
-            ]);
+            $warehouse = Warehouse::firstOrCreate(
+                [
+                    'company_id' => $companyId,
+                    'code' => 'DEFAULT',
+                ],
+                [
+                    'name' => 'Склад по умолчанию',
+                    'is_active' => true,
+                ]
+            );
 
             return $warehouse->id;
         } catch (\Throwable $e) {

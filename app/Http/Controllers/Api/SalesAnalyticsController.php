@@ -7,6 +7,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Http\Requests\Analytics\SalesAnalyticsRequest;
+use App\Models\Company;
+use App\Services\CurrencyConversionService;
 use App\Services\SalesAnalyticsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -16,8 +18,24 @@ class SalesAnalyticsController extends Controller
     use HasCompanyScope;
 
     public function __construct(
-        protected SalesAnalyticsService $analyticsService
+        protected SalesAnalyticsService $analyticsService,
+        protected CurrencyConversionService $currencyService,
     ) {}
+
+    /**
+     * Настроить сервис конвертации валют для текущей компании.
+     */
+    private function configureCurrencyService(): void
+    {
+        $companyId = $this->getCompanyId();
+
+        if ($companyId) {
+            $company = Company::find($companyId);
+            if ($company) {
+                $this->currencyService->forCompany($company);
+            }
+        }
+    }
 
     /**
      * Получить сводку продаж за период.
@@ -25,6 +43,7 @@ class SalesAnalyticsController extends Controller
      */
     public function overview(SalesAnalyticsRequest $request): JsonResponse
     {
+        $this->configureCurrencyService();
         $companyId = $this->getCompanyId();
         $period = $request->getPeriod();
 
@@ -41,6 +60,7 @@ class SalesAnalyticsController extends Controller
      */
     public function salesByDay(SalesAnalyticsRequest $request): JsonResponse
     {
+        $this->configureCurrencyService();
         $companyId = $this->getCompanyId();
         $period = $request->getPeriod();
 
@@ -54,6 +74,7 @@ class SalesAnalyticsController extends Controller
      */
     public function topProducts(SalesAnalyticsRequest $request): JsonResponse
     {
+        $this->configureCurrencyService();
         $companyId = $this->getCompanyId();
         $period = $request->getPeriod();
         $limit = $request->getLimit();
@@ -68,6 +89,7 @@ class SalesAnalyticsController extends Controller
      */
     public function flopProducts(SalesAnalyticsRequest $request): JsonResponse
     {
+        $this->configureCurrencyService();
         $companyId = $this->getCompanyId();
         $period = $request->getPeriod();
         $limit = $request->getLimit();
@@ -82,6 +104,7 @@ class SalesAnalyticsController extends Controller
      */
     public function salesByCategory(SalesAnalyticsRequest $request): JsonResponse
     {
+        $this->configureCurrencyService();
         $companyId = $this->getCompanyId();
         $period = $request->getPeriod();
 
@@ -95,6 +118,7 @@ class SalesAnalyticsController extends Controller
      */
     public function salesByMarketplace(SalesAnalyticsRequest $request): JsonResponse
     {
+        $this->configureCurrencyService();
         $companyId = $this->getCompanyId();
         $period = $request->getPeriod();
 
@@ -108,6 +132,7 @@ class SalesAnalyticsController extends Controller
      */
     public function productPerformance(SalesAnalyticsRequest $request, int $productId): JsonResponse
     {
+        $this->configureCurrencyService();
         $period = $request->getPeriod();
 
         $performance = $this->analyticsService->getProductPerformance($productId, $period);
@@ -121,6 +146,7 @@ class SalesAnalyticsController extends Controller
      */
     public function dashboard(SalesAnalyticsRequest $request): JsonResponse
     {
+        $this->configureCurrencyService();
         $companyId = $this->getCompanyId();
         $period = $request->getPeriod();
         $ttl = now()->addMinutes(30);

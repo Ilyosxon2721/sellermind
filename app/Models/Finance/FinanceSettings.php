@@ -54,9 +54,9 @@ class FinanceSettings extends Model
         }
 
         return match ($currency) {
-            'USD' => $amount * $this->usd_rate,
-            'RUB' => $amount * $this->rub_rate,
-            'EUR' => $amount * $this->eur_rate,
+            'USD' => $amount * ($this->usd_rate ?: 1),
+            'RUB' => $amount * ($this->rub_rate ?: 1),
+            'EUR' => $amount * ($this->eur_rate ?: 1),
             default => $amount,
         };
     }
@@ -67,9 +67,9 @@ class FinanceSettings extends Model
     public function getRate(string $currency): float
     {
         return match (strtoupper($currency)) {
-            'USD' => $this->usd_rate,
-            'RUB' => $this->rub_rate,
-            'EUR' => $this->eur_rate,
+            'USD' => (float) ($this->usd_rate ?: 1),
+            'RUB' => (float) ($this->rub_rate ?: 1),
+            'EUR' => (float) ($this->eur_rate ?: 1),
             'UZS' => 1.0,
             default => 1.0,
         };

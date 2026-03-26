@@ -18,6 +18,8 @@ use App\Models\MarketplaceExpenseCache;
 use App\Models\Warehouse\StockLedger;
 use App\Services\CurrencyConversionService;
 use App\Services\Finance\FinanceReportService;
+use App\Services\Finance\InventoryValuationService;
+use App\Services\Finance\MarketplaceSalesService;
 use App\Services\Marketplaces\OzonClient;
 use App\Services\Marketplaces\UzumClient;
 use App\Services\Marketplaces\Wildberries\WildberriesFinanceService;
@@ -37,7 +39,9 @@ class FinanceController extends Controller
         protected FinanceReportService $reportService,
         protected UzumClient $uzumClient,
         protected OzonClient $ozonClient,
-        protected CurrencyConversionService $currencyService
+        protected CurrencyConversionService $currencyService,
+        protected MarketplaceSalesService $marketplaceSalesService,
+        protected InventoryValuationService $inventoryValuationService,
     ) {}
 
     public function overview(Request $request)
@@ -64,8 +68,8 @@ class FinanceController extends Controller
             ->inPeriod($from, $to);
 
         // Суммы в базовой валюте (UZS)
-        $totalIncomeBase = (clone $transactions)->income()->sum('amount');
-        $totalExpenseBase = (clone $transactions)->expense()->sum('amount');
+        $totalIncomeBase = (clone $transactions)->income()->sum('amount_base');
+        $totalExpenseBase = (clone $transactions)->expense()->sum('amount_base');
 
         // ========== ПРОДАЖИ МАРКЕТПЛЕЙСОВ ==========
         $marketplaceSalesBase = $this->getMarketplaceSales($companyId, $from, $to, $financeSettings);
@@ -264,179 +268,9 @@ class FinanceController extends Controller
      */
     protected function getMarketplaceSales(int $companyId, Carbon $from, Carbon $to, FinanceSettings $settings): array
     {
-        $rubToUzs = $settings->rub_rate ?? 140;
-
-        $result = [
-            'uzum' => ['orders' => 0, 'revenue' => 0, 'profit' => 0],
-            'wb' => ['orders' => 0, 'revenue' => 0, 'revenue_rub' => 0, 'profit' => 0],
-            'ozon' => ['orders' => 0, 'revenue' => 0, 'revenue_rub' => 0, 'profit' => 0],
-            'ym' => ['orders' => 0, 'revenue' => 0, 'revenue_rub' => 0, 'profit' => 0],
-            'total_orders' => 0,
-            'total_revenue' => 0,
-            'total_profit' => 0,
-        ];
-
-        \Log::info('getMarketplaceSales called', [
-            'company_id' => $companyId,
-            'from' => $from->format('Y-m-d'),
-            'to' => $to->format('Y-m-d'),
-            'rub_rate' => $rubToUzs,
-        ]);
-
-        // ==================== UZUM ====================
-        // Приоритет: UzumFinanceOrder (точные данные по выкупам)
-        // Продажа: TO_WITHDRAW или (PROCESSING + date_issued NOT NULL)
-        // Фильтрация: по date_issued (дата выкупа)
-        try {
-            $hasFinanceOrders = class_exists(\App\Models\UzumFinanceOrder::class)
-                && \App\Models\UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->exists();
-
-            if ($hasFinanceOrders) {
-                // Используем uzum_finance_orders - точные данные
-                $uzumSales = \App\Models\UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
-                    ->where(function ($q) use ($from, $to) {
-                        // TO_WITHDRAW - деньги выведены = продажа
-                        $q->where(function ($sub) use ($from, $to) {
-                            $sub->where('status', 'TO_WITHDRAW')
-                                ->whereDate('date_issued', '>=', $from)
-                                ->whereDate('date_issued', '<=', $to);
-                        })
-                        // PROCESSING + date_issued = товар выкуплен = продажа
-                            ->orWhere(function ($sub) use ($from, $to) {
-                                $sub->where('status', 'PROCESSING')
-                                    ->whereNotNull('date_issued')
-                                    ->whereDate('date_issued', '>=', $from)
-                                    ->whereDate('date_issued', '<=', $to);
-                            });
-                    })
-                    ->selectRaw('COUNT(*) as cnt, SUM(sell_price * amount) as revenue, SUM(seller_profit) as profit')
-                    ->first();
-
-                $revenue = (float) ($uzumSales?->revenue ?? 0);
-                $profit = (float) ($uzumSales?->profit ?? 0);
-                $result['uzum'] = [
-                    'orders' => (int) ($uzumSales?->cnt ?? 0),
-                    'revenue' => $revenue,
-                    'profit' => $profit,
-                ];
-
-                \Log::info('Uzum sales fetched from uzum_finance_orders', $result['uzum']);
-            } elseif (class_exists(\App\Models\UzumOrder::class)) {
-                // Fallback: uzum_orders (менее точные данные)
-                $uzumSales = \App\Models\UzumOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
-                    ->where('status', 'issued')
-                    ->whereDate('ordered_at', '>=', $from)
-                    ->whereDate('ordered_at', '<=', $to)
-                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as revenue')
-                    ->first();
-
-                $revenue = (float) ($uzumSales?->revenue ?? 0);
-                $result['uzum'] = [
-                    'orders' => (int) ($uzumSales?->cnt ?? 0),
-                    'revenue' => $revenue,
-                    'profit' => $revenue * 0.85, // Примерная прибыль после комиссий
-                ];
-
-                \Log::info('Uzum sales fetched from uzum_orders (fallback)', $result['uzum']);
-            }
-        } catch (\Exception $e) {
-            \Log::error('Uzum sales error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-        }
-
-        // ==================== WILDBERRIES ====================
-        // Продажа: is_realization=true AND is_cancel=false
-        // Фильтрация: по last_change_date (дата завершения)
-        try {
-            if (class_exists(\App\Models\WildberriesOrder::class)) {
-                $wbSales = \App\Models\WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
-                    ->where('is_realization', true)
-                    ->where('is_cancel', false)
-                    ->whereDate('last_change_date', '>=', $from)
-                    ->whereDate('last_change_date', '<=', $to)
-                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as revenue')
-                    ->first();
-
-                $revenueRub = (float) ($wbSales?->revenue ?? 0);
-                $result['wb'] = [
-                    'orders' => (int) ($wbSales?->cnt ?? 0),
-                    'revenue' => $revenueRub * $rubToUzs,
-                    'revenue_rub' => $revenueRub,
-                    'profit' => 0,
-                ];
-
-                \Log::info('WB sales fetched', $result['wb']);
-            }
-        } catch (\Exception $e) {
-            \Log::error('WB sales error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-        }
-
-        // ==================== OZON ====================
-        // Продажа: stock_status='sold' AND stock_sold_at NOT NULL
-        // Фильтрация: по stock_sold_at (дата продажи)
-        try {
-            if (class_exists(\App\Models\OzonOrder::class)) {
-                $ozonSales = \App\Models\OzonOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
-                    ->where('stock_status', 'sold')
-                    ->whereNotNull('stock_sold_at')
-                    ->whereDate('stock_sold_at', '>=', $from)
-                    ->whereDate('stock_sold_at', '<=', $to)
-                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as revenue')
-                    ->first();
-
-                $revenueRub = (float) ($ozonSales?->revenue ?? 0);
-                $result['ozon'] = [
-                    'orders' => (int) ($ozonSales?->cnt ?? 0),
-                    'revenue' => $revenueRub * $rubToUzs,
-                    'revenue_rub' => $revenueRub,
-                    'profit' => 0,
-                ];
-
-                \Log::info('Ozon sales fetched', $result['ozon']);
-            }
-        } catch (\Exception $e) {
-            \Log::error('Ozon sales error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-        }
-
-        // ==================== YANDEX MARKET ====================
-        // Продажа: stock_status='sold' AND stock_sold_at NOT NULL
-        // Фильтрация: по stock_sold_at (дата продажи)
-        try {
-            if (class_exists(\App\Models\YandexMarketOrder::class)) {
-                $ymSales = \App\Models\YandexMarketOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
-                    ->where('stock_status', 'sold')
-                    ->whereNotNull('stock_sold_at')
-                    ->whereDate('stock_sold_at', '>=', $from)
-                    ->whereDate('stock_sold_at', '<=', $to)
-                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as revenue')
-                    ->first();
-
-                $revenueRub = (float) ($ymSales?->revenue ?? 0);
-                $result['ym'] = [
-                    'orders' => (int) ($ymSales?->cnt ?? 0),
-                    'revenue' => $revenueRub * $rubToUzs,
-                    'revenue_rub' => $revenueRub,
-                    'profit' => 0,
-                ];
-
-                \Log::info('YM sales fetched', $result['ym']);
-            }
-        } catch (\Exception $e) {
-            \Log::error('YM sales error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-        }
-
-        // Итого
-        $result['total_orders'] = $result['uzum']['orders'] + $result['wb']['orders'] + $result['ozon']['orders'] + $result['ym']['orders'];
-        $result['total_revenue'] = $result['uzum']['revenue'] + $result['wb']['revenue'] + $result['ozon']['revenue'] + $result['ym']['revenue'];
-        $result['total_profit'] = $result['uzum']['profit'] + $result['wb']['profit'] + $result['ozon']['profit'] + $result['ym']['profit'];
-
-        \Log::info('getMarketplaceSales totals', [
-            'total_orders' => $result['total_orders'],
-            'total_revenue' => $result['total_revenue'],
-            'total_profit' => $result['total_profit'],
-        ]);
-
-        return $result;
+        return $this->marketplaceSalesService->getSales($companyId, $from, $to, $settings);
     }
+
 
     /**
      * Получить сводку по остаткам на складах
@@ -450,105 +284,9 @@ class FinanceController extends Controller
      */
     protected function getStockSummary(int $companyId, FinanceSettings $settings, $currencyService = null, string $displayCurrency = 'UZS'): array
     {
-        $baseCurrency = 'UZS';
-
-        try {
-            // Рассчитываем стоимость из актуальных закупочных цен вариантов (с конвертацией валют)
-            $stockData = StockLedger::where('stock_ledger.company_id', $companyId)
-                ->join('skus', 'stock_ledger.sku_id', '=', 'skus.id')
-                ->leftJoin('product_variants', 'skus.product_variant_id', '=', 'product_variants.id')
-                ->select(
-                    'stock_ledger.sku_id',
-                    \DB::raw('SUM(stock_ledger.qty_delta) as qty'),
-                    'product_variants.purchase_price',
-                    'product_variants.purchase_price_currency',
-                )
-                ->groupBy('stock_ledger.sku_id', 'product_variants.purchase_price', 'product_variants.purchase_price_currency')
-                ->having('qty', '>', 0)
-                ->get();
-
-            $totalQty = 0;
-            $totalCostBase = 0;
-
-            foreach ($stockData as $item) {
-                $qty = (float) $item->qty;
-                $totalQty += $qty;
-
-                $purchasePrice = (float) ($item->purchase_price ?? 0);
-                $currency = $item->purchase_price_currency ?? 'UZS';
-                $priceInBase = $settings->convertToBase($purchasePrice, $currency);
-                $totalCostBase += $priceInBase * $qty;
-            }
-
-            $totalCostBase = max(0, $totalCostBase);
-
-            // Конвертируем в выбранную валюту отображения
-            $totalCost = $currencyService
-                ? $currencyService->convert($totalCostBase, $baseCurrency, $displayCurrency)
-                : $totalCostBase;
-
-            // Группировка по складам (тоже с конвертацией закупочных цен)
-            $byWarehouseData = StockLedger::where('stock_ledger.company_id', $companyId)
-                ->join('warehouses', 'stock_ledger.warehouse_id', '=', 'warehouses.id')
-                ->join('skus', 'stock_ledger.sku_id', '=', 'skus.id')
-                ->leftJoin('product_variants', 'skus.product_variant_id', '=', 'product_variants.id')
-                ->select(
-                    'warehouses.id as warehouse_id',
-                    'warehouses.name as warehouse_name',
-                    'stock_ledger.sku_id',
-                    \DB::raw('SUM(stock_ledger.qty_delta) as qty'),
-                    'product_variants.purchase_price',
-                    'product_variants.purchase_price_currency',
-                )
-                ->groupBy('warehouses.id', 'warehouses.name', 'stock_ledger.sku_id', 'product_variants.purchase_price', 'product_variants.purchase_price_currency')
-                ->having('qty', '>', 0)
-                ->get();
-
-            // Агрегируем по складу
-            $warehouseMap = [];
-            foreach ($byWarehouseData as $item) {
-                $wId = $item->warehouse_id;
-                if (! isset($warehouseMap[$wId])) {
-                    $warehouseMap[$wId] = ['id' => $wId, 'name' => $item->warehouse_name, 'qty' => 0, 'cost_base' => 0];
-                }
-                $qty = (float) $item->qty;
-                $purchasePrice = (float) ($item->purchase_price ?? 0);
-                $currency = $item->purchase_price_currency ?? 'UZS';
-                $priceInBase = $settings->convertToBase($purchasePrice, $currency);
-
-                $warehouseMap[$wId]['qty'] += $qty;
-                $warehouseMap[$wId]['cost_base'] += $priceInBase * $qty;
-            }
-
-            $warehouseData = collect($warehouseMap)->map(function ($w) use ($currencyService, $baseCurrency, $displayCurrency) {
-                $costBase = max(0, $w['cost_base']);
-                $cost = $currencyService
-                    ? $currencyService->convert($costBase, $baseCurrency, $displayCurrency)
-                    : $costBase;
-
-                return [
-                    'id' => $w['id'],
-                    'name' => $w['name'],
-                    'qty' => $w['qty'],
-                    'cost' => $cost,
-                ];
-            })->values()->toArray();
-
-            return [
-                'total_qty' => $totalQty,
-                'total_cost' => $totalCost,
-                'by_warehouse' => $warehouseData,
-            ];
-        } catch (\Exception $e) {
-            \Log::error('getStockSummary error', ['error' => $e->getMessage()]);
-
-            return [
-                'total_qty' => 0,
-                'total_cost' => 0,
-                'by_warehouse' => [],
-            ];
-        }
+        return $this->inventoryValuationService->getStockSummary($companyId, $settings, $currencyService, $displayCurrency);
     }
+
 
     /**
      * Получить сводку по товарам в транзитах
@@ -556,134 +294,9 @@ class FinanceController extends Controller
      */
     protected function getTransitSummary(int $companyId, FinanceSettings $settings, $currencyService = null, string $displayCurrency = 'UZS'): array
     {
-        $rubToUzs = $settings->rub_rate ?? 140;
-        $baseCurrency = 'UZS';
-
-        $result = [
-            'orders_in_transit' => [
-                'count' => 0,
-                'amount' => 0,
-                'by_marketplace' => [],
-            ],
-            'purchases_in_transit' => [
-                'count' => 0,
-                'amount' => 0,
-            ],
-            'total_amount' => 0,
-        ];
-
-        // 1. Uzum заказы в пути (уже в UZS) - из uzum_orders
-        // Статусы: waiting_pickup, accepted_uzum, in_supply, in_assembly = в пути
-        try {
-            if (class_exists(\App\Models\UzumOrder::class)) {
-                $uzumTransit = \App\Models\UzumOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
-                    ->whereIn('status', ['waiting_pickup', 'accepted_uzum', 'in_supply', 'in_assembly'])
-                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as total')
-                    ->first();
-
-                $uzumCount = (int) ($uzumTransit?->cnt ?? 0);
-                $uzumAmount = (float) ($uzumTransit?->total ?? 0);
-
-                $result['orders_in_transit']['count'] += $uzumCount;
-                $result['orders_in_transit']['amount'] += $uzumAmount;
-                if ($uzumCount > 0) {
-                    $result['orders_in_transit']['by_marketplace']['uzum'] = [
-                        'count' => $uzumCount,
-                        'amount' => $uzumAmount,
-                        'currency' => 'UZS',
-                    ];
-                }
-            }
-        } catch (\Exception $e) {
-            Log::warning('Ошибка получения транзитных данных Uzum', ['error' => $e->getMessage()]);
-        }
-
-        // 2. WB заказы в пути (RUB -> UZS)
-        try {
-            if (class_exists(\App\Models\WildberriesOrder::class)) {
-                $wbTransit = \App\Models\WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
-                    ->where('is_realization', false)
-                    ->where('is_cancel', false)
-                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as total_rub')
-                    ->first();
-
-                $wbCount = (int) ($wbTransit?->cnt ?? 0);
-                $wbAmountRub = (float) ($wbTransit?->total_rub ?? 0);
-                $wbAmountUzs = $wbAmountRub * $rubToUzs;
-
-                $result['orders_in_transit']['count'] += $wbCount;
-                $result['orders_in_transit']['amount'] += $wbAmountUzs;
-                if ($wbCount > 0) {
-                    $result['orders_in_transit']['by_marketplace']['wb'] = [
-                        'count' => $wbCount,
-                        'amount' => $wbAmountUzs,
-                        'amount_original' => $wbAmountRub,
-                        'currency' => 'RUB',
-                    ];
-                }
-            }
-        } catch (\Exception $e) {
-            Log::warning('Ошибка получения транзитных данных WB', ['error' => $e->getMessage()]);
-        }
-
-        // 3. Ozon заказы в пути (RUB -> UZS)
-        try {
-            if (class_exists(\App\Models\OzonOrder::class)) {
-                $ozonTransit = \App\Models\OzonOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
-                    ->inTransit()
-                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as total_rub')
-                    ->first();
-
-                $ozonCount = (int) ($ozonTransit?->cnt ?? 0);
-                $ozonAmountRub = (float) ($ozonTransit?->total_rub ?? 0);
-                $ozonAmountUzs = $ozonAmountRub * $rubToUzs;
-
-                $result['orders_in_transit']['count'] += $ozonCount;
-                $result['orders_in_transit']['amount'] += $ozonAmountUzs;
-                if ($ozonCount > 0) {
-                    $result['orders_in_transit']['by_marketplace']['ozon'] = [
-                        'count' => $ozonCount,
-                        'amount' => $ozonAmountUzs,
-                        'amount_original' => $ozonAmountRub,
-                        'currency' => 'RUB',
-                    ];
-                }
-            }
-        } catch (\Exception $e) {
-            Log::warning('Ошибка получения транзитных данных Ozon', ['error' => $e->getMessage()]);
-        }
-
-        // 4. Закупки в пути
-        try {
-            if (class_exists(SupplierInvoice::class)) {
-                $purchaseTransit = SupplierInvoice::byCompany($companyId)
-                    ->whereIn('status', ['confirmed', 'partially_paid'])
-                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount - amount_paid) as total')
-                    ->first();
-
-                $result['purchases_in_transit']['count'] = (int) ($purchaseTransit?->cnt ?? 0);
-                $result['purchases_in_transit']['amount'] = (float) ($purchaseTransit?->total ?? 0);
-            }
-        } catch (\Exception $e) {
-            Log::warning('Ошибка получения данных о закупках в пути', ['error' => $e->getMessage()]);
-        }
-
-        $result['total_amount'] = $result['orders_in_transit']['amount'] + $result['purchases_in_transit']['amount'];
-
-        // Конвертируем суммы в выбранную валюту (из UZS)
-        if ($currencyService && $displayCurrency !== $baseCurrency) {
-            $result['orders_in_transit']['amount'] = $currencyService->convert($result['orders_in_transit']['amount'], $baseCurrency, $displayCurrency);
-            $result['purchases_in_transit']['amount'] = $currencyService->convert($result['purchases_in_transit']['amount'], $baseCurrency, $displayCurrency);
-            $result['total_amount'] = $currencyService->convert($result['total_amount'], $baseCurrency, $displayCurrency);
-
-            // Конвертируем суммы по маркетплейсам
-            foreach ($result['orders_in_transit']['by_marketplace'] as $key => &$mp) {
-                $mp['amount'] = $currencyService->convert($mp['amount'], $baseCurrency, $displayCurrency);
-            }
-        }
-
-        return $result;
+        return $this->inventoryValuationService->getTransitSummary($companyId, $settings, $currencyService, $displayCurrency);
     }
+
 
     /**
      * Рассчитать итоговый баланс компании
@@ -796,8 +409,7 @@ class FinanceController extends Controller
         foreach ($items as $item) {
             $amount = $item['amount'] ?? $item['total'] ?? 0;
             $converted = [
-                'category_id' => $item['category_id'] ?? null,
-                'category_name' => $item['category_name'] ?? $item['name'] ?? '',
+                'category' => $item['category'] ?? $item['category_name'] ?? $item['name'] ?? '',
                 'amount' => $currencyService->convert($amount, $baseCurrency, $displayCurrency),
             ];
             $result[] = $converted;
@@ -853,13 +465,13 @@ class FinanceController extends Controller
             ->confirmed()
             ->inPeriod($from, $to)
             ->income()
-            ->sum('amount');
+            ->sum('amount_base');
 
         $transactionExpense = FinanceTransaction::byCompany($companyId)
             ->confirmed()
             ->inPeriod($from, $to)
             ->expense()
-            ->sum('amount');
+            ->sum('amount_base');
 
         // Продажи маркетплейсов за период (уже передаётся в overview)
         $marketplaceSales = $this->getMarketplaceSales($companyId, $from, $to, $settings);
@@ -901,6 +513,7 @@ class FinanceController extends Controller
                 'type' => $a->type,
                 'balance' => $a->balance,
                 'currency_code' => $a->currency_code,
+                'marketplace' => $a->marketplace,
             ])->toArray();
 
             // Total конвертируем в выбранную валюту
@@ -2083,355 +1696,9 @@ class FinanceController extends Controller
      */
     protected function calculateCogs(int $companyId, Carbon $from, Carbon $to, float $rubToUzs): array
     {
-        $financeSettings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
-
-        $result = [
-            'total' => 0,
-            'total_items' => 0,
-            'by_marketplace' => [],
-            'gross_margin' => 0,
-            'margin_percent' => 0,
-        ];
-
-        $totalRevenue = 0;
-
-        // ========== 1. UZUM COGS ==========
-        try {
-            if (class_exists(\App\Models\UzumFinanceOrder::class)) {
-                $uzumOrders = \App\Models\UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
-                    ->whereIn('status', ['TO_WITHDRAW', 'COMPLETED', 'PROCESSING'])
-                    ->where('status', '!=', 'CANCELED')
-                    ->where(function ($q) use ($from, $to) {
-                        $q->where(function ($sub) use ($from, $to) {
-                            $sub->whereNotNull('date_issued')
-                                ->whereDate('date_issued', '>=', $from)
-                                ->whereDate('date_issued', '<=', $to);
-                        })
-                            ->orWhere(function ($sub) use ($from, $to) {
-                                $sub->whereNull('date_issued')
-                                    ->whereDate('order_date', '>=', $from)
-                                    ->whereDate('order_date', '<=', $to);
-                            });
-                    })
-                    ->select('sku_id', 'offer_id', 'barcode', 'amount', 'purchase_price', 'marketplace_account_id')
-                    ->get();
-
-                $uzumCogs = 0;
-                $uzumRevenue = 0;
-                $uzumItemsCount = $uzumOrders->count();
-                $uzumWithCogs = 0;
-                $uzumFromInternal = 0;
-                $uzumFromMarketplace = 0;
-
-                foreach ($uzumOrders as $order) {
-                    $revenue = (float) ($order->amount ?? 0);
-                    $uzumRevenue += $revenue;
-
-                    $purchasePrice = null;
-                    $fromInternal = false;
-
-                    // 1. СНАЧАЛА ищем связь с внутренним товаром через offer_id
-                    if ($order->offer_id) {
-                        $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $order->marketplace_account_id)
-                            ->where('external_offer_id', $order->offer_id)
-                            ->with('variant')
-                            ->first();
-                        if ($link && $link->variant && $link->variant->purchase_price) {
-                            $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
-                            $fromInternal = true;
-                        }
-                    }
-
-                    // 2. Если не нашли - пробуем через barcode
-                    if (! $purchasePrice && $order->barcode) {
-                        $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $order->marketplace_account_id)
-                            ->where('marketplace_barcode', $order->barcode)
-                            ->with('variant')
-                            ->first();
-                        if ($link && $link->variant && $link->variant->purchase_price) {
-                            $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
-                            $fromInternal = true;
-                        }
-                    }
-
-                    // 3. Если связи нет - берём из маркетплейса
-                    if (! $purchasePrice && $order->purchase_price) {
-                        $purchasePrice = (float) $order->purchase_price;
-                        $fromInternal = false;
-                    }
-
-                    if ($purchasePrice) {
-                        $uzumCogs += (float) $purchasePrice;
-                        $uzumWithCogs++;
-                        if ($fromInternal) {
-                            $uzumFromInternal++;
-                        } else {
-                            $uzumFromMarketplace++;
-                        }
-                    }
-                }
-
-                if ($uzumItemsCount > 0) {
-                    $result['by_marketplace']['uzum'] = [
-                        'cogs' => $uzumCogs,
-                        'items_count' => $uzumItemsCount,
-                        'items_with_cogs' => $uzumWithCogs,
-                        'from_internal' => $uzumFromInternal,
-                        'from_marketplace' => $uzumFromMarketplace,
-                        'revenue' => $uzumRevenue,
-                        'margin' => $uzumRevenue - $uzumCogs,
-                        'margin_percent' => $uzumRevenue > 0 ? round((($uzumRevenue - $uzumCogs) / $uzumRevenue) * 100, 1) : 0,
-                        'currency' => 'UZS',
-                        'note' => $uzumWithCogs < $uzumItemsCount ? 'Не все товары имеют закупочную цену' : null,
-                    ];
-                    $result['total'] += $uzumCogs;
-                    $result['total_items'] += $uzumItemsCount;
-                    $totalRevenue += $uzumRevenue;
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::error('Uzum COGS calculation error', ['error' => $e->getMessage()]);
-        }
-
-        // ========== 2. WILDBERRIES COGS ==========
-        try {
-            if (class_exists(\App\Models\WildberriesOrder::class)) {
-                $wbOrders = \App\Models\WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
-                    ->where('is_realization', true)
-                    ->where('is_cancel', false)
-                    ->where('is_return', false)
-                    ->whereDate('order_date', '>=', $from)
-                    ->whereDate('order_date', '<=', $to)
-                    ->select('barcode', 'nm_id', 'supplier_article', 'for_pay', 'finished_price', 'total_price', 'marketplace_account_id')
-                    ->get();
-
-                $wbCogs = 0; // В UZS (себестоимость внутренних товаров хранится в UZS)
-                $wbRevenue = 0; // В RUB
-                $wbItemsCount = $wbOrders->count();
-                $wbWithCogs = 0;
-                $wbFromInternal = 0;
-
-                foreach ($wbOrders as $order) {
-                    $revenue = (float) ($order->for_pay ?? $order->finished_price ?? $order->total_price ?? 0);
-                    $wbRevenue += $revenue;
-
-                    $purchasePrice = null;
-
-                    // 1. Ищем связь с внутренним товаром через barcode
-                    if ($order->barcode) {
-                        $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $order->marketplace_account_id)
-                            ->where('marketplace_barcode', $order->barcode)
-                            ->with('variant')
-                            ->first();
-                        if ($link && $link->variant && $link->variant->purchase_price) {
-                            $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
-                            $wbFromInternal++;
-                        }
-                    }
-
-                    // 2. Fallback: искать по nm_id через marketplace_product
-                    if (! $purchasePrice && $order->nm_id) {
-                        $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $order->marketplace_account_id)
-                            ->whereHas('marketplaceProduct', function ($q) use ($order) {
-                                $q->where('external_id', $order->nm_id);
-                            })
-                            ->with('variant')
-                            ->first();
-                        if ($link && $link->variant && $link->variant->purchase_price) {
-                            $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
-                            $wbFromInternal++;
-                        }
-                    }
-
-                    // 3. Fallback: искать по supplier_article (артикул продавца)
-                    if (! $purchasePrice && $order->supplier_article) {
-                        $variant = \App\Models\ProductVariant::where('company_id', $companyId)
-                            ->where('sku', $order->supplier_article)
-                            ->first();
-                        if ($variant && $variant->purchase_price) {
-                            $purchasePrice = $variant->getPurchasePriceInBase($financeSettings);
-                            $wbFromInternal++;
-                        }
-                    }
-
-                    if ($purchasePrice) {
-                        $wbCogs += (float) $purchasePrice; // В UZS (сконвертировано)
-                        $wbWithCogs++;
-                    }
-                }
-
-                // Выручка в RUB -> конвертируем в UZS для расчёта маржи
-                $wbRevenueUzs = $wbRevenue * $rubToUzs;
-
-                if ($wbItemsCount > 0) {
-                    $result['by_marketplace']['wb'] = [
-                        'cogs' => $wbCogs, // Уже в UZS
-                        'items_count' => $wbItemsCount,
-                        'items_with_cogs' => $wbWithCogs,
-                        'from_internal' => $wbFromInternal,
-                        'revenue' => $wbRevenueUzs,
-                        'revenue_rub' => $wbRevenue,
-                        'margin' => $wbRevenueUzs - $wbCogs,
-                        'margin_percent' => $wbRevenueUzs > 0 ? round((($wbRevenueUzs - $wbCogs) / $wbRevenueUzs) * 100, 1) : 0,
-                        'currency' => 'UZS',
-                        'note' => $wbWithCogs < $wbItemsCount ? 'Не все товары связаны с внутренними' : null,
-                    ];
-                    $result['total'] += $wbCogs;
-                    $result['total_items'] += $wbItemsCount;
-                    $totalRevenue += $wbRevenueUzs;
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::error('WB COGS calculation error', ['error' => $e->getMessage()]);
-        }
-
-        // ========== 3. OZON COGS ==========
-        try {
-            if (class_exists(\App\Models\OzonOrder::class)) {
-                $ozonOrders = \App\Models\OzonOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
-                    ->whereIn('status', ['delivered', 'completed'])
-                    ->whereDate('created_at_ozon', '>=', $from)
-                    ->whereDate('created_at_ozon', '<=', $to)
-                    ->select('offer_id', 'sku', 'total_price', 'marketplace_account_id')
-                    ->get();
-
-                $ozonCogs = 0; // В UZS
-                $ozonRevenue = 0; // В RUB
-                $ozonItemsCount = $ozonOrders->count();
-                $ozonWithCogs = 0;
-                $ozonFromInternal = 0;
-
-                foreach ($ozonOrders as $order) {
-                    $revenue = (float) ($order->total_price ?? 0);
-                    $ozonRevenue += $revenue;
-
-                    $purchasePrice = null;
-
-                    // 1. Ищем связь с внутренним товаром через offer_id
-                    if ($order->offer_id) {
-                        $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $order->marketplace_account_id)
-                            ->where('external_offer_id', $order->offer_id)
-                            ->with('variant')
-                            ->first();
-                        if ($link && $link->variant && $link->variant->purchase_price) {
-                            $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
-                            $ozonFromInternal++;
-                        }
-                    }
-
-                    // 2. Fallback: искать по sku
-                    if (! $purchasePrice && $order->sku) {
-                        $variant = \App\Models\ProductVariant::where('company_id', $companyId)
-                            ->where('sku', $order->sku)
-                            ->first();
-                        if ($variant && $variant->purchase_price) {
-                            $purchasePrice = $variant->getPurchasePriceInBase($financeSettings);
-                            $ozonFromInternal++;
-                        }
-                    }
-
-                    if ($purchasePrice) {
-                        $ozonCogs += (float) $purchasePrice;
-                        $ozonWithCogs++;
-                    }
-                }
-
-                // Выручка в RUB -> конвертируем в UZS
-                $ozonRevenueUzs = $ozonRevenue * $rubToUzs;
-
-                if ($ozonItemsCount > 0) {
-                    $result['by_marketplace']['ozon'] = [
-                        'cogs' => $ozonCogs, // Уже в UZS
-                        'items_count' => $ozonItemsCount,
-                        'items_with_cogs' => $ozonWithCogs,
-                        'from_internal' => $ozonFromInternal,
-                        'revenue' => $ozonRevenueUzs,
-                        'revenue_rub' => $ozonRevenue,
-                        'margin' => $ozonRevenueUzs - $ozonCogs,
-                        'margin_percent' => $ozonRevenueUzs > 0 ? round((($ozonRevenueUzs - $ozonCogs) / $ozonRevenueUzs) * 100, 1) : 0,
-                        'currency' => 'UZS',
-                        'note' => $ozonWithCogs < $ozonItemsCount ? 'Не все товары связаны с внутренними' : null,
-                    ];
-                    $result['total'] += $ozonCogs;
-                    $result['total_items'] += $ozonItemsCount;
-                    $totalRevenue += $ozonRevenueUzs;
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::error('Ozon COGS calculation error', ['error' => $e->getMessage()]);
-        }
-
-        // ========== 4. РУЧНЫЕ ПРОДАЖИ (Sale) COGS ==========
-        try {
-            if (class_exists(\App\Models\Sale::class)) {
-                $offlineSales = \App\Models\Sale::byCompany($companyId)
-                    ->where('type', 'manual')
-                    ->where('status', 'completed')
-                    ->whereDate('created_at', '>=', $from)
-                    ->whereDate('created_at', '<=', $to)
-                    ->with(['items.productVariant'])
-                    ->get();
-
-                $totalOfflineCogs = 0;
-                $totalOfflineRevenue = 0;
-                $offlineItemsCount = 0;
-                $offlineWithCogs = 0;
-                $offlineFromInternal = 0;
-                $offlineFromSaleItem = 0;
-
-                foreach ($offlineSales as $sale) {
-                    $totalOfflineRevenue += $sale->total_amount;
-                    foreach ($sale->items as $item) {
-                        $offlineItemsCount++;
-                        $costPrice = null;
-
-                        // 1. СНАЧАЛА ищем себестоимость из связанного внутреннего товара (конвертируем в UZS)
-                        if ($item->productVariant && $item->productVariant->purchase_price) {
-                            $costPrice = $item->productVariant->getPurchasePriceInBase($financeSettings);
-                            $offlineFromInternal++;
-                        }
-                        // 2. Если нет - берём из SaleItem.cost_price
-                        elseif ($item->cost_price) {
-                            $costPrice = (float) $item->cost_price;
-                            $offlineFromSaleItem++;
-                        }
-
-                        if ($costPrice) {
-                            $totalOfflineCogs += $costPrice * $item->quantity;
-                            $offlineWithCogs++;
-                        }
-                    }
-                }
-
-                if ($offlineItemsCount > 0) {
-                    $result['by_marketplace']['offline'] = [
-                        'cogs' => $totalOfflineCogs,
-                        'items_count' => $offlineItemsCount,
-                        'items_with_cogs' => $offlineWithCogs,
-                        'from_internal' => $offlineFromInternal,
-                        'from_sale_item' => $offlineFromSaleItem,
-                        'revenue' => $totalOfflineRevenue,
-                        'margin' => $totalOfflineRevenue - $totalOfflineCogs,
-                        'margin_percent' => $totalOfflineRevenue > 0 ? round((($totalOfflineRevenue - $totalOfflineCogs) / $totalOfflineRevenue) * 100, 1) : 0,
-                        'currency' => 'UZS',
-                        'note' => $offlineWithCogs < $offlineItemsCount ? 'Не все товары имеют закупочную цену' : null,
-                    ];
-                    $result['total'] += $totalOfflineCogs;
-                    $result['total_items'] += $offlineItemsCount;
-                    $totalRevenue += $totalOfflineRevenue;
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::error('Offline COGS calculation error', ['error' => $e->getMessage()]);
-        }
-
-        // Рассчитываем общую маржу
-        $result['gross_margin'] = $totalRevenue - $result['total'];
-        $result['margin_percent'] = $totalRevenue > 0 ? round((($totalRevenue - $result['total']) / $totalRevenue) * 100, 1) : 0;
-        $result['total_revenue'] = $totalRevenue;
-
-        return $result;
+        return $this->inventoryValuationService->calculateCogs($companyId, $from, $to, $rubToUzs);
     }
+
 
     /**
      * Получить список доступных валют и текущих курсов

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Warehouse;
 
 use App\Http\Controllers\Controller;
@@ -12,6 +14,7 @@ use App\Models\Warehouse\ProcessedEvent;
 use App\Services\Warehouse\ReservationService;
 use App\Support\ApiResponder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ChannelImportController extends Controller
@@ -48,78 +51,81 @@ class ChannelImportController extends Controller
         $reservationsCreated = 0;
         $unmappedItems = [];
 
-        foreach ($data['orders'] as $order) {
-            // Idempotency via processed_events
-            $eventKey = $order['external_order_id'];
-            $existsEvent = ProcessedEvent::where('channel_id', $channel->id)
-                ->where('external_event_id', $eventKey)
-                ->where('type', 'order_import')
-                ->first();
-            if ($existsEvent) {
-                continue;
-            }
+        // Оборачиваем импорт заказов в транзакцию для атомарности
+        DB::transaction(function () use ($data, $channel, $companyId, &$imported, &$updated, &$reservationsCreated, &$unmappedItems) {
+            foreach ($data['orders'] as $order) {
+                // Idempotency via processed_events
+                $eventKey = $order['external_order_id'];
+                $existsEvent = ProcessedEvent::where('channel_id', $channel->id)
+                    ->where('external_event_id', $eventKey)
+                    ->where('type', 'order_import')
+                    ->first();
+                if ($existsEvent) {
+                    continue;
+                }
 
-            $orderModel = ChannelOrder::updateOrCreate(
-                ['channel_id' => $channel->id, 'external_order_id' => $order['external_order_id']],
-                [
-                    'status' => $order['status'] ?? null,
-                    'payload_json' => $order,
-                    'created_at_channel' => $order['created_at'] ?? null,
-                ]
-            );
+                $orderModel = ChannelOrder::updateOrCreate(
+                    ['channel_id' => $channel->id, 'external_order_id' => $order['external_order_id']],
+                    [
+                        'status' => $order['status'] ?? null,
+                        'payload_json' => $order,
+                        'created_at_channel' => $order['created_at'] ?? null,
+                    ]
+                );
 
-            $orderModel->items()->delete();
-            foreach ($order['items'] as $item) {
-                $mappedSkuId = ChannelSkuMap::where('channel_id', $channel->id)
-                    ->where('external_sku_id', $item['external_sku_id'])
-                    ->value('sku_id');
+                $orderModel->items()->delete();
+                foreach ($order['items'] as $item) {
+                    $mappedSkuId = ChannelSkuMap::where('channel_id', $channel->id)
+                        ->where('external_sku_id', $item['external_sku_id'])
+                        ->value('sku_id');
 
-                ChannelOrderItem::create([
-                    'channel_order_id' => $orderModel->id,
-                    'external_sku_id' => $item['external_sku_id'],
-                    'sku_id' => $mappedSkuId,
-                    'qty' => $item['qty'],
-                    'price' => $item['price'] ?? 0,
-                    'payload_json' => $item,
-                ]);
+                    ChannelOrderItem::create([
+                        'channel_order_id' => $orderModel->id,
+                        'external_sku_id' => $item['external_sku_id'],
+                        'sku_id' => $mappedSkuId,
+                        'qty' => $item['qty'],
+                        'price' => $item['price'] ?? 0,
+                        'payload_json' => $item,
+                    ]);
 
-                if (! $mappedSkuId) {
-                    $unmappedItems[] = $item['external_sku_id'];
-                } else {
-                    // Create reservation for NEW/CREATED/CONFIRMED
-                    $status = strtoupper($order['status'] ?? 'CREATED');
-                    if (in_array($status, ['CREATED', 'CONFIRMED'])) {
-                        $reservationService = app(ReservationService::class);
-                        try {
-                            $reservationService->reserve(
-                                $companyId,
-                                $channel->default_warehouse_id ?? $this->defaultWarehouse($companyId),
-                                $mappedSkuId,
-                                (float) $item['qty'],
-                                'MARKETPLACE_ORDER',
-                                'channel_order',
-                                $orderModel->id,
-                                $user?->id
-                            );
-                            $reservationsCreated++;
-                        } catch (\Throwable $e) {
-                            // ignore reservation failure but log
-                            \Log::warning('Reservation failed', ['order' => $order['external_order_id'], 'error' => $e->getMessage()]);
+                    if (! $mappedSkuId) {
+                        $unmappedItems[] = $item['external_sku_id'];
+                    } else {
+                        // Create reservation for NEW/CREATED/CONFIRMED
+                        $status = strtoupper($order['status'] ?? 'CREATED');
+                        if (in_array($status, ['CREATED', 'CONFIRMED'])) {
+                            $reservationService = app(ReservationService::class);
+                            try {
+                                $reservationService->reserve(
+                                    $companyId,
+                                    $channel->default_warehouse_id ?? $this->defaultWarehouse($companyId),
+                                    $mappedSkuId,
+                                    (float) $item['qty'],
+                                    'MARKETPLACE_ORDER',
+                                    'channel_order',
+                                    $orderModel->id,
+                                    Auth::id()
+                                );
+                                $reservationsCreated++;
+                            } catch (\Throwable $e) {
+                                // ignore reservation failure but log
+                                \Log::warning('Reservation failed', ['order' => $order['external_order_id'], 'error' => $e->getMessage()]);
+                            }
                         }
                     }
                 }
+
+                ProcessedEvent::create([
+                    'channel_id' => $channel->id,
+                    'external_event_id' => $eventKey,
+                    'type' => 'order_import',
+                    'processed_at' => now(),
+                    'payload_hash' => substr(hash('sha256', json_encode($order)), 0, 64),
+                ]);
+
+                $imported++;
             }
-
-            ProcessedEvent::create([
-                'channel_id' => $channel->id,
-                'external_event_id' => $eventKey,
-                'type' => 'order_import',
-                'processed_at' => now(),
-                'payload_hash' => substr(hash('sha256', json_encode($order)), 0, 64),
-            ]);
-
-            $imported++;
-        }
+        });
 
         return $this->successResponse([
             'imported' => $imported,

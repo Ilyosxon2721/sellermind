@@ -270,13 +270,6 @@ class Sale extends Model
             'cancelled_at' => now(),
         ]);
 
-        // Вернуть остатки товаров
-        foreach ($this->items as $item) {
-            if ($item->stock_deducted && $item->product_variant_id) {
-                $item->returnStock();
-            }
-        }
-
         return true;
     }
 

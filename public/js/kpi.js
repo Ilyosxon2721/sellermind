@@ -17,6 +17,8 @@ function kpiPage(config) {
         calculating: false,
         chartData: { labels: [], achievements: [], bonuses: [] },
         chart: null,
+        ranking: [],
+        forecast: {},
 
         // Модалки
         showPlanModal: false,
@@ -26,10 +28,11 @@ function kpiPage(config) {
         actualsForm: { id: null, actual_revenue: 0, actual_margin: 0, actual_orders: 0, employee_name: '', sphere_name: '' },
 
         // Формы
-        planForm: { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: now.getFullYear(), period_month: now.getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20 },
+        planForm: { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: now.getFullYear(), period_month: now.getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20, currency: 'UZS' },
         aiSuggesting: false,
         aiReasoning: '',
-        sphereForm: { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', marketplace_account_ids: [], offline_sale_types: [], is_active: true },
+        stores: [],
+        sphereForm: { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', marketplace_account_ids: [], offline_sale_types: [], store_ids: [], sale_sources: [], is_active: true, is_manual: false, label_metric1: '', label_metric2: '', label_metric3: '' },
         scaleForm: { id: null, name: '', is_default: false, tiers: [] },
 
         // Уведомления
@@ -41,6 +44,7 @@ function kpiPage(config) {
             this.loadScales();
             this.loadEmployees();
             this.loadMarketplaceAccounts();
+            this.loadStores();
             this.loadChartData(6);
         },
 
@@ -50,10 +54,10 @@ function kpiPage(config) {
         },
 
         emptyPlanForm() {
-            return { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: new Date().getFullYear(), period_month: new Date().getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20 };
+            return { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: new Date().getFullYear(), period_month: new Date().getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20, currency: 'UZS' };
         },
         emptySphereForm() {
-            return { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', marketplace_account_ids: [], offline_sale_types: [], is_active: true };
+            return { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', marketplace_account_ids: [], offline_sale_types: [], store_ids: [], sale_sources: [], is_active: true, is_manual: false, label_metric1: '', label_metric2: '', label_metric3: '' };
         },
         emptyScaleForm() {
             return { id: null, name: '', is_default: false, tiers: [] };
@@ -76,7 +80,8 @@ function kpiPage(config) {
             var res = await fetch('/api/' + url, opts);
             if (!res.ok) {
                 var err = await res.json().catch(function() { return {}; });
-                throw new Error(err.message || 'Ошибка запроса');
+                var msg = err.message || (err.errors && err.errors[0] && err.errors[0].message) || 'Ошибка запроса';
+                throw new Error(msg);
             }
             return res.json();
         },
@@ -114,6 +119,20 @@ function kpiPage(config) {
                 var res = await this.api('finance/kpi/dashboard?year=' + this.year + '&month=' + this.month);
                 this.dashboard = res.data ?? res;
             } catch (e) { this.notify(e.message, 'error'); }
+            this.loadRanking();
+            this.loadForecast();
+        },
+        async loadRanking() {
+            try {
+                var res = await this.api('finance/kpi/ranking?year=' + this.year + '&month=' + this.month);
+                this.ranking = res.data ?? res;
+            } catch (e) { this.notify(e.message, 'error'); }
+        },
+        async loadForecast() {
+            try {
+                var res = await this.api('finance/kpi/forecast?year=' + this.year + '&month=' + this.month);
+                this.forecast = res.data ?? res;
+            } catch (e) { this.notify(e.message, 'error'); }
         },
         async loadPlans() {
             try {
@@ -145,6 +164,12 @@ function kpiPage(config) {
                 this.marketplaceAccounts = res.data ?? [];
             } catch (e) { /* маркетплейсы могут быть не доступны */ }
         },
+        async loadStores() {
+            try {
+                var res = await this.api('store/stores');
+                this.stores = res.data ?? [];
+            } catch (e) { /* магазины могут быть не доступны */ }
+        },
         async loadChartData(months) {
             months = months || 6;
             try {
@@ -172,6 +197,31 @@ function kpiPage(config) {
             this.aiReasoning = '';
             this.showPlanModal = true;
         },
+        copyPlan(p) {
+            var nextMonth = parseInt(p.period_month) + 1;
+            var nextYear = parseInt(p.period_year);
+            if (nextMonth > 12) { nextMonth = 1; nextYear++; }
+
+            this.planForm = {
+                id: null,
+                employee_id: p.employee_id,
+                kpi_sales_sphere_id: p.kpi_sales_sphere_id,
+                kpi_bonus_scale_id: p.kpi_bonus_scale_id,
+                period_year: nextYear,
+                period_month: nextMonth,
+                target_revenue: p.target_revenue,
+                target_margin: p.target_margin,
+                target_orders: p.target_orders,
+                weight_revenue: p.weight_revenue,
+                weight_margin: p.weight_margin,
+                weight_orders: p.weight_orders,
+                currency: p.currency || 'UZS',
+                notes: ''
+            };
+            this.aiReasoning = '';
+            this.showPlanModal = true;
+            this.notify('План скопирован на ' + this.monthName(nextMonth) + ' ' + nextYear);
+        },
         editPlan(p) {
             this.planForm = {
                 id: p.id,
@@ -186,6 +236,7 @@ function kpiPage(config) {
                 weight_revenue: p.weight_revenue,
                 weight_margin: p.weight_margin,
                 weight_orders: p.weight_orders,
+                currency: p.currency || 'UZS',
                 notes: p.notes || ''
             };
             this.aiReasoning = '';
@@ -197,8 +248,8 @@ function kpiPage(config) {
                 actual_revenue: p.actual_revenue || 0,
                 actual_margin: p.actual_margin || 0,
                 actual_orders: p.actual_orders || 0,
-                employee_name: p.employee?.name ?? '—',
-                sphere_name: p.sales_sphere?.name ?? '—'
+                employee_name: p.employee ? ((p.employee.last_name || '') + ' ' + (p.employee.first_name || '')).trim() || '—' : '—',
+                sphere_name: (p.salesSphere || p.sales_sphere)?.name ?? '—'
             };
             this.showActualsModal = true;
         },
@@ -248,11 +299,20 @@ function kpiPage(config) {
                 this.notify('Сумма весов должна быть 100 (сейчас: ' + wSum + ')', 'error');
                 return;
             }
+            // Нормализация: пустые поля → 0
+            var payload = Object.assign({}, this.planForm, {
+                target_revenue: parseFloat(this.planForm.target_revenue) || 0,
+                target_margin: parseFloat(this.planForm.target_margin) || 0,
+                target_orders: parseInt(this.planForm.target_orders) || 0,
+                weight_revenue: parseInt(this.planForm.weight_revenue) || 0,
+                weight_margin: parseInt(this.planForm.weight_margin) || 0,
+                weight_orders: parseInt(this.planForm.weight_orders) || 0,
+            });
             try {
-                if (this.planForm.id) {
-                    await this.api('finance/kpi/plans/' + this.planForm.id, 'PUT', this.planForm);
+                if (payload.id) {
+                    await this.api('finance/kpi/plans/' + payload.id, 'PUT', payload);
                 } else {
-                    await this.api('finance/kpi/plans', 'POST', this.planForm);
+                    await this.api('finance/kpi/plans', 'POST', payload);
                 }
                 this.showPlanModal = false;
                 this.notify('План сохранён');
@@ -285,7 +345,13 @@ function kpiPage(config) {
         editSphere(s) {
             this.sphereForm = Object.assign({}, s, {
                 marketplace_account_ids: (s.marketplace_account_ids || []).map(function(id) { return parseInt(id); }),
-                offline_sale_types: (s.offline_sale_types || []).slice()
+                offline_sale_types: (s.offline_sale_types || []).slice(),
+                is_manual: s.is_manual || false,
+                store_ids: (s.store_ids || []).map(function(id) { return parseInt(id); }),
+                sale_sources: (s.sale_sources || []).slice(),
+                label_metric1: s.label_metric1 || '',
+                label_metric2: s.label_metric2 || '',
+                label_metric3: s.label_metric3 || ''
             });
             this.showSphereModal = true;
         },
@@ -308,6 +374,18 @@ function kpiPage(config) {
                 types.splice(idx, 1);
             }
             this.sphereForm.offline_sale_types = types.slice();
+        },
+        toggleStoreId(id) {
+            var ids = this.sphereForm.store_ids || [];
+            var idx = ids.indexOf(id);
+            if (idx === -1) { ids.push(id); } else { ids.splice(idx, 1); }
+            this.sphereForm.store_ids = ids.slice();
+        },
+        toggleSaleSource(source) {
+            var sources = this.sphereForm.sale_sources || [];
+            var idx = sources.indexOf(source);
+            if (idx === -1) { sources.push(source); } else { sources.splice(idx, 1); }
+            this.sphereForm.sale_sources = sources.slice();
         },
         async saveSphere() {
             try {

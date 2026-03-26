@@ -7,6 +7,7 @@ namespace App\Models\Kpi;
 use App\Models\Company;
 use App\Models\Finance\Employee;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -35,7 +36,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class KpiPlan extends Model
 {
+    use HasFactory;
+
     protected $table = 'kpi_plans';
+
+    protected $appends = ['sphere_currency', 'bonus_amount_uzs'];
 
     public const STATUS_ACTIVE = 'active';
 
@@ -44,6 +49,11 @@ final class KpiPlan extends Model
     public const STATUS_APPROVED = 'approved';
 
     public const STATUS_CANCELLED = 'cancelled';
+
+    /**
+     * Статусы отменённых заказов маркетплейсов (исключаются из расчёта KPI)
+     */
+    public const CANCELLED_ORDER_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
 
     protected $fillable = [
         'company_id',
@@ -68,6 +78,7 @@ final class KpiPlan extends Model
         'approved_by',
         'approved_at',
         'notes',
+        'currency',
     ];
 
     protected function casts(): array
@@ -163,6 +174,64 @@ final class KpiPlan extends Model
         }
 
         return round($tier->calculateBonus($this->actual_revenue, $this->actual_margin), 2);
+    }
+
+    /**
+     * Валюта плана (из поля currency, или автоопределение по сфере)
+     */
+    public function getSphereCurrencyAttribute(): string
+    {
+        // Приоритет: явно указанная валюта в плане
+        if (! empty($this->currency) && $this->currency !== 'UZS') {
+            return $this->currency;
+        }
+
+        if (! empty($this->currency)) {
+            return $this->currency;
+        }
+
+        // Fallback: автоопределение по маркетплейсу
+        $sphere = $this->salesSphere;
+        if (! $sphere || $sphere->isManual()) {
+            return 'UZS';
+        }
+
+        $accountIds = $sphere->getLinkedAccountIds();
+        if (empty($accountIds)) {
+            return 'UZS';
+        }
+
+        $marketplace = \App\Models\MarketplaceAccount::whereIn('id', $accountIds)
+            ->value('marketplace');
+
+        return match ($marketplace) {
+            'wb', 'wildberries', 'ozon', 'ym', 'yandex_market' => 'RUB',
+            default => 'UZS',
+        };
+    }
+
+    /**
+     * Бонус конвертированный в UZS
+     */
+    public function getBonusAmountUzsAttribute(): float
+    {
+        if ($this->bonus_amount == 0) {
+            return 0;
+        }
+
+        $currency = $this->sphere_currency;
+
+        if ($currency === 'UZS') {
+            return $this->bonus_amount;
+        }
+
+        $rate = \Illuminate\Support\Facades\Cache::get("exchange_rate:{$currency}_UZS", 0);
+
+        if ($rate <= 0) {
+            return $this->bonus_amount;
+        }
+
+        return round($this->bonus_amount * $rate, 2);
     }
 
     public function getPeriodLabelAttribute(): string

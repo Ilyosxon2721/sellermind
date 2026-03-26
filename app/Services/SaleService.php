@@ -221,15 +221,9 @@ class SaleService
         return DB::transaction(function () use ($sale) {
             $sale->complete();
 
-            // Автоматически создаём долг если продажа с контрагентом
-            if ($sale->counterparty_id && $sale->total_amount > 0) {
-                $this->createDebtFromSale($sale);
-            }
-
             Log::info('Sale completed', [
                 'sale_id' => $sale->id,
                 'sale_number' => $sale->sale_number,
-                'debt_created' => (bool) $sale->counterparty_id,
             ]);
 
             return $sale->fresh();
