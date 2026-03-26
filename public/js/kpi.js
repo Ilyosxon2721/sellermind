@@ -28,7 +28,7 @@ function kpiPage(config) {
         actualsForm: { id: null, actual_revenue: 0, actual_margin: 0, actual_orders: 0, employee_name: '', sphere_name: '' },
 
         // Формы
-        planForm: { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: now.getFullYear(), period_month: now.getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20 },
+        planForm: { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: now.getFullYear(), period_month: now.getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20, currency: 'UZS' },
         aiSuggesting: false,
         aiReasoning: '',
         stores: [],
@@ -54,7 +54,7 @@ function kpiPage(config) {
         },
 
         emptyPlanForm() {
-            return { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: new Date().getFullYear(), period_month: new Date().getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20 };
+            return { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: new Date().getFullYear(), period_month: new Date().getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20, currency: 'UZS' };
         },
         emptySphereForm() {
             return { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', marketplace_account_ids: [], offline_sale_types: [], store_ids: [], sale_sources: [], is_active: true, is_manual: false, label_metric1: '', label_metric2: '', label_metric3: '' };
@@ -211,6 +211,7 @@ function kpiPage(config) {
                 weight_revenue: p.weight_revenue,
                 weight_margin: p.weight_margin,
                 weight_orders: p.weight_orders,
+                currency: p.currency || 'UZS',
                 notes: p.notes || ''
             };
             this.aiReasoning = '';

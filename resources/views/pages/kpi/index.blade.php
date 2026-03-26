@@ -548,17 +548,29 @@
                             </div>
                         </div>
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Валюта плана</label>
+                        <div class="flex gap-2">
+                            <template x-for="cur in [{code:'UZS',label:'🇺🇿 Сум (UZS)'},{code:'USD',label:'🇺🇸 Доллар (USD)'},{code:'RUB',label:'🇷🇺 Рубль (RUB)'},{code:'EUR',label:'🇪🇺 Евро (EUR)'}]" :key="cur.code">
+                                <label class="flex-1 relative flex items-center justify-center gap-1.5 px-3 py-2 border-2 rounded-lg cursor-pointer text-sm transition-colors"
+                                       :class="planForm.currency === cur.code ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300 text-gray-600'">
+                                    <input type="radio" :value="cur.code" x-model="planForm.currency" class="sr-only">
+                                    <span x-text="cur.label"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
                     <div class="grid grid-cols-3 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.plans.revenue') }} ({{ __('kpi.plans.target') }})</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Оборот (план) <span class="text-gray-400 text-xs" x-text="planForm.currency"></span></label>
                             <input type="number" x-model="planForm.target_revenue" class="w-full rounded-lg border-gray-300 text-sm" min="0">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.plans.margin') }} ({{ __('kpi.plans.target') }})</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Маржа (план) <span class="text-gray-400 text-xs" x-text="planForm.currency"></span></label>
                             <input type="number" x-model="planForm.target_margin" class="w-full rounded-lg border-gray-300 text-sm" min="0">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.plans.orders') }} ({{ __('kpi.plans.target') }})</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Заказы (план)</label>
                             <input type="number" x-model="planForm.target_orders" class="w-full rounded-lg border-gray-300 text-sm" min="0">
                         </div>
                     </div>

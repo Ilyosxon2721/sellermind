@@ -78,6 +78,7 @@ final class KpiPlan extends Model
         'approved_by',
         'approved_at',
         'notes',
+        'currency',
     ];
 
     protected function casts(): array
@@ -176,10 +177,20 @@ final class KpiPlan extends Model
     }
 
     /**
-     * Определить валюту сферы по привязанным маркетплейсам
+     * Валюта плана (из поля currency, или автоопределение по сфере)
      */
     public function getSphereCurrencyAttribute(): string
     {
+        // Приоритет: явно указанная валюта в плане
+        if (! empty($this->currency) && $this->currency !== 'UZS') {
+            return $this->currency;
+        }
+
+        if (! empty($this->currency)) {
+            return $this->currency;
+        }
+
+        // Fallback: автоопределение по маркетплейсу
         $sphere = $this->salesSphere;
         if (! $sphere || $sphere->isManual()) {
             return 'UZS';
@@ -200,7 +211,7 @@ final class KpiPlan extends Model
     }
 
     /**
-     * Бонус конвертированный в UZS (если сфера в RUB)
+     * Бонус конвертированный в UZS
      */
     public function getBonusAmountUzsAttribute(): float
     {
@@ -217,7 +228,7 @@ final class KpiPlan extends Model
         $rate = \Illuminate\Support\Facades\Cache::get("exchange_rate:{$currency}_UZS", 0);
 
         if ($rate <= 0) {
-            return $this->bonus_amount; // fallback — без конвертации
+            return $this->bonus_amount;
         }
 
         return round($this->bonus_amount * $rate, 2);

@@ -51,6 +51,7 @@ final class UpdateKpiPlanRequest extends FormRequest
             'weight_revenue' => ['sometimes', 'integer', 'min:0', 'max:100'],
             'weight_margin' => ['sometimes', 'integer', 'min:0', 'max:100'],
             'weight_orders' => ['sometimes', 'integer', 'min:0', 'max:100'],
+            'currency' => ['sometimes', 'string', 'in:UZS,USD,RUB,EUR'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }

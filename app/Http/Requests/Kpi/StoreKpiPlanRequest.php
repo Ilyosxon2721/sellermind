@@ -54,6 +54,7 @@ final class StoreKpiPlanRequest extends FormRequest
             'weight_revenue' => ['required', 'integer', 'min:0', 'max:100'],
             'weight_margin' => ['required', 'integer', 'min:0', 'max:100'],
             'weight_orders' => ['required', 'integer', 'min:0', 'max:100'],
+            'currency' => ['sometimes', 'string', 'in:UZS,USD,RUB,EUR'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }
