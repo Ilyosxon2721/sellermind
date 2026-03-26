@@ -601,6 +601,21 @@
                         </div>
                     </a>
 
+                    <!-- Uzum Invoices link (only for Uzum accounts) -->
+                    <a x-show="account?.marketplace === 'uzum'"
+                       :href="'/marketplace/' + {{ $accountId }} + '/uzum-invoices'"
+                       class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="font-medium text-gray-900">Накладные и возвраты</h3>
+                            <p class="text-sm text-gray-500">FBS накладные, поставки, возвраты</p>
+                        </div>
+                    </a>
+
                     <!-- Yandex Market Settings link -->
                     <a x-show="account?.marketplace === 'ym' || account?.marketplace === 'yandex_market'"
                        :href="'/marketplace/' + {{ $accountId }} + '/ym-settings'"

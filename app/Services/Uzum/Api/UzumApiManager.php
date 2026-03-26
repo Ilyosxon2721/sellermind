@@ -6,6 +6,7 @@ namespace App\Services\Uzum\Api;
 
 use App\Models\MarketplaceAccount;
 use App\Services\Uzum\Api\Plugins\FinancePlugin;
+use App\Services\Uzum\Api\Plugins\InvoicePlugin;
 use App\Services\Uzum\Api\Plugins\OrderPlugin;
 use App\Services\Uzum\Api\Plugins\ProductPlugin;
 use App\Services\Uzum\Api\Plugins\ReviewPlugin;
@@ -38,6 +39,11 @@ use App\Services\Uzum\Api\Plugins\StockPlugin;
  *   $stocks = $uzum->stocks()->get();
  *   $uzum->stocks()->updateOne($skuId, 50);
  *
+ *   // Накладные и возвраты
+ *   $invoices = $uzum->invoices()->fbsList();
+ *   $uzum->invoices()->fbsCreate([...]);
+ *   $returns = $uzum->invoices()->returns($shopId);
+ *
  *   // Финансы
  *   $orders = $uzum->finance()->allOrders($shopIds);
  *   $expenses = $uzum->finance()->allExpenses($shopIds);
@@ -60,6 +66,8 @@ final class UzumApiManager
     private ?OrderPlugin $orders = null;
 
     private ?StockPlugin $stocks = null;
+
+    private ?InvoicePlugin $invoices = null;
 
     private ?FinancePlugin $finance = null;
 
@@ -96,6 +104,11 @@ final class UzumApiManager
     public function stocks(): StockPlugin
     {
         return $this->stocks ??= new StockPlugin($this->api);
+    }
+
+    public function invoices(): InvoicePlugin
+    {
+        return $this->invoices ??= new InvoicePlugin($this->api);
     }
 
     public function finance(): FinancePlugin

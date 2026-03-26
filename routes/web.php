@@ -1160,6 +1160,20 @@ Route::middleware('auth.any')->group(function () {
         ]);
     })->name('marketplace.uzum-reviews');
 
+    // Uzum Invoices & Returns
+    Route::get('/marketplace/{accountId}/uzum-invoices', function ($accountId) {
+        $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
+        $uzumShops = \App\Models\MarketplaceShop::where('marketplace_account_id', $accountId)
+            ->orderBy('name')
+            ->get(['id', 'external_id', 'name']);
+
+        return view('pages.marketplace.uzum-invoices', [
+            'accountId' => $accountId,
+            'accountName' => $account->name,
+            'uzumShops' => $uzumShops,
+        ]);
+    })->name('marketplace.uzum-invoices');
+
     // Ozon Settings
     Route::get('/marketplace/{accountId}/ozon-settings', function ($accountId) {
         return view('pages.marketplace.ozon-settings', ['accountId' => $accountId]);

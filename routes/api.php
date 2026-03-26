@@ -629,6 +629,18 @@ Route::middleware('auth.any')->group(function () {
             Route::get('accounts/{account}/sku-schemes', [UzumSettingsController::class, 'skuSchemes']);
             Route::post('accounts/{account}/sku-schemes/bulk', [UzumSettingsController::class, 'bulkUpdateSkuSchemes']);
             Route::post('accounts/{account}/sku-schemes/{skuId}', [UzumSettingsController::class, 'updateSkuScheme']);
+
+            // Накладные и возвраты
+            Route::get('accounts/{account}/invoices/fbs', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'fbsList']);
+            Route::post('accounts/{account}/invoices/fbs', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'fbsCreate']);
+            Route::get('accounts/{account}/invoices/fbs/{invoiceId}', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'fbsDetail']);
+            Route::get('accounts/{account}/invoices/fbs/{invoiceId}/orders', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'fbsOrders']);
+            Route::get('accounts/{account}/invoices/fbs/{invoiceId}/closing-docs', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'fbsClosingDocs']);
+            Route::get('accounts/{account}/invoices/shop/{shopId}', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'shopInvoices']);
+            Route::get('accounts/{account}/invoices/shop/{shopId}/products', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'shopInvoiceProducts']);
+            Route::get('accounts/{account}/returns', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'allReturns']);
+            Route::get('accounts/{account}/returns/shop/{shopId}', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'returns']);
+            Route::get('accounts/{account}/returns/shop/{shopId}/{returnId}', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'returnDetail']);
         });
 
         // Yandex Market
