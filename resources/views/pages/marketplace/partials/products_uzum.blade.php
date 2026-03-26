@@ -1464,7 +1464,7 @@ function uzumProducts(accountId) {
             if (showLoading) this.skuSchemesLoading = true;
             this.skuSchemesError = null;
             try {
-                const r = await fetch(`/api/uzum/accounts/${this.accountId}/sku-schemes`, { headers: this.getHeaders(), credentials: 'include' });
+                const r = await fetch(`/api/marketplace/uzum/accounts/${this.accountId}/sku-schemes`, { headers: this.getHeaders(), credentials: 'include' });
                 if (r.ok) {
                     const data = await r.json();
                     this.skuSchemes = data.schemes || {};
@@ -1488,7 +1488,7 @@ function uzumProducts(accountId) {
             const newDbs = type === 'dbs' ? !scheme.dbsLinked : scheme.dbsLinked;
             this.togglingScheme = skuId + '_' + type;
             try {
-                const r = await fetch(`/api/uzum/accounts/${this.accountId}/sku-schemes/${skuId}`, {
+                const r = await fetch(`/api/marketplace/uzum/accounts/${this.accountId}/sku-schemes/${skuId}`, {
                     method: 'POST', headers: this.getHeaders(), credentials: 'include',
                     body: JSON.stringify({ fbsLinked: newFbs, dbsLinked: newDbs }),
                 });
@@ -1503,7 +1503,7 @@ function uzumProducts(accountId) {
         async connectToScheme(skuId) {
             this.togglingScheme = skuId + '_connect';
             try {
-                const r = await fetch(`/api/uzum/accounts/${this.accountId}/sku-schemes/${skuId}`, {
+                const r = await fetch(`/api/marketplace/uzum/accounts/${this.accountId}/sku-schemes/${skuId}`, {
                     method: 'POST', headers: this.getHeaders(), credentials: 'include',
                     body: JSON.stringify({ fbsLinked: true, dbsLinked: false }),
                 });
@@ -1587,7 +1587,7 @@ function uzumProducts(accountId) {
             const skuIds = (this.selected.raw_payload.skuList || []).map(s => s.skuId).filter(Boolean);
             this.productDbsToggling = true;
             try {
-                const r = await fetch(`/api/uzum/accounts/${this.accountId}/sku-schemes/bulk`, {
+                const r = await fetch(`/api/marketplace/uzum/accounts/${this.accountId}/sku-schemes/bulk`, {
                     method: 'POST', headers: this.getHeaders(), credentials: 'include',
                     body: JSON.stringify({ dbs: newDbs, sku_ids: skuIds }),
                 });
@@ -1627,7 +1627,7 @@ function uzumProducts(accountId) {
             const newDbs = state ? !state.isOn : true;
             this.allDbsToggling = true;
             try {
-                const r = await fetch(`/api/uzum/accounts/${this.accountId}/sku-schemes/bulk`, {
+                const r = await fetch(`/api/marketplace/uzum/accounts/${this.accountId}/sku-schemes/bulk`, {
                     method: 'POST', headers: this.getHeaders(), credentials: 'include',
                     body: JSON.stringify({ dbs: newDbs }),
                 });
