@@ -193,3 +193,4 @@ com.sellermind.scheduler.plist
 
 # PHPStan cache
 /storage/framework/phpstan/
+scripts/__pycache__/
