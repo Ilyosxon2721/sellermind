@@ -420,7 +420,7 @@
                         <!-- Stocks summary -->
                         <div>
                             <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Остатки (итого)</h3>
-                            <div class="grid grid-cols-5 gap-2">
+                            <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
                                 <div class="bg-green-50 rounded-lg p-2.5 text-center">
                                     <p class="text-lg font-bold text-green-700" x-text="selected?.stock_fbs ?? 0"></p>
                                     <p class="text-[10px] text-green-600 font-medium mt-0.5">FBS</p>

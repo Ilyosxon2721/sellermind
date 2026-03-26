@@ -122,9 +122,9 @@
          :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <!-- WB Header - White Clean Style -->
         <header class="bg-white border-b border-gray-200 shadow-sm">
-            <div class="px-6 py-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
+            <div class="px-4 sm:px-6 py-3 sm:py-4">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="flex items-center space-x-3 sm:space-x-4">
                         <a href="/marketplace/{{ $accountId }}" class="text-gray-400 hover:text-gray-600 transition p-1 rounded hover:bg-gray-100">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -132,26 +132,26 @@
                         </a>
                         <div class="flex items-center space-x-3">
                             <!-- WB Logo - Gradient Badge -->
-                            <div class="w-11 h-11 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
-                                <span class="text-white font-bold text-lg tracking-tight">WB</span>
+                            <div class="w-10 sm:w-11 h-10 sm:h-11 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
+                                <span class="text-white font-bold text-base sm:text-lg tracking-tight">WB</span>
                             </div>
                             <div>
-                                <div class="flex items-center space-x-3">
-                                    <h1 class="text-xl font-bold text-gray-900" x-text="orderMode === 'fbs' ? 'FBS Заказы' : (orderMode === 'dbs' ? 'DBS Заказы' : 'Финансовый отчёт')"></h1>
+                                <div class="flex items-center space-x-2 sm:space-x-3">
+                                    <h1 class="text-lg sm:text-xl font-bold text-gray-900" x-text="orderMode === 'fbs' ? 'FBS Заказы' : (orderMode === 'dbs' ? 'DBS Заказы' : 'Финансовый отчёт')"></h1>
                                     <!-- FBS/DBS/FBO Toggle - Pill Style -->
-                                    <div class="flex items-center bg-gray-100 rounded-full p-1">
+                                    <div class="flex items-center bg-gray-100 rounded-full p-0.5 sm:p-1">
                                         <button @click="switchMode('fbs')"
-                                                class="px-4 py-1.5 text-xs font-bold rounded-full transition"
+                                                class="px-3 sm:px-4 py-1 sm:py-1.5 text-xs font-bold rounded-full transition"
                                                 :class="orderMode === 'fbs' ? 'bg-purple-600 text-white shadow' : 'text-gray-600 hover:text-gray-900'">
                                             FBS
                                         </button>
                                         <button @click="switchMode('dbs')"
-                                                class="px-4 py-1.5 text-xs font-bold rounded-full transition"
+                                                class="px-3 sm:px-4 py-1 sm:py-1.5 text-xs font-bold rounded-full transition"
                                                 :class="orderMode === 'dbs' ? 'bg-purple-600 text-white shadow' : 'text-gray-600 hover:text-gray-900'">
                                             DBS
                                         </button>
                                         <button @click="switchMode('fbo')"
-                                                class="px-4 py-1.5 text-xs font-bold rounded-full transition"
+                                                class="px-3 sm:px-4 py-1 sm:py-1.5 text-xs font-bold rounded-full transition"
                                                 :class="orderMode === 'fbo' ? 'bg-purple-600 text-white shadow' : 'text-gray-600 hover:text-gray-900'">
                                             FBO
                                         </button>
@@ -163,7 +163,7 @@
                     </div>
 
                     <!-- Action Buttons -->
-                    <div class="flex items-center space-x-3">
+                    <div class="flex items-center flex-wrap gap-2 sm:gap-3">
                         <!-- WebSocket Indicator - Pill Style -->
                         <div class="flex items-center space-x-2 px-3 py-1.5 rounded-full"
                              :class="wsConnected ? 'bg-green-50 border border-green-200' : 'bg-gray-100 border border-gray-200'">
@@ -181,15 +181,15 @@
                             <svg x-show="!syncInProgress" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                             </svg>
-                            <span x-text="syncInProgress ? 'Синхронизация...' : 'Обновить'"></span>
+                            <span class="hidden sm:inline" x-text="syncInProgress ? 'Синхронизация...' : 'Обновить'"></span>
                         </button>
 
                         <a href="/marketplace/{{ $accountId }}/supplies"
-                           class="px-4 py-2 bg-purple-600 text-white rounded-lg font-bold transition flex items-center space-x-2 hover:bg-purple-700 text-sm shadow">
+                           class="px-3 sm:px-4 py-2 bg-purple-600 text-white rounded-lg font-bold transition flex items-center space-x-2 hover:bg-purple-700 text-sm shadow">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                             </svg>
-                            <span>Поставки</span>
+                            <span class="hidden sm:inline">Поставки</span>
                         </a>
                     </div>
                 </div>
@@ -233,7 +233,7 @@
 
             <!-- Status Tabs (only for FBS mode) - White background -->
             <div x-show="orderMode === 'fbs'" class="bg-white border-b border-gray-200">
-                <div class="px-6 flex items-center space-x-1 overflow-x-auto wb-scroll">
+                <div class="px-4 sm:px-6 flex items-center space-x-1 overflow-x-auto wb-scroll">
                     <template x-for="tab in statusTabs" :key="tab.value">
                         <button @click="activeTab = tab.value; loadOrders()"
                                 class="wb-tab text-sm whitespace-nowrap"
@@ -251,7 +251,7 @@
 
         <main class="flex-1 overflow-y-auto">
             <!-- Messages -->
-            <div x-show="message" x-transition class="px-6 pt-4">
+            <div x-show="message" x-transition class="px-4 sm:px-6 pt-4">
                 <div class="px-4 py-3 rounded-xl flex items-center space-x-3"
                      :class="messageType === 'success' ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'">
                     <svg x-show="messageType === 'success'" class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -262,14 +262,14 @@
             </div>
 
             <!-- Stats Cards - WB Style -->
-            <div class="px-6 py-4">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="px-4 sm:px-6 py-4">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                     <!-- Total Orders -->
                     <div class="wb-card p-4">
                         <div class="flex items-start justify-between">
                             <div>
                                 <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Заказов</p>
-                                <p class="text-3xl font-bold text-gray-900" x-text="displayStats.total_orders || 0"></p>
+                                <p class="text-2xl sm:text-3xl font-bold text-gray-900" x-text="displayStats.total_orders || 0"></p>
                             </div>
                             <div class="w-12 h-12 wb-gradient-subtle rounded-xl flex items-center justify-center">
                                 <svg class="w-6 h-6 text-[#CB11AB]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -314,7 +314,7 @@
                         <div class="flex items-start justify-between">
                             <div>
                                 <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Найдено</p>
-                                <p class="text-3xl font-bold text-[#CB11AB]" x-text="displayStats.total_orders"></p>
+                                <p class="text-2xl sm:text-3xl font-bold text-[#CB11AB]" x-text="displayStats.total_orders"></p>
                             </div>
                             <div class="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
                                 <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -327,7 +327,7 @@
             </div>
 
             <!-- Loading Skeleton -->
-            <div x-show="loading" class="px-6 space-y-4">
+            <div x-show="loading" class="px-4 sm:px-6 space-y-4">
                 <template x-for="i in 5" :key="i">
                     <div class="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
                         <div class="flex items-start space-x-4">
@@ -343,7 +343,7 @@
             </div>
 
             <!-- FBS Empty State (не показывать на вкладке "На сборке" если есть открытые поставки) -->
-            <div x-show="!loading && orderMode === 'fbs' && filteredOrders.length === 0 && !(activeTab === 'in_assembly' && supplies.filter(s => ['draft', 'in_assembly', 'ready'].includes(s.status)).length > 0)" class="px-6 py-12">
+            <div x-show="!loading && orderMode === 'fbs' && filteredOrders.length === 0 && !(activeTab === 'in_assembly' && supplies.filter(s => ['draft', 'in_assembly', 'ready'].includes(s.status)).length > 0)" class="px-4 sm:px-6 py-12">
                 <div class="bg-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
                     <div class="w-20 h-20 mx-auto rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center mb-4">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -360,7 +360,7 @@
 
             <!-- ==================== FBO SECTION ==================== -->
             <!-- FBO Filters -->
-            <div x-show="orderMode === 'fbo'" class="px-6 py-3 bg-gray-50 border-b border-gray-200">
+            <div x-show="orderMode === 'fbo'" class="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200">
                 <div class="flex items-center space-x-4">
                     <!-- Delivery Type Filter -->
                     <select x-model="deliveryTypeFilter" @change="$nextTick(() => {})"
@@ -387,7 +387,7 @@
             </div>
 
             <!-- FBO Empty State -->
-            <div x-show="!loading && orderMode === 'fbo' && fboFilteredOrders.length === 0" class="px-6 py-12">
+            <div x-show="!loading && orderMode === 'fbo' && fboFilteredOrders.length === 0" class="px-4 sm:px-6 py-12">
                 <div class="bg-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
                     <div class="w-20 h-20 mx-auto rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center mb-4">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -403,7 +403,7 @@
             </div>
 
             <!-- FBO Orders Table -->
-            <div x-show="!loading && orderMode === 'fbo' && fboFilteredOrders.length > 0" class="px-6 pb-6">
+            <div x-show="!loading && orderMode === 'fbo' && fboFilteredOrders.length > 0" class="px-4 sm:px-6 pb-6">
                 <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
                     <div class="overflow-x-auto">
                         <table class="w-full">
@@ -460,7 +460,7 @@
             <!-- ==================== END FBO SECTION ==================== -->
 
             <!-- FBS: Orders for "На сборке" tab (grouped by supply) -->
-            <div x-show="!loading && orderMode === 'fbs' && activeTab === 'in_assembly'" class="px-6 pb-6 space-y-6">
+            <div x-show="!loading && orderMode === 'fbs' && activeTab === 'in_assembly'" class="px-4 sm:px-6 pb-6 space-y-6">
                 <!-- Create Supply Button -->
                 <div class="flex justify-end">
                     <button @click="openCreateSupplyModal()"
@@ -705,7 +705,7 @@
             </div>
 
             <!-- FBS: Orders for other tabs (simple list) - WB Style -->
-            <div x-show="!loading && orderMode === 'fbs' && activeTab !== 'in_assembly' && filteredOrders.length > 0" class="px-6 pb-6 space-y-3">
+            <div x-show="!loading && orderMode === 'fbs' && activeTab !== 'in_assembly' && filteredOrders.length > 0" class="px-4 sm:px-6 pb-6 space-y-3">
                 <template x-for="order in filteredOrders" :key="order.id">
                     <div class="wb-card overflow-hidden">
                         <div class="flex items-stretch">
