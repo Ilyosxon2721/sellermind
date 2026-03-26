@@ -35,6 +35,7 @@ final class YandexMarketProductCopyService
         return match ($sourceAccount->marketplace) {
             'wb' => $this->copyFromWb($ymAccount, $sourceAccount, $productIds),
             'ozon' => $this->copyFromOzon($ymAccount, $sourceAccount, $productIds),
+            'uzum' => $this->copyFromUzum($ymAccount, $sourceAccount, $productIds),
             default => ['copied' => 0, 'skipped' => 0, 'errors' => ["Копирование из {$sourceAccount->marketplace} не поддерживается"]],
         };
     }
@@ -264,6 +265,175 @@ final class YandexMarketProductCopyService
                 'title' => $ozonProduct->name,
                 'preview_image' => $pictures[0] ?? null,
                 'last_synced_price' => $ozonProduct->price,
+                'status' => MarketplaceProduct::STATUS_PENDING,
+                'raw_payload' => $rawPayload,
+            ]
+        );
+    }
+
+    /**
+     * Копировать карточки из Uzum Market
+     *
+     * Uzum хранит товары в таблице marketplace_products с полными данными в raw_payload.
+     */
+    private function copyFromUzum(MarketplaceAccount $ymAccount, MarketplaceAccount $uzumAccount, array $productIds): array
+    {
+        $query = MarketplaceProduct::where('marketplace_account_id', $uzumAccount->id)
+            ->where('status', MarketplaceProduct::STATUS_ACTIVE);
+
+        if (! empty($productIds)) {
+            $query->whereIn('id', $productIds);
+        }
+
+        $uzumProducts = $query->get();
+
+        $copied = 0;
+        $skipped = 0;
+        $errors = [];
+
+        foreach ($uzumProducts as $uzumProduct) {
+            try {
+                $payload = $uzumProduct->raw_payload ?? [];
+                $skuList = $payload['skuList'] ?? [];
+                $firstSku = $skuList[0] ?? [];
+
+                $offerId = $firstSku['vendorCode']
+                    ?? $firstSku['barcode']
+                    ?? $uzumProduct->external_offer_id
+                    ?? 'UZUM-' . $uzumProduct->external_product_id;
+
+                $existing = MarketplaceProduct::where('marketplace_account_id', $ymAccount->id)
+                    ->where('external_offer_id', $offerId)
+                    ->first();
+
+                if ($existing && $existing->status === 'synced') {
+                    $skipped++;
+
+                    continue;
+                }
+
+                $mp = $this->createMarketplaceProductFromUzum($ymAccount, $uzumProduct, $offerId);
+
+                $this->client->syncProducts($ymAccount, [$mp]);
+
+                $copied++;
+            } catch (\Throwable $e) {
+                $errors[] = [
+                    'source_id' => $uzumProduct->id,
+                    'title' => $uzumProduct->title,
+                    'error' => $e->getMessage(),
+                ];
+                Log::warning('Ошибка копирования Uzum→YM', [
+                    'uzum_product_id' => $uzumProduct->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return compact('copied', 'skipped', 'errors');
+    }
+
+    /**
+     * Создать MarketplaceProduct из данных Uzum-карточки
+     */
+    private function createMarketplaceProductFromUzum(
+        MarketplaceAccount $ymAccount,
+        MarketplaceProduct $uzumProduct,
+        string $offerId
+    ): MarketplaceProduct {
+        $payload = $uzumProduct->raw_payload ?? [];
+        $skuList = $payload['skuList'] ?? [];
+        $firstSku = $skuList[0] ?? [];
+
+        // Извлекаем изображения из разных форматов Uzum API
+        $pictures = [];
+        $imageFields = ['photos', 'photoGallery', 'images', 'galleryImages'];
+        foreach ($imageFields as $field) {
+            if (! empty($payload[$field]) && is_array($payload[$field])) {
+                foreach ($payload[$field] as $img) {
+                    $url = is_string($img) ? $img : ($img['url'] ?? $img['photo'] ?? $img['link'] ?? null);
+                    if ($url) {
+                        $pictures[] = $url;
+                    }
+                }
+                break; // Берём из первого непустого поля
+            }
+        }
+
+        // Fallback на preview/main image
+        if (empty($pictures)) {
+            $previewFields = ['previewImg', 'image', 'photo', 'thumbnail', 'mainImage', 'coverImage', 'photoUrl', 'imageUrl'];
+            foreach ($previewFields as $field) {
+                if (! empty($payload[$field])) {
+                    $pictures[] = $payload[$field];
+
+                    break;
+                }
+            }
+        }
+
+        // Fallback на preview_image из MarketplaceProduct
+        if (empty($pictures) && $uzumProduct->preview_image) {
+            $pictures[] = $uzumProduct->preview_image;
+        }
+
+        // SKU-level изображения
+        foreach ($skuList as $sku) {
+            $skuImgFields = ['image', 'photo', 'skuImage', 'imageUrl'];
+            foreach ($skuImgFields as $field) {
+                if (! empty($sku[$field]) && ! in_array($sku[$field], $pictures)) {
+                    $pictures[] = $sku[$field];
+
+                    break;
+                }
+            }
+        }
+
+        // Штрихкод
+        $barcode = $firstSku['barcode'] ?? $uzumProduct->external_sku ?? null;
+
+        // Описание (Uzum не всегда хранит описание в raw_payload)
+        $description = $payload['description'] ?? '';
+
+        // Характеристики если есть
+        if (! empty($payload['characteristics']) && is_array($payload['characteristics'])) {
+            $charLines = [];
+            foreach ($payload['characteristics'] as $char) {
+                $title = $char['title'] ?? $char['name'] ?? null;
+                $value = $char['value'] ?? null;
+                if ($title && $value) {
+                    $charLines[] = "{$title}: {$value}";
+                }
+            }
+            if (! empty($charLines) && empty($description)) {
+                $description = implode("\n", $charLines);
+            }
+        }
+
+        $rawPayload = [
+            'source' => 'uzum',
+            'source_id' => $uzumProduct->id,
+            'uzum_product_id' => $uzumProduct->external_product_id,
+            'name' => $payload['title'] ?? $uzumProduct->title ?? '',
+            'description' => $description,
+            'brand' => $payload['brand'] ?? null,
+            'vendor_code' => $firstSku['vendorCode'] ?? $offerId,
+            'barcode' => $barcode,
+            'pictures' => array_slice(array_unique($pictures), 0, 10),
+            'price' => (float) ($uzumProduct->last_synced_price ?? $firstSku['price'] ?? 0),
+        ];
+
+        return MarketplaceProduct::updateOrCreate(
+            [
+                'marketplace_account_id' => $ymAccount->id,
+                'external_offer_id' => $offerId,
+            ],
+            [
+                'product_id' => $uzumProduct->product_id,
+                'title' => $payload['title'] ?? $uzumProduct->title,
+                'category' => $payload['category'] ?? $uzumProduct->category,
+                'preview_image' => $pictures[0] ?? $uzumProduct->preview_image,
+                'last_synced_price' => $uzumProduct->last_synced_price,
                 'status' => MarketplaceProduct::STATUS_PENDING,
                 'raw_payload' => $rawPayload,
             ]
