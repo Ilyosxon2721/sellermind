@@ -72,6 +72,15 @@ class MarketplaceOrderController extends Controller
             ]);
         }
 
+        if ($account && $account->marketplace === 'ym') {
+            $orders = $this->loadYmOrders($request, $account);
+
+            return response()->json([
+                'orders' => $orders,
+                'meta' => ['total' => count($orders)],
+            ]);
+        }
+
         // Если маркетплейс не указан или не поддерживается
         return response()->json([
             'orders' => [],
@@ -641,6 +650,12 @@ class MarketplaceOrderController extends Controller
 
         if ($account && $account->marketplace === 'ozon') {
             $stats = $this->statsOzon($request, $account);
+
+            return response()->json($stats);
+        }
+
+        if ($account && $account->marketplace === 'ym') {
+            $stats = $this->statsYm($request, $account);
 
             return response()->json($stats);
         }
@@ -1363,6 +1378,73 @@ class MarketplaceOrderController extends Controller
             ->when($request->to, fn ($q) => $q->where('created_at_ozon', '<=', Carbon::parse($request->to)->endOfDay()))
             ->selectRaw('status, count(*) as cnt')
             ->groupBy('status')
+            ->pluck('cnt', 'status');
+
+        return [
+            'total_orders' => $total,
+            'total_amount' => $query->sum('total_price'),
+            'by_status' => $byStatus->toArray(),
+        ];
+    }
+
+    private function loadYmOrders(Request $request, MarketplaceAccount $account): array
+    {
+        $query = \App\Models\YandexMarketOrder::query()->where('marketplace_account_id', $account->id);
+
+        if ($request->status) {
+            $query->where('status_normalized', $request->status);
+        }
+        if ($request->from) {
+            $query->where('created_at_ym', '>=', Carbon::parse($request->from)->startOfDay());
+        }
+        if ($request->to) {
+            $query->where('created_at_ym', '<=', Carbon::parse($request->to)->endOfDay());
+        }
+
+        $orders = $query->orderByDesc('created_at_ym')->limit(1000)->get();
+
+        return $orders->map(function ($o) {
+            return [
+                'id' => $o->id,
+                'marketplace_account_id' => $o->marketplace_account_id,
+                'external_order_id' => $o->order_id,
+                'status' => $o->status,
+                'status_normalized' => $o->status_normalized,
+                'substatus' => $o->substatus,
+                'total_amount' => $o->total_price,
+                'currency' => $o->currency ?? 'RUB',
+                'customer_name' => $o->customer_name,
+                'delivery_type' => $o->delivery_type,
+                'items_count' => $o->items_count,
+                'ordered_at' => $o->created_at_ym,
+            ];
+        })->all();
+    }
+
+    private function statsYm(Request $request, MarketplaceAccount $account): array
+    {
+        $query = \App\Models\YandexMarketOrder::query()->where('marketplace_account_id', $account->id);
+        if ($request->from) {
+            $query->where('created_at_ym', '>=', Carbon::parse($request->from)->startOfDay());
+        }
+        if ($request->to) {
+            $query->where('created_at_ym', '<=', Carbon::parse($request->to)->endOfDay());
+        }
+
+        $total = $query->count();
+        if ($total === 0) {
+            return [
+                'total_orders' => 0,
+                'total_amount' => 0,
+                'by_status' => [],
+            ];
+        }
+
+        $byStatus = \App\Models\YandexMarketOrder::where('marketplace_account_id', $account->id)
+            ->when($request->from, fn ($q) => $q->where('created_at_ym', '>=', Carbon::parse($request->from)->startOfDay()))
+            ->when($request->to, fn ($q) => $q->where('created_at_ym', '<=', Carbon::parse($request->to)->endOfDay()))
+            ->selectRaw('status_normalized as status, count(*) as cnt')
+            ->groupBy('status_normalized')
             ->pluck('cnt', 'status');
 
         return [
