@@ -637,6 +637,7 @@ Route::middleware('auth.any')->group(function () {
             Route::get('accounts/{account}/campaigns', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'campaigns']);
             Route::put('accounts/{account}/settings', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'saveSettings']);
             Route::post('accounts/{account}/sync-catalog', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'syncCatalog']);
+            Route::post('accounts/{account}/copy-products', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'copyProducts']);
             Route::post('accounts/{account}/sync-orders', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'syncOrders']);
             Route::get('accounts/{account}/orders', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'orders']);
 
