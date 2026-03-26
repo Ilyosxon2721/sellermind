@@ -6,6 +6,7 @@ namespace App\Services\Marketplaces\Wildberries;
 
 use App\Events\MarketplaceDataChanged;
 use App\Events\MarketplaceSyncProgress;
+use App\Helpers\BroadcastHelper;
 use App\Models\MarketplaceAccount;
 use App\Models\Supply;
 use App\Models\WbOrder;
@@ -76,7 +77,7 @@ class WildberriesOrderService
         Log::info('Fetching new WB FBS orders', ['account_id' => $account->id]);
 
         // Broadcast start of fetching
-        broadcast(new MarketplaceSyncProgress(
+        BroadcastHelper::safeAll(new MarketplaceSyncProgress(
             $account->company_id,
             $account->id,
             'started',
@@ -127,7 +128,7 @@ class WildberriesOrderService
         }
 
         // Broadcast completion/progress update
-        broadcast(new MarketplaceSyncProgress(
+        BroadcastHelper::safeAll(new MarketplaceSyncProgress(
             $account->company_id,
             $account->id,
             'completed',
@@ -138,7 +139,7 @@ class WildberriesOrderService
 
         // Broadcast data change if any orders affected
         if ($synced > 0 || $created > 0) {
-            broadcast(new MarketplaceDataChanged(
+            BroadcastHelper::safeAll(new MarketplaceDataChanged(
                 $account->company_id,
                 $account->id,
                 'orders',
@@ -178,7 +179,7 @@ class WildberriesOrderService
         ]);
 
         // Broadcast start of fetching
-        broadcast(new MarketplaceSyncProgress(
+        BroadcastHelper::safeAll(new MarketplaceSyncProgress(
             $account->company_id,
             $account->id,
             'started',
@@ -313,7 +314,7 @@ class WildberriesOrderService
         }
 
         // Broadcast completion
-        broadcast(new MarketplaceSyncProgress(
+        BroadcastHelper::safeAll(new MarketplaceSyncProgress(
             $account->company_id,
             $account->id,
             'completed',
@@ -324,7 +325,7 @@ class WildberriesOrderService
 
         // Broadcast data change if any orders affected
         if ($synced > 0 || $created > 0 || $updated > 0) {
-            broadcast(new MarketplaceDataChanged(
+            BroadcastHelper::safeAll(new MarketplaceDataChanged(
                 $account->company_id,
                 $account->id,
                 'orders',
@@ -364,7 +365,7 @@ class WildberriesOrderService
         ]);
 
         // Broadcast start of sync
-        broadcast(new MarketplaceSyncProgress(
+        BroadcastHelper::safeAll(new MarketplaceSyncProgress(
             $account->company_id,
             $account->id,
             'started',
@@ -421,7 +422,7 @@ class WildberriesOrderService
         }
 
         // Broadcast completion with summary
-        broadcast(new MarketplaceSyncProgress(
+        BroadcastHelper::safeAll(new MarketplaceSyncProgress(
             $account->company_id,
             $account->id,
             'completed',
@@ -432,7 +433,7 @@ class WildberriesOrderService
 
         // Broadcast data change
         if ($synced > 0 || $created > 0 || $updated > 0) {
-            broadcast(new MarketplaceDataChanged(
+            BroadcastHelper::safeAll(new MarketplaceDataChanged(
                 $account->company_id,
                 $account->id,
                 'orders',
@@ -1495,7 +1496,7 @@ class WildberriesOrderService
             });
 
         if ($updated > 0) {
-            broadcast(new \App\Events\MarketplaceDataChanged(
+            BroadcastHelper::safeAll(new MarketplaceDataChanged(
                 $account->company_id,
                 $account->id,
                 'orders',

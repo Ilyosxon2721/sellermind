@@ -6,18 +6,19 @@ namespace App\Services\Marketplaces;
 
 use App\Events\MarketplaceOrdersUpdated;
 use App\Events\MarketplaceSyncProgress;
+use App\Helpers\BroadcastHelper;
 use App\Jobs\SyncWildberriesSupplies;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceOrder;
 use App\Models\MarketplaceOrderItem;
 use App\Models\MarketplaceProduct;
 use App\Models\MarketplaceSyncLog;
+use App\Models\VariantMarketplaceLink;
 use App\Services\Marketplaces\Wildberries\WildberriesHttpClient;
 use App\Services\Marketplaces\Wildberries\WildberriesOrderService;
 use App\Services\Marketplaces\Wildberries\WildberriesPriceService;
 use App\Services\Marketplaces\Wildberries\WildberriesProductService;
 use App\Services\Marketplaces\Wildberries\WildberriesStockService;
-use App\Models\VariantMarketplaceLink;
 use App\Services\Stock\StockSyncService;
 use App\Services\Uzum\UzumOrderSyncService;
 use Carbon\Carbon;
@@ -282,7 +283,7 @@ class MarketplaceSyncService
 
         try {
             // Отправляем событие о начале синхронизации
-            broadcast(new MarketplaceSyncProgress(
+            BroadcastHelper::safeAll(new MarketplaceSyncProgress(
                 $account->company_id,
                 $account->id,
                 'started',
@@ -296,7 +297,7 @@ class MarketplaceSyncService
                 $orderService = new WildberriesOrderService($httpClient);
 
                 // 1. Загружаем ВСЕ FBS заказы (не только новые)
-                broadcast(new MarketplaceSyncProgress(
+                BroadcastHelper::safeAll(new MarketplaceSyncProgress(
                     $account->company_id,
                     $account->id,
                     'progress',
@@ -307,7 +308,7 @@ class MarketplaceSyncService
                 $allOrdersResult = $orderService->fetchAllOrders($account);
 
                 // 2. Затем синхронизируем детальные данные из Statistics API (финансовые данные)
-                broadcast(new MarketplaceSyncProgress(
+                BroadcastHelper::safeAll(new MarketplaceSyncProgress(
                     $account->company_id,
                     $account->id,
                     'progress',
@@ -318,7 +319,7 @@ class MarketplaceSyncService
                 $syncResult = $orderService->syncOrders($account, $from);
 
                 // 3. Синхронизируем поставки и пересчитываем статусы заказов, чтобы вкладки «В доставке»/«Архив» не пустовали
-                broadcast(new MarketplaceSyncProgress(
+                BroadcastHelper::safeAll(new MarketplaceSyncProgress(
                     $account->company_id,
                     $account->id,
                     'progress',
@@ -335,7 +336,7 @@ class MarketplaceSyncService
                     Log::info("Archived {$archived} old orders for account {$account->id}");
                 }
 
-                broadcast(new MarketplaceSyncProgress(
+                BroadcastHelper::safeAll(new MarketplaceSyncProgress(
                     $account->company_id,
                     $account->id,
                     'completed',
@@ -350,7 +351,7 @@ class MarketplaceSyncService
 
             // Для Uzum используем новый UzumOrderSyncService
             if ($account->marketplace === 'uzum' || $account->isUzum()) {
-                broadcast(new MarketplaceSyncProgress(
+                BroadcastHelper::safeAll(new MarketplaceSyncProgress(
                     $account->company_id,
                     $account->id,
                     'progress',
@@ -362,7 +363,7 @@ class MarketplaceSyncService
                 $daysBack = (int) ceil($from->diffInDays($to, true)) ?: 30;
                 $stats = $uzumSync->sync($account, $daysBack);
 
-                broadcast(new MarketplaceSyncProgress(
+                BroadcastHelper::safeAll(new MarketplaceSyncProgress(
                     $account->company_id,
                     $account->id,
                     'completed',
@@ -377,7 +378,7 @@ class MarketplaceSyncService
 
             $client = $this->registry->getClientForAccount($account);
 
-            broadcast(new MarketplaceSyncProgress(
+            BroadcastHelper::safeAll(new MarketplaceSyncProgress(
                 $account->company_id,
                 $account->id,
                 'progress',
@@ -391,7 +392,7 @@ class MarketplaceSyncService
                 $ordersData = $client->fetchOrders($account, $from, $to);
             }
 
-            broadcast(new MarketplaceSyncProgress(
+            BroadcastHelper::safeAll(new MarketplaceSyncProgress(
                 $account->company_id,
                 $account->id,
                 'progress',
@@ -422,7 +423,7 @@ class MarketplaceSyncService
 
             // Для WB: дополнительно запрашиваем статусы заказов
             if ($account->marketplace === 'wb' && count($ordersData) > 0 && method_exists($client, 'fetchOrderStatuses')) {
-                broadcast(new MarketplaceSyncProgress(
+                BroadcastHelper::safeAll(new MarketplaceSyncProgress(
                     $account->company_id,
                     $account->id,
                     'progress',
@@ -453,7 +454,7 @@ class MarketplaceSyncService
             $log->markAsSuccess('Fetched '.count($ordersData)." orders (created: {$created}, updated: {$updated})");
 
             // Отправляем событие о завершении синхронизации
-            broadcast(new MarketplaceSyncProgress(
+            BroadcastHelper::safeAll(new MarketplaceSyncProgress(
                 $account->company_id,
                 $account->id,
                 'completed',
@@ -465,7 +466,7 @@ class MarketplaceSyncService
             $log->markAsError($e->getMessage());
 
             // Отправляем событие об ошибке
-            broadcast(new MarketplaceSyncProgress(
+            BroadcastHelper::safeAll(new MarketplaceSyncProgress(
                 $account->company_id,
                 $account->id,
                 'error',
