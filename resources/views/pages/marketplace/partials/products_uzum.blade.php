@@ -1460,11 +1460,12 @@ function uzumProducts(accountId) {
             this.skuLinks = []; this.skuSchemes = {}; this.skuSchemesLoading = true; this.loadProductLinks(); this.loadSkuSchemes();
             if (!item.raw_payload) this.loadRaw(item.id);
         },
-        async loadSkuSchemes(showLoading = true) {
+        async loadSkuSchemes(showLoading = true, refresh = false) {
             if (showLoading) this.skuSchemesLoading = true;
             this.skuSchemesError = null;
             try {
-                const r = await fetch(`/api/marketplace/uzum/accounts/${this.accountId}/sku-schemes`, { headers: this.getHeaders(), credentials: 'include' });
+                const url = `/api/marketplace/uzum/accounts/${this.accountId}/sku-schemes` + (refresh ? '?refresh=1' : '');
+                const r = await fetch(url, { headers: this.getHeaders(), credentials: 'include' });
                 if (r.ok) {
                     const data = await r.json();
                     this.skuSchemes = data.schemes || {};
@@ -1509,7 +1510,8 @@ function uzumProducts(accountId) {
                 });
                 const data = await r.json();
                 if (r.ok) {
-                    await this.loadSkuSchemes(false);
+                    // Перезагружаем с ?refresh=1 чтобы сбросить серверный кэш
+                    await this.loadSkuSchemes(false, true);
                 } else {
                     alert(data.message || 'Ошибка подключения к FBS/DBS');
                 }

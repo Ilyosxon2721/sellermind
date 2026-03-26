@@ -340,10 +340,7 @@ class UzumSettingsController extends Controller
 
             $updatedRecords = $result['payload']['updatedRecords'] ?? $result['updatedRecords'] ?? 0;
 
-            if ($updatedRecords === 0) {
-                return response()->json(['message' => 'Uzum не применил изменение (updatedRecords=0).'], 422);
-            }
-
+            // updatedRecords=0 не ошибка — SKU может быть уже в нужном состоянии
             return response()->json([
                 'success' => true,
                 'updated_records' => $updatedRecords,
