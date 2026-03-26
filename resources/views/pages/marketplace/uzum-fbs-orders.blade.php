@@ -32,9 +32,9 @@
          :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <!-- Uzum Header -->
         <header class="bg-white border-b border-gray-200 shadow-sm">
-            <div class="px-6 py-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
+            <div class="px-4 sm:px-6 py-3 sm:py-4">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="flex items-center space-x-3 sm:space-x-4">
                         <a href="/marketplace/{{ $accountId }}" class="text-gray-400 hover:text-gray-600 transition">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -49,7 +49,7 @@
                             </div>
                             <div>
                                 <div class="flex items-center space-x-2">
-                                    <h1 class="text-xl font-bold text-gray-900" x-text="orderMode === 'fbs' ? 'FBS Заказы' : (orderMode === 'dbs' ? 'DBS Заказы' : 'FBO Заказы')"></h1>
+                                    <h1 class="text-lg sm:text-xl font-bold text-gray-900" x-text="orderMode === 'fbs' ? 'FBS Заказы' : (orderMode === 'dbs' ? 'DBS Заказы' : 'FBO Заказы')"></h1>
                                     <!-- FBS/DBS/FBO Toggle -->
                                     <div class="flex items-center bg-gray-100 rounded-lg p-0.5">
                                         <button @click="switchMode('fbs')"
@@ -75,7 +75,7 @@
                     </div>
 
                     <!-- Action Buttons -->
-                    <div class="flex items-center space-x-3">
+                    <div class="flex items-center flex-wrap gap-2 sm:gap-3
                         <!-- Sync Progress -->
                         <div x-show="syncInProgress" class="flex items-center space-x-2 px-3 py-1.5 bg-blue-50 rounded-full">
                             <svg class="w-4 h-4 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -137,14 +137,14 @@
                             <svg x-show="!syncInProgress" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                             </svg>
-                            <span x-text="syncInProgress ? 'Синхронизация...' : 'Синхронизировать'"></span>
+                            <span class="hidden sm:inline" x-text="syncInProgress ? 'Синхронизация...' : 'Синхронизировать'"></span>
                         </button>
                     </div>
                 </div>
             </div>
 
             <!-- Status Tabs -->
-            <div class="px-6 flex items-center space-x-1 border-t border-gray-100 bg-gray-50/50 overflow-x-auto">
+            <div class="px-4 sm:px-6 flex items-center space-x-1 border-t border-gray-100 bg-gray-50/50 overflow-x-auto">
                 <template x-for="tab in statusTabs" :key="tab.value">
                     <button @click="switchTab(tab.value)"
                             class="px-5 py-3.5 text-sm font-medium border-b-2 transition whitespace-nowrap"
@@ -163,7 +163,7 @@
 
         <main class="flex-1 overflow-y-auto">
             <!-- Messages -->
-            <div x-show="message" x-transition class="px-6 pt-4">
+            <div x-show="message" x-transition class="px-4 sm:px-6 pt-4">
                 <div class="px-4 py-3 rounded-xl flex items-center space-x-3"
                      :class="messageType === 'success' ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'">
                     <svg x-show="messageType === 'success'" class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -182,18 +182,18 @@
             </div>
 
             <!-- Statistics Panel -->
-            <div class="px-6 py-4">
+            <div class="px-4 sm:px-6 py-4">
                 <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-                    <div class="flex items-center justify-between mb-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                         <h3 class="font-semibold text-gray-900 flex items-center space-x-2">
                             <svg class="w-5 h-5 text-[#3A007D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                             </svg>
                             <span>Статистика заказов</span>
                         </h3>
-                        <div class="flex items-center space-x-2">
+                        <div class="flex items-center flex-wrap gap-2">
                             <!-- Quick Date Filters -->
-                            <div class="flex items-center space-x-1 mr-4">
+                            <div class="flex items-center space-x-1 sm:mr-4">
                                 <button @click="setToday()" class="px-3 py-1.5 text-xs font-medium rounded-lg transition"
                                         :class="isToday ? 'bg-[#3A007D] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">Сегодня</button>
                                 <button @click="setYesterday()" class="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">Вчера</button>
@@ -207,49 +207,49 @@
                                    class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#3A007D] focus:border-[#3A007D]">
                         </div>
                     </div>
-                    <div class="grid grid-cols-5 gap-4">
-                        <div class="text-center p-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
-                            <div class="text-3xl font-bold text-gray-900" x-text="orderMode === 'fbs' ? (schemeStats.fbs_count || 0) : (orderMode === 'dbs' ? (schemeStats.dbs_count || 0) : (fboStats.fbo_count || 0))"></div>
-                            <div class="text-sm text-gray-600 mt-1">Всего</div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
+                            <div class="text-2xl sm:text-3xl font-bold text-gray-900" x-text="orderMode === 'fbs' ? (schemeStats.fbs_count || 0) : (orderMode === 'dbs' ? (schemeStats.dbs_count || 0) : (fboStats.fbo_count || 0))"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">Всего</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                            <div class="text-2xl font-bold text-gray-900" x-text="formatPrice(orderMode === 'fbs' ? (schemeStats.fbs_amount || 0) : (orderMode === 'dbs' ? (schemeStats.dbs_amount || 0) : (fboStats.fbo_amount || 0)))"></div>
-                            <div class="text-sm text-gray-600 mt-1">Сумма</div>
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100">
+                            <div class="text-lg sm:text-2xl font-bold text-gray-900" x-text="formatPrice(orderMode === 'fbs' ? (schemeStats.fbs_amount || 0) : (orderMode === 'dbs' ? (schemeStats.dbs_amount || 0) : (fboStats.fbo_amount || 0)))"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">Сумма</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl border border-pink-100" x-show="orderMode === 'fbs'">
-                            <div class="text-3xl font-bold text-[#F4488D]" x-text="stats.by_status?.new || 0"></div>
-                            <div class="text-sm text-gray-600 mt-1">Новых</div>
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl border border-pink-100" x-show="orderMode === 'fbs'">
+                            <div class="text-2xl sm:text-3xl font-bold text-[#F4488D]" x-text="stats.by_status?.new || 0"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">Новых</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100" x-show="orderMode === 'fbo'">
-                            <div class="text-3xl font-bold text-blue-600" x-text="fboStats.fbs_count || 0"></div>
-                            <div class="text-sm text-gray-600 mt-1">FBS</div>
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100" x-show="orderMode === 'fbo'">
+                            <div class="text-2xl sm:text-3xl font-bold text-blue-600" x-text="fboStats.fbs_count || 0"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">FBS</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100" x-show="orderMode === 'dbs'">
-                            <div class="text-3xl font-bold text-green-600" x-text="schemeStats.edbs_count || 0"></div>
-                            <div class="text-sm text-gray-600 mt-1">EDBS</div>
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100" x-show="orderMode === 'dbs'">
+                            <div class="text-2xl sm:text-3xl font-bold text-green-600" x-text="schemeStats.edbs_count || 0"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">EDBS</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100" x-show="orderMode === 'fbs'">
-                            <div class="text-3xl font-bold text-amber-600" x-text="stats.by_status?.in_assembly || 0"></div>
-                            <div class="text-sm text-gray-600 mt-1">В сборке</div>
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100" x-show="orderMode === 'fbs'">
+                            <div class="text-2xl sm:text-3xl font-bold text-amber-600" x-text="stats.by_status?.in_assembly || 0"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">В сборке</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-100" x-show="orderMode === 'fbo'">
-                            <div class="text-3xl font-bold text-purple-600" x-text="fboStats.fbo_count || 0"></div>
-                            <div class="text-sm text-gray-600 mt-1">FBO</div>
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-100" x-show="orderMode === 'fbo'">
+                            <div class="text-2xl sm:text-3xl font-bold text-purple-600" x-text="fboStats.fbo_count || 0"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">FBO</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border border-orange-100" x-show="orderMode === 'dbs'">
-                            <div class="text-3xl font-bold text-orange-600" x-text="schemeStats.dbs_only_count || 0"></div>
-                            <div class="text-sm text-gray-600 mt-1">DBS</div>
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border border-orange-100" x-show="orderMode === 'dbs'">
+                            <div class="text-2xl sm:text-3xl font-bold text-orange-600" x-text="schemeStats.dbs_only_count || 0"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">DBS</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                            <div class="text-3xl font-bold text-blue-600" x-text="filteredOrders.length"></div>
-                            <div class="text-sm text-gray-600 mt-1">Показано</div>
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                            <div class="text-2xl sm:text-3xl font-bold text-blue-600" x-text="filteredOrders.length"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">Показано</div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Filters -->
-            <div class="px-6 pb-4">
+            <div class="px-4 sm:px-6 pb-4">
                 <div class="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
                     <div class="flex items-center space-x-4">
                         <div class="flex-1 relative">
@@ -270,7 +270,7 @@
             </div>
 
             <!-- Loading Skeleton -->
-            <div x-show="loading" class="px-6 space-y-4">
+            <div x-show="loading" class="px-4 sm:px-6 space-y-4">
                 <template x-for="i in 5" :key="i">
                     <div class="bg-white rounded-2xl border border-gray-200 p-4 animate-pulse">
                         <div class="flex items-start space-x-4">
@@ -298,7 +298,7 @@
             </div>
 
             <!-- Orders Table View -->
-            <div x-show="!loading && filteredOrders.length > 0" class="px-6 pb-6">
+            <div x-show="!loading && filteredOrders.length > 0" class="px-4 sm:px-6 pb-6">
                 <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
