@@ -40,7 +40,7 @@ class FinanceDebtPayment extends Model
 
     protected $casts = [
         'payment_date' => 'date',
-        'amount' => 'float',
+        'amount' => 'decimal:2',
     ];
 
     public function company(): BelongsTo

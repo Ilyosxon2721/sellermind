@@ -55,10 +55,10 @@ class TaxCalculation extends Model
         'period_year' => 'integer',
         'period_month' => 'integer',
         'period_quarter' => 'integer',
-        'taxable_base' => 'float',
-        'tax_rate' => 'float',
-        'calculated_amount' => 'float',
-        'paid_amount' => 'float',
+        'taxable_base' => 'decimal:2',
+        'tax_rate' => 'decimal:4',
+        'calculated_amount' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
         'due_date' => 'date',
     ];
 

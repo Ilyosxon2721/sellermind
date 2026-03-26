@@ -86,7 +86,7 @@ class TaxCalculationService
                 'confirmed_at' => now(),
             ]);
 
-            $tax->paid_amount += $amount;
+            $tax->paid_amount = ($tax->paid_amount ?? 0) + $amount;
 
             if ($tax->paid_amount >= $tax->calculated_amount) {
                 $tax->status = TaxCalculation::STATUS_PAID;

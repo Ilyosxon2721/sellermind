@@ -68,10 +68,10 @@ class FinanceDebt extends Model
     protected $casts = [
         'debt_date' => 'date',
         'due_date' => 'date',
-        'original_amount' => 'float',
-        'amount_paid' => 'float',
-        'amount_outstanding' => 'float',
-        'interest_rate' => 'float',
+        'original_amount' => 'decimal:2',
+        'amount_paid' => 'decimal:2',
+        'amount_outstanding' => 'decimal:2',
+        'interest_rate' => 'decimal:4',
         'written_off_at' => 'datetime',
     ];
 

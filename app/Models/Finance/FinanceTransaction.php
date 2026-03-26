@@ -53,9 +53,9 @@ class FinanceTransaction extends Model
     protected $casts = [
         'transaction_date' => 'date',
         'confirmed_at' => 'datetime',
-        'amount' => 'float',
-        'exchange_rate' => 'float',
-        'amount_base' => 'float',
+        'amount' => 'decimal:2',
+        'exchange_rate' => 'decimal:6',
+        'amount_base' => 'decimal:2',
         'tags' => 'array',
         'metadata' => 'array',
     ];
