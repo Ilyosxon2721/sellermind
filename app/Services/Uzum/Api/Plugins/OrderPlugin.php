@@ -137,11 +137,4 @@ final class OrderPlugin
         );
     }
 
-    /**
-     * Получить причины возврата
-     */
-    public function returnReasons(): array
-    {
-        return $this->api->call(UzumEndpoints::FBS_ORDER_RETURN_REASONS);
-    }
 }
