@@ -64,11 +64,11 @@ class Supply extends Model
     }
 
     /**
-     * Получить заказы в поставке
+     * Получить заказы в поставке (поставки — только WB)
      */
     public function orders(): HasMany
     {
-        return $this->hasMany(MarketplaceOrder::class, 'supply_id', 'external_supply_id');
+        return $this->hasMany(WbOrder::class, 'supply_id', 'external_supply_id');
     }
 
     /**

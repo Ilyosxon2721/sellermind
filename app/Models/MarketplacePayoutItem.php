@@ -49,14 +49,29 @@ class MarketplacePayoutItem extends Model
         return $this->belongsTo(MarketplacePayout::class, 'marketplace_payout_id');
     }
 
-    public function order(): BelongsTo
+    /**
+     * Получить заказ из соответствующей таблицы маркетплейса
+     */
+    public function findOrder(): ?object
     {
-        return $this->belongsTo(MarketplaceOrder::class, 'marketplace_order_id');
-    }
+        if (! $this->marketplace_order_id) {
+            return null;
+        }
 
-    public function orderItem(): BelongsTo
-    {
-        return $this->belongsTo(MarketplaceOrderItem::class, 'marketplace_order_item_id');
+        $account = $this->payout?->account;
+        if (! $account) {
+            return null;
+        }
+
+        $modelClass = match ($account->marketplace) {
+            'wb' => WbOrder::class,
+            'uzum' => UzumOrder::class,
+            'ozon' => OzonOrder::class,
+            'ym' => YandexMarketOrder::class,
+            default => null,
+        };
+
+        return $modelClass ? $modelClass::find($this->marketplace_order_id) : null;
     }
 
     /**

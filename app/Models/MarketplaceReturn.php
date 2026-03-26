@@ -32,14 +32,24 @@ class MarketplaceReturn extends Model
         ];
     }
 
+    /**
+     * Получить заказ — таблица определяется по аккаунту маркетплейса
+     * @deprecated Таблица marketplace_orders удалена, используйте findOrder()
+     */
     public function order(): BelongsTo
     {
-        return $this->belongsTo(MarketplaceOrder::class, 'marketplace_order_id');
+        // Заглушка: таблица marketplace_orders удалена
+        return $this->belongsTo(self::class, 'marketplace_order_id')->whereRaw('1 = 0');
     }
 
+    /**
+     * Позиция заказа
+     * @deprecated Таблица marketplace_order_items удалена
+     */
     public function orderItem(): BelongsTo
     {
-        return $this->belongsTo(MarketplaceOrderItem::class, 'marketplace_order_item_id');
+        // Заглушка: таблица marketplace_order_items удалена
+        return $this->belongsTo(self::class, 'marketplace_order_item_id')->whereRaw('1 = 0');
     }
 
     /**

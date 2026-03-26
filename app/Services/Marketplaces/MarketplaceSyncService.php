@@ -4,13 +4,10 @@
 
 namespace App\Services\Marketplaces;
 
-use App\Events\MarketplaceOrdersUpdated;
 use App\Events\MarketplaceSyncProgress;
 use App\Helpers\BroadcastHelper;
 use App\Jobs\SyncWildberriesSupplies;
 use App\Models\MarketplaceAccount;
-use App\Models\MarketplaceOrder;
-use App\Models\MarketplaceOrderItem;
 use App\Models\MarketplaceProduct;
 use App\Models\MarketplaceSyncLog;
 use App\Models\VariantMarketplaceLink;
@@ -506,193 +503,12 @@ class MarketplaceSyncService
         }
     }
 
-    /**
-     * Broadcast orders update event via WebSocket
-     */
-    protected function broadcastOrdersUpdate(MarketplaceAccount $account, int $newOrdersCount): void
-    {
-        try {
-            // Получаем статистику по заказам
-            $stats = MarketplaceOrder::where('marketplace_account_id', $account->id)
-                ->selectRaw('
-                    COUNT(*) as total_orders,
-                    SUM(CASE WHEN wb_status_group = "new" THEN 1 ELSE 0 END) as new_count,
-                    SUM(CASE WHEN wb_status_group = "assembling" THEN 1 ELSE 0 END) as assembling_count,
-                    SUM(CASE WHEN wb_status_group = "shipping" THEN 1 ELSE 0 END) as shipping_count,
-                    SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) as completed_count,
-                    SUM(CASE WHEN wb_status_group = "canceled" THEN 1 ELSE 0 END) as canceled_count
-                ')
-                ->first();
-
-            $statsArray = [
-                'new' => (int) $stats->new_count,
-                'in_assembly' => (int) $stats->assembling_count,
-                'in_delivery' => (int) $stats->shipping_count,
-                'completed' => (int) $stats->completed_count,
-                'cancelled' => (int) $stats->canceled_count,
-            ];
-
-            // Отправляем событие
-            broadcast(new MarketplaceOrdersUpdated(
-                $account->company_id,
-                $account->id,
-                $newOrdersCount,
-                $statsArray
-            ));
-        } catch (Throwable $e) {
-            // Логируем ошибку, но не прерываем процесс синхронизации
-            \Log::error('Failed to broadcast orders update', [
-                'account_id' => $account->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    /**
-     * Create or update order from marketplace data
-     */
-    protected function upsertOrder(MarketplaceAccount $account, array $orderData): string
-    {
-        $externalId = $orderData['external_order_id'] ?? null;
-
-        if (! $externalId) {
-            return 'skipped';
-        }
-
-        $order = MarketplaceOrder::where('marketplace_account_id', $account->id)
-            ->where('external_order_id', $externalId)
-            ->first();
-
-        $isNew = ! $order;
-
-        // Парсим дату с учётом миллисекундных отметок (Uzum присылает ms), TZ Asia/Tashkent
-        $orderedAt = null;
-        if (isset($orderData['ordered_at'])) {
-            $val = $orderData['ordered_at'];
-            try {
-                if (is_numeric($val)) {
-                    $num = (float) $val;
-                    if ($num > 1000000000000) { // миллисекунды
-                        $orderedAt = Carbon::createFromTimestampMs((int) $num, 'Asia/Tashkent');
-                    } else { // секунды
-                        $orderedAt = Carbon::createFromTimestamp((int) $num, 'Asia/Tashkent');
-                    }
-                } else {
-                    $orderedAt = Carbon::parse($val, 'Asia/Tashkent');
-                }
-            } catch (\Throwable $e) {
-                Log::warning('Ошибка парсинга даты заказа маркетплейса', ['value' => $val ?? null, 'error' => $e->getMessage()]);
-                $orderedAt = null;
-            }
-        }
-
-        $updateData = [
-            'status' => $orderData['status'] ?? null,
-            'customer_name' => $orderData['customer_name'] ?? null,
-            'customer_phone' => $orderData['customer_phone'] ?? null,
-            'total_amount' => $orderData['total_amount'] ?? 0,
-            'currency' => $orderData['currency'] ?? null,
-            'ordered_at' => $orderedAt,
-            'updated_at_mp' => now(),
-            'raw_payload' => $orderData['raw_payload'] ?? null,
-        ];
-
-        // WB-специфичные поля (базовые)
-        if (isset($orderData['supply_id'])) {
-            $updateData['supply_id'] = $orderData['supply_id'];
-        }
-        if (isset($orderData['wb_supplier_status'])) {
-            $updateData['wb_supplier_status'] = $orderData['wb_supplier_status'];
-        }
-        if (isset($orderData['wb_status'])) {
-            $updateData['wb_status'] = $orderData['wb_status'];
-        }
-        if (isset($orderData['delivered_at'])) {
-            $updateData['delivered_at'] = $orderData['delivered_at'];
-        }
-
-        // WB-специфичные поля (расширенные) - согласно ТЗ
-        $wbExtendedFields = [
-            'wb_order_id', 'wb_order_uid', 'wb_rid',
-            'wb_nm_id', 'wb_chrt_id', 'wb_article', 'wb_skus',
-            'wb_warehouse_id', 'wb_office_id', 'wb_offices',
-            'wb_delivery_type', 'wb_cargo_type', 'wb_is_zero_order', 'wb_is_b2b',
-            'wb_address_full', 'wb_address_lat', 'wb_address_lng',
-            'wb_price', 'wb_final_price', 'wb_converted_price', 'wb_converted_final_price',
-            'wb_sale_price', 'wb_scan_price', 'wb_currency_code', 'wb_converted_currency_code',
-            'wb_ddate', 'wb_created_at_utc',
-            'wb_required_meta', 'wb_optional_meta', 'wb_comment',
-            'wb_status_group',
-        ];
-
-        foreach ($wbExtendedFields as $field) {
-            if (isset($orderData[$field])) {
-                $updateData[$field] = $orderData[$field];
-            }
-        }
-
-        $order = MarketplaceOrder::updateOrCreate(
-            [
-                'marketplace_account_id' => $account->id,
-                'external_order_id' => $externalId,
-            ],
-            $updateData
-        );
-
-        // Process order items
-        if (! empty($orderData['items'])) {
-            foreach ($orderData['items'] as $itemData) {
-                $this->upsertOrderItem($order, $itemData);
-            }
-        }
-
-        return $isNew ? 'created' : 'updated';
-    }
-
-    /**
-     * Create or update order item
-     */
-    protected function upsertOrderItem(MarketplaceOrder $order, array $itemData): void
-    {
-        $externalOfferId = $itemData['external_offer_id'] ?? null;
-
-        // Try to find linked product
-        $productId = null;
-        if ($externalOfferId) {
-            $mpProduct = MarketplaceProduct::where('marketplace_account_id', $order->marketplace_account_id)
-                ->where(function ($q) use ($externalOfferId) {
-                    $q->where('external_offer_id', $externalOfferId)
-                        ->orWhere('external_sku', $externalOfferId);
-                })
-                ->first();
-
-            $productId = $mpProduct?->product_id;
-        }
-
-        MarketplaceOrderItem::updateOrCreate(
-            [
-                'marketplace_order_id' => $order->id,
-                'external_offer_id' => $externalOfferId,
-            ],
-            [
-                'product_id' => $productId,
-                'name' => $itemData['name'] ?? null,
-                'quantity' => $itemData['quantity'] ?? 1,
-                'price' => $itemData['price'] ?? null,
-                'total_price' => $itemData['total_price'] ?? null,
-                'raw_payload' => $itemData['raw_payload'] ?? null,
-            ]
-        );
-    }
 
     /**
      * Upsert WB order into dedicated table
      */
     protected function upsertWbOrder(MarketplaceAccount $account, array $orderData): string
     {
-        if (! \Illuminate\Support\Facades\Schema::hasTable('wb_orders')) {
-            return $this->upsertOrder($account, $orderData);
-        }
         $externalId = $orderData['external_order_id'] ?? null;
         if (! $externalId) {
             return 'skipped';
@@ -766,9 +582,6 @@ class MarketplaceSyncService
      */
     protected function upsertUzumOrder(MarketplaceAccount $account, array $orderData): string
     {
-        if (! \Illuminate\Support\Facades\Schema::hasTable('uzum_orders')) {
-            return $this->upsertOrder($account, $orderData);
-        }
         $externalId = $orderData['external_order_id'] ?? null;
         if (! $externalId) {
             return 'skipped';
