@@ -173,6 +173,10 @@
                             <span class="text-xs">•</span>
                             <span class="text-sm">Остатки МП</span>
                         </a>
+                        <a href="/product-copy" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('product-copy*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                            <span class="text-xs">•</span>
+                            <span class="text-sm">Копирование карточек</span>
+                        </a>
                     </div>
                 </div>
             </template>

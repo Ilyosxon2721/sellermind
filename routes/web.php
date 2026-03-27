@@ -384,6 +384,11 @@ Route::middleware('auth.any')->group(function () {
         return view('plans.index');
     })->withoutMiddleware('auth')->name('plans.index');
 
+    // Модуль копирования карточек товаров
+    Route::get('/product-copy', function () {
+        return view('pages.product-copy.index');
+    })->name('product-copy.index');
+
     // Marketplace Module
     Route::get('/marketplace', function () {
         return view('pages.marketplace.index');
