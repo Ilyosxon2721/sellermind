@@ -482,6 +482,7 @@ function orderDetails() {
 
             try {
                 const res = await fetch(`/api/sales/${this.orderId}`, {
+                    credentials: 'same-origin',
                     headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
@@ -543,6 +544,7 @@ function orderDetails() {
                 const id = this.getSaleId();
                 const res = await fetch(`/api/sales-management/${id}/confirm`, {
                     method: "POST",
+                    credentials: "same-origin",
                     headers: {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": document.querySelector("meta[name=csrf-token]")?.content}
                 });
                 const data = await res.json();
@@ -563,6 +565,7 @@ function orderDetails() {
                 const id = this.getSaleId();
                 const res = await fetch(`/api/sales-management/${id}/complete`, {
                     method: "POST",
+                    credentials: "same-origin",
                     headers: {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": document.querySelector("meta[name=csrf-token]")?.content}
                 });
                 const data = await res.json();
@@ -583,6 +586,7 @@ function orderDetails() {
                 const id = this.getSaleId();
                 const res = await fetch(`/api/sales-management/${id}/cancel`, {
                     method: "POST",
+                    credentials: "same-origin",
                     headers: {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": document.querySelector("meta[name=csrf-token]")?.content}
                 });
                 const data = await res.json();
@@ -636,6 +640,7 @@ function orderDetails() {
                 for (const edit of this.editItems) {
                     await fetch(`/api/sales-management/${id}/items/${edit.id}`, {
                         method: "PUT",
+                        credentials: "same-origin",
                         headers,
                         body: JSON.stringify({
                             quantity: edit.quantity,
@@ -661,6 +666,7 @@ function orderDetails() {
                 const id = this.getSaleId();
                 const res = await fetch(`/api/sales-management/${id}/revert-draft`, {
                     method: "POST",
+                    credentials: "same-origin",
                     headers: {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": document.querySelector("meta[name=csrf-token]")?.content}
                 });
                 const data = await res.json();
