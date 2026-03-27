@@ -6,9 +6,9 @@ namespace App\Services\Marketplaces;
 
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceShop;
+use App\Services\Uzum\Api\UzumApi;
 use App\Services\Uzum\Api\UzumEndpoints;
 use DateTimeInterface;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -22,10 +22,21 @@ use Illuminate\Support\Facades\Log;
  */
 final class UzumClient implements MarketplaceClientInterface
 {
+    /** @var array<int, UzumApi> Кэш UzumApi по account_id */
+    private array $apiCache = [];
+
     public function __construct(
         private readonly MarketplaceHttpClient $http,
         private readonly IssueDetectorService $issueDetector,
     ) {}
+
+    /**
+     * Получить UzumApi для аккаунта (с кэшированием)
+     */
+    private function getApi(MarketplaceAccount $account): UzumApi
+    {
+        return $this->apiCache[$account->id] ??= new UzumApi($account);
+    }
 
     public function getMarketplaceCode(): string
     {
@@ -172,7 +183,7 @@ final class UzumClient implements MarketplaceClientInterface
     }
 
     /**
-     * Request with retry logic for rate limiting (429 errors)
+     * @deprecated UzumApi уже обрабатывает retry при 429. Оставлен для совместимости.
      */
     protected function requestWithRetry(
         MarketplaceAccount $account,
@@ -182,39 +193,7 @@ final class UzumClient implements MarketplaceClientInterface
         array $body = [],
         int $maxRetries = 3
     ): array {
-        $attempt = 0;
-        $lastException = null;
-
-        while ($attempt < $maxRetries) {
-            try {
-                return $this->request($account, $method, $path, $query, $body);
-            } catch (\RuntimeException $e) {
-                $lastException = $e;
-
-                // Check if it's a rate limit error
-                if (str_contains($e->getMessage(), 'Слишком много запросов') || str_contains($e->getMessage(), '429')) {
-                    $attempt++;
-                    $waitTime = pow(2, $attempt) * 2; // Exponential backoff: 4s, 8s, 16s
-
-                    Log::warning('Uzum rate limit hit, retrying', [
-                        'account_id' => $account->id,
-                        'path' => $path,
-                        'attempt' => $attempt,
-                        'wait_seconds' => $waitTime,
-                    ]);
-
-                    sleep($waitTime);
-
-                    continue;
-                }
-
-                // Not a rate limit error, rethrow immediately
-                throw $e;
-            }
-        }
-
-        // All retries exhausted
-        throw $lastException ?? new \RuntimeException("Превышен лимит запросов после {$maxRetries} попыток");
+        return $this->request($account, $method, $path, $query, $body);
     }
 
     protected function storeProduct(MarketplaceAccount $account, string|int $shopId, array $product): void
@@ -1186,7 +1165,10 @@ final class UzumClient implements MarketplaceClientInterface
     }
 
     /**
-     * Low-level Uzum request wrapper (base URL + auth headers)
+     * Делегирует запрос в UzumApi (единый HTTP-слой)
+     *
+     * UzumApi обрабатывает: авторизацию, retry при 429, refresh токена при 401,
+     * форматирование ошибок. IssueDetector вызывается при ошибках авторизации.
      */
     protected function request(
         MarketplaceAccount $account,
@@ -1195,229 +1177,27 @@ final class UzumClient implements MarketplaceClientInterface
         array $query = [],
         array $body = []
     ): array {
-        $baseUrl = config('uzum.base_url', config('marketplaces.uzum.base_url'));
-        $timeout = (int) config('uzum.timeout', 30);
-
-        $authHeaders = $account->getUzumAuthHeaders();
-
-        $headers = array_merge([
-            'Accept' => 'application/json',
-            'Content-Type' => 'application/json',
-        ], $this->trimHeaders($authHeaders));
-
-        $url = rtrim($baseUrl, '/').'/'.ltrim($path, '/');
-
-        Log::info('Uzum API request', [
-            'account_id' => $account->id,
+        $endpoint = [
             'method' => $method,
-            'url' => $url,
-            'query' => $this->sanitizeForLog($query),
-        ]);
-
-        $verifySsl = config('uzum.verify_ssl', true);
-        $client = Http::timeout($timeout)
-            ->withOptions(['verify' => $verifySsl])
-            ->withHeaders($headers);
-
-        $upper = strtoupper($method);
-        if ($upper === 'GET' && ! empty($query)) {
-            $url = $url.'?'.$this->buildQuery($query);
-            $response = $client->get($url);
-        } else {
-            $response = match ($upper) {
-                'GET' => $client->get($url),
-                'POST' => $client->post($url, $body),
-                'PUT' => $client->put($url, $body),
-                'PATCH' => $client->patch($url, $body),
-                'DELETE' => $client->delete($url, $query),
-                default => throw new \InvalidArgumentException("Unsupported HTTP method: {$method}"),
-            };
-        }
-
-        $status = $response->status();
-        $rawBody = $response->body();
-
-        Log::info('Uzum API response', [
-            'account_id' => $account->id,
-            'method' => $method,
-            'url' => $url,
-            'status' => $status,
-            'body' => mb_substr($rawBody, 0, 1000),
-        ]);
-
-        if (! $response->successful()) {
-            $errorInfo = $this->extractError($rawBody);
-
-            // 400 Bad Request - неверные параметры запроса
-            if ($status === 400) {
-                Log::error('Uzum 400 Bad Request', [
-                    'account_id' => $account->id,
-                    'url' => $url,
-                    'query' => $this->sanitizeForLog($query),
-                    'body' => $this->sanitizeForLog($body),
-                    'response_body' => mb_substr($rawBody, 0, 2000),
-                    'error_info' => $errorInfo,
-                ]);
-            }
-
-            // 401 Unauthorized - проблема с токеном
-            if ($status === 401) {
-                $this->issueDetector->handleApiError(
-                    $account,
-                    401,
-                    $rawBody,
-                    ['url' => $url, 'method' => $method],
-                    'Uzum API request'
-                );
-            }
-
-            if ($status === 403) {
-                Log::warning('Uzum 403 response', [
-                    'account_id' => $account->id,
-                    'url' => $url,
-                    'body' => mb_substr($rawBody, 0, 1000),
-                    'headers' => $this->sanitizeForLog($headers),
-                ]);
-
-                // Регистрируем проблему в системе
-                $this->issueDetector->handleApiError(
-                    $account,
-                    403,
-                    $rawBody,
-                    ['url' => $url, 'method' => $method],
-                    'Uzum API request'
-                );
-
-                throw new \RuntimeException('Доступ запрещён. Проверьте, что токен Uzum активен и имеет необходимые права.');
-            }
-
-            // 429 Too Many Requests - rate limit exceeded
-            if ($status === 429) {
-                Log::warning('Uzum rate limit hit', [
-                    'account_id' => $account->id,
-                    'url' => $url,
-                ]);
-
-                throw new \RuntimeException('Слишком много запросов. Подождите минуту и попробуйте снова.');
-            }
-
-            $message = $this->formatUserFriendlyError($status, $errorInfo, $rawBody);
-            throw new \RuntimeException($message);
-        }
-
-        $json = $response->json();
-
-        return is_array($json) ? $json : [];
-    }
-
-    protected function sanitizeForLog(array $data): array
-    {
-        $sensitive = ['token', 'api_key', 'authorization', 'secret'];
-        array_walk_recursive($data, function (&$value, $key) use ($sensitive) {
-            foreach ($sensitive as $needle) {
-                if (stripos($key, $needle) !== false) {
-                    $value = '***';
-                    break;
-                }
-            }
-        });
-
-        return $data;
-    }
-
-    protected function trimHeaders(array $headers): array
-    {
-        return collect($headers)->map(function ($value, $key) {
-            return is_string($value) ? trim($value) : $value;
-        })->toArray();
-    }
-
-    protected function buildQuery(array $params): string
-    {
-        $parts = [];
-
-        foreach ($params as $key => $value) {
-            if (is_array($value)) {
-                foreach ($value as $item) {
-                    $parts[] = rawurlencode((string) $key).'='.rawurlencode((string) $item);
-                }
-            } else {
-                $parts[] = rawurlencode((string) $key).'='.rawurlencode((string) $value);
-            }
-        }
-
-        return implode('&', $parts);
-    }
-
-    protected function extractError(?string $rawBody): ?string
-    {
-        if (! $rawBody) {
-            return null;
-        }
-
-        $json = json_decode($rawBody, true);
-        if (! is_array($json)) {
-            return null;
-        }
-
-        $code = $json['errors'][0]['code'] ?? $json['code'] ?? null;
-        $message = $json['errors'][0]['message'] ?? $json['message'] ?? null;
-
-        if ($code && $message) {
-            return "{$code}: {$message}";
-        }
-
-        return $message ?? $code;
-    }
-
-    /**
-     * Форматирует сообщение об ошибке в понятном для пользователя виде
-     */
-    protected function formatUserFriendlyError(int $status, ?string $errorInfo, ?string $rawBody): string
-    {
-        // Известные коды ошибок Uzum API
-        $knownErrors = [
-            'open-api-001' => 'Неверный токен. Проверьте API-ключ в настройках.',
-            'open-api-002' => 'Токен истёк. Создайте новый API-ключ в личном кабинете Uzum.',
-            'open-api-003' => 'У токена нет прав для этой операции. Проверьте настройки доступа в Uzum.',
-            'open-api-004' => 'Магазин не найден. Проверьте ID магазина в настройках.',
-            'open-api-005' => 'Товар не найден.',
-            'open-api-006' => 'Заказ не найден.',
+            'path' => $path,
+            'desc' => $path,
+            'auth' => 'api_key',
         ];
 
-        // Проверяем известные коды ошибок
-        if ($errorInfo) {
-            foreach ($knownErrors as $code => $userMessage) {
-                if (stripos($errorInfo, $code) !== false) {
-                    return $userMessage;
-                }
+        try {
+            return $this->getApi($account)->call($endpoint, query: $query, body: $body);
+        } catch (\RuntimeException $e) {
+            $message = $e->getMessage();
+
+            // Регистрируем проблемы авторизации в IssueDetector
+            if (str_contains($message, 'токен') || str_contains($message, '401') || str_contains($message, 'авторизации')) {
+                $this->issueDetector->handleApiError($account, 401, $message, ['path' => $path, 'method' => $method], 'Uzum API request');
+            } elseif (str_contains($message, 'Доступ запрещён') || str_contains($message, '403')) {
+                $this->issueDetector->handleApiError($account, 403, $message, ['path' => $path, 'method' => $method], 'Uzum API request');
             }
+
+            throw $e;
         }
-
-        // Ошибки по HTTP статусу
-        $statusMessages = [
-            400 => $errorInfo ? "400: {$errorInfo}" : 'Неверный запрос: ' . mb_substr($rawBody ?? '', 0, 300),
-            401 => 'Ошибка авторизации. Проверьте токен API в настройках Uzum.',
-            404 => 'Ресурс не найден. Возможно, неверный ID или токен.',
-            500 => 'Ошибка сервера Uzum. Попробуйте позже.',
-            502 => 'Сервер Uzum временно недоступен. Попробуйте через несколько минут.',
-            503 => 'Сервис Uzum на обслуживании. Попробуйте позже.',
-            504 => 'Сервер Uzum не ответил вовремя. Попробуйте позже.',
-        ];
-
-        if (isset($statusMessages[$status])) {
-            return $statusMessages[$status];
-        }
-
-        // Если ничего не подошло, показываем общее сообщение
-        if ($errorInfo) {
-            // Убираем технические детали для пользователя
-            $cleanMessage = preg_replace('/^[\w-]+:\s*/', '', $errorInfo);
-
-            return "Ошибка Uzum: {$cleanMessage}";
-        }
-
-        return "Ошибка соединения с Uzum ({$status}). Попробуйте позже.";
     }
 
     /**

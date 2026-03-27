@@ -47,6 +47,29 @@ final class ProductPlugin
     }
 
     /**
+     * Импорт (создание) нового товара
+     */
+    public function import(array $productData): array
+    {
+        return $this->api->call(
+            UzumEndpoints::PRODUCT_IMPORT,
+            body: $productData,
+        );
+    }
+
+    /**
+     * Обновление существующего товара
+     */
+    public function update(int $productId, array $productData): array
+    {
+        return $this->api->call(
+            UzumEndpoints::PRODUCT_UPDATE,
+            params: ['productId' => $productId],
+            body: $productData,
+        );
+    }
+
+    /**
      * Обновить цены SKU
      */
     public function updatePrices(array $skuPriceList): array
