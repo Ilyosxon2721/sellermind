@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\Company;
 use App\Models\MarketplaceAccount;
 use App\Models\OfflineSale;
 use App\Models\OzonOrder;
@@ -41,12 +42,27 @@ final class SalesAnalyticsService
     ) {}
 
     /**
+     * Установить контекст компании для конвертации валют.
+     * Определяет валюту отображения и пользовательские курсы обмена.
+     */
+    public function forCompany(int $companyId): self
+    {
+        $company = Company::find($companyId);
+        if ($company && $this->currencyService !== null) {
+            $this->currencyService->forCompany($company);
+        }
+
+        return $this;
+    }
+
+    /**
      * Получить общую сводку продаж за период.
      * $accountIds запрашивается один раз и передаётся во все вспомогательные методы.
      */
     public function getOverview(int $companyId, string $period = '30days'): array
     {
         $this->companyId = $companyId;
+        $this->forCompany($companyId);
         $dateRange = $this->getDateRange($period);
 
         // Один запрос для получения ID аккаунтов (используется во всех helper-методах)
@@ -284,12 +300,11 @@ final class SalesAnalyticsService
         $dateRange = $this->getDateRange($period);
         $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
 
-        if ($accountIds->isEmpty()) {
-            return collect();
-        }
+        $result = [];
 
-        // WB Statistics API имеет поля category/subject
-        $wbCategories = DB::table('wildberries_orders')
+        if ($accountIds->isNotEmpty()) {
+            // WB Statistics API имеет поля category/subject
+            $wbCategories = DB::table('wildberries_orders')
             ->whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
             ->where('is_cancel', false)
@@ -356,6 +371,7 @@ final class SalesAnalyticsService
                 'total_revenue' => round($this->convertToDisplay((float) ($ymRow->total_revenue ?? 0), 'RUB'), 2),
             ];
         }
+        } // end if ($accountIds->isNotEmpty())
 
         return collect($result)->sortByDesc('total_revenue')->values();
     }
@@ -369,10 +385,6 @@ final class SalesAnalyticsService
         $this->companyId = $companyId;
         $dateRange = $this->getDateRange($period);
         $accounts = MarketplaceAccount::where('company_id', $companyId)->get();
-
-        if ($accounts->isEmpty()) {
-            return collect();
-        }
 
         $result = [];
 
@@ -392,6 +404,46 @@ final class SalesAnalyticsService
                     'order_count' => $stats['orders'],
                 ];
             }
+        }
+
+        // Ручные продажи (из таблицы sales, фильтр по company_id)
+        $manualRow = DB::table('sale_items')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->where('sales.company_id', $companyId)
+            ->whereBetween('sales.created_at', [$dateRange['from'], $dateRange['to']])
+            ->where('sales.status', '!=', 'cancelled')
+            ->whereNull('sales.deleted_at')
+            ->selectRaw('SUM(sale_items.quantity) as total_quantity, SUM(sale_items.total) as total_revenue, COUNT(DISTINCT sales.id) as order_count')
+            ->first();
+
+        if (($manualRow->order_count ?? 0) > 0) {
+            $result[] = [
+                'marketplace' => 'manual',
+                'account_name' => 'Ручные продажи',
+                'total_quantity' => (int) ($manualRow->total_quantity ?? 0),
+                'total_revenue' => round((float) ($manualRow->total_revenue ?? 0), 2),
+                'order_count' => (int) $manualRow->order_count,
+            ];
+        }
+
+        // Оффлайн продажи (из таблицы offline_sales, фильтр по company_id)
+        $offlineRow = DB::table('offline_sale_items')
+            ->join('offline_sales', 'offline_sale_items.offline_sale_id', '=', 'offline_sales.id')
+            ->where('offline_sales.company_id', $companyId)
+            ->whereBetween('offline_sales.sale_date', [$dateRange['from'], $dateRange['to']])
+            ->whereIn('offline_sales.status', ['confirmed', 'delivered'])
+            ->whereNull('offline_sales.deleted_at')
+            ->selectRaw('SUM(offline_sale_items.quantity) as total_quantity, SUM(offline_sale_items.line_total) as total_revenue, COUNT(DISTINCT offline_sales.id) as order_count')
+            ->first();
+
+        if (($offlineRow->order_count ?? 0) > 0) {
+            $result[] = [
+                'marketplace' => 'offline',
+                'account_name' => 'Оффлайн продажи',
+                'total_quantity' => (int) ($offlineRow->total_quantity ?? 0),
+                'total_revenue' => round((float) ($offlineRow->total_revenue ?? 0), 2),
+                'order_count' => (int) $offlineRow->order_count,
+            ];
         }
 
         return collect($result)->sortByDesc('total_revenue')->values();
