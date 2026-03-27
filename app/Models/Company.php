@@ -121,12 +121,12 @@ class Company extends Model
     }
 
     /**
-     * Активная подписка
+     * Активная подписка (включая trial)
      */
     public function activeSubscription()
     {
         return $this->hasOne(Subscription::class)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'trial'])
             ->latest('starts_at');
     }
 

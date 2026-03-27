@@ -4,15 +4,28 @@
         <p class="text-sm text-gray-500 mt-1">Управление подпиской, балансом и платежами</p>
     </div>
 
-    <!-- Coming Soon Banner -->
-    <div class="bg-amber-50 border border-amber-300 rounded-lg p-4 mb-4">
-        <div class="flex items-center">
-            <svg class="w-5 h-5 text-amber-500 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            <span class="text-amber-800 text-sm font-medium">Данные на этой странице являются демонстрационными. Функция биллинга будет доступна в следующем обновлении.</span>
+    <!-- Trial Banner -->
+    <template x-if="subscription.is_trial">
+        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg p-4 mb-4 text-white">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <div>
+                        <div class="font-semibold">Пробный период</div>
+                        <div class="text-sm text-white/80">
+                            Осталось <span class="font-bold text-white" x-text="subscription.trial_days_remaining"></span> дней.
+                            Полный доступ ко всем функциям.
+                        </div>
+                    </div>
+                </div>
+                <a href="/plans" class="bg-white text-indigo-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-50 transition shrink-0">
+                    Выбрать тариф
+                </a>
+            </div>
         </div>
-    </div>
+    </template>
 
     <!-- Company Selector -->
     <div class="card mb-4">
@@ -28,78 +41,94 @@
     </div>
 
     <div x-show="selectedCompanyId">
-        <!-- Balance and Subscription Overview -->
+        <!-- Subscription & Plan Overview -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <!-- Current Balance -->
-            <div class="card">
-                <div class="card-body">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm font-medium text-gray-500">Текущий баланс</span>
-                        <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                    </div>
-                    <p class="text-2xl font-bold text-gray-900" x-text="formatMoney(billing.balance)"></p>
-                    <button class="btn btn-sm btn-ghost mt-3 w-full opacity-50 cursor-not-allowed" disabled>
-                        Пополнить
-                    </button>
-                </div>
-            </div>
-
             <!-- Subscription Status -->
             <div class="card">
                 <div class="card-body">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-sm font-medium text-gray-500">Подписка</span>
-                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
-                        </svg>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                              :class="{
+                                  'bg-green-100 text-green-800': subscription.status === 'active',
+                                  'bg-indigo-100 text-indigo-800': subscription.status === 'trial',
+                                  'bg-red-100 text-red-800': subscription.status === 'expired',
+                                  'bg-yellow-100 text-yellow-800': subscription.status === 'pending',
+                                  'bg-gray-100 text-gray-800': subscription.status === 'cancelled'
+                              }"
+                              x-text="getStatusLabel(subscription.status)">
+                        </span>
                     </div>
-                    <p class="text-2xl font-bold text-gray-900" x-text="billing.plan || 'Базовый'"></p>
-                    <p class="text-xs text-gray-500 mt-1" x-show="billing.expires_at">
-                        до <span x-text="formatDate(billing.expires_at)"></span>
+                    <p class="text-2xl font-bold text-gray-900" x-text="plan.name || 'Нет плана'"></p>
+                    <p class="text-xs text-gray-500 mt-1" x-show="subscription.ends_at">
+                        до <span x-text="formatDate(subscription.ends_at)"></span>
                     </p>
-                    <button class="btn btn-sm btn-ghost mt-3 w-full opacity-50 cursor-not-allowed" disabled>
-                        Изменить план
-                    </button>
+                    <a href="/plans" class="btn btn-sm btn-primary mt-3 w-full">
+                        <span x-text="subscription.is_trial ? 'Выбрать тариф' : 'Сменить план'"></span>
+                    </a>
                 </div>
             </div>
 
-            <!-- Monthly Usage -->
+            <!-- Plan Price -->
             <div class="card">
                 <div class="card-body">
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm font-medium text-gray-500">Расход в месяц</span>
-                        <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        <span class="text-sm font-medium text-gray-500">Стоимость</span>
+                        <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                     </div>
-                    <p class="text-2xl font-bold text-gray-900" x-text="formatMoney(billing.monthly_usage)"></p>
-                    <p class="text-xs text-gray-500 mt-1">в среднем за последние 3 месяца</p>
+                    <template x-if="subscription.is_trial">
+                        <div>
+                            <p class="text-2xl font-bold text-green-600">Бесплатно</p>
+                            <p class="text-xs text-gray-500 mt-1">Пробный период</p>
+                        </div>
+                    </template>
+                    <template x-if="!subscription.is_trial">
+                        <div>
+                            <p class="text-2xl font-bold text-gray-900" x-text="plan.formatted_price || '—'"></p>
+                            <p class="text-xs text-gray-500 mt-1" x-text="plan.billing_period === 'monthly' ? 'в месяц' : plan.billing_period === 'quarterly' ? 'в квартал' : 'в год'"></p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Days Remaining -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-500">Осталось дней</span>
+                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <p class="text-2xl font-bold" :class="subscription.days_remaining <= 3 ? 'text-red-600' : subscription.days_remaining <= 7 ? 'text-yellow-600' : 'text-gray-900'"
+                       x-text="subscription.days_remaining !== null ? subscription.days_remaining : '—'"></p>
+                    <p class="text-xs text-gray-500 mt-1" x-text="subscription.is_trial ? 'до конца пробного периода' : 'до окончания подписки'"></p>
                 </div>
             </div>
         </div>
 
-        <!-- Limits -->
+        <!-- Usage Limits -->
         <div class="card mb-6">
             <div class="card-body">
                 <h3 class="text-base font-semibold text-gray-900 mb-4">Лимиты использования</h3>
                 <div class="space-y-4">
-                    <template x-for="limit in billing.limits" :key="limit.type">
+                    <template x-for="limit in usageLimits" :key="limit.type">
                         <div>
                             <div class="flex justify-between text-sm mb-1">
                                 <span class="text-gray-700" x-text="limit.name"></span>
                                 <span class="text-gray-600">
-                                    <span x-text="limit.used"></span> / <span x-text="limit.max"></span>
+                                    <span x-text="formatNumber(limit.current)"></span> / <span x-text="formatNumber(limit.max)"></span>
                                 </span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div class="bg-blue-600 h-2 rounded-full"
-                                     :style="`width: ${Math.min((limit.used / limit.max) * 100, 100)}%`"
+                                <div class="h-2 rounded-full transition-all"
+                                     :style="`width: ${Math.min((limit.current / limit.max) * 100, 100)}%`"
                                      :class="{
-                                         'bg-red-600': (limit.used / limit.max) > 0.9,
-                                         'bg-yellow-600': (limit.used / limit.max) > 0.7 && (limit.used / limit.max) <= 0.9,
-                                         'bg-blue-600': (limit.used / limit.max) <= 0.7
+                                         'bg-red-600': (limit.current / limit.max) > 0.9,
+                                         'bg-yellow-500': (limit.current / limit.max) > 0.7 && (limit.current / limit.max) <= 0.9,
+                                         'bg-blue-600': (limit.current / limit.max) <= 0.7
                                      }">
                                 </div>
                             </div>
@@ -109,12 +138,12 @@
             </div>
         </div>
 
-        <!-- Invoices -->
+        <!-- Payment History -->
         <div class="card">
             <div class="card-body">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-base font-semibold text-gray-900">История платежей</h3>
-                    <button class="btn btn-sm btn-ghost" @click="loadInvoices()">
+                    <h3 class="text-base font-semibold text-gray-900">История подписок</h3>
+                    <button class="btn btn-sm btn-ghost" @click="loadHistory()">
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                         </svg>
@@ -122,56 +151,54 @@
                     </button>
                 </div>
 
-                <template x-if="loadingInvoices">
+                <template x-if="loadingHistory">
                     <div class="text-center py-8">
                         <div class="spinner mx-auto"></div>
                         <p class="text-gray-500 mt-2 text-sm">Загрузка...</p>
                     </div>
                 </template>
 
-                <template x-if="!loadingInvoices && invoices.length === 0">
+                <template x-if="!loadingHistory && history.length === 0">
                     <div class="text-center py-8">
                         <svg class="w-12 h-12 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
-                        <p class="text-gray-500 text-sm">Платежей пока нет</p>
+                        <p class="text-gray-500 text-sm">Нет истории подписок</p>
                     </div>
                 </template>
 
-                <div x-show="!loadingInvoices && invoices.length > 0" class="table-container">
+                <div x-show="!loadingHistory && history.length > 0" class="table-container">
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>№</th>
-                                <th>Дата</th>
-                                <th>Описание</th>
-                                <th class="text-right">Сумма</th>
+                                <th>Тариф</th>
                                 <th>Статус</th>
-                                <th>Действия</th>
+                                <th>Период</th>
+                                <th class="text-right">Оплачено</th>
+                                <th>Метод</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <template x-for="invoice in invoices" :key="invoice.id">
+                            <template x-for="item in history" :key="item.id">
                                 <tr>
-                                    <td class="font-mono text-sm" x-text="invoice.number"></td>
-                                    <td class="text-sm" x-text="formatDate(invoice.date)"></td>
-                                    <td class="text-sm" x-text="invoice.description"></td>
-                                    <td class="text-right font-medium" x-text="formatMoney(invoice.amount)"></td>
+                                    <td class="font-medium text-sm" x-text="item.plan"></td>
                                     <td>
                                         <span class="badge"
                                               :class="{
-                                                  'badge-success': invoice.status === 'paid',
-                                                  'badge-warning': invoice.status === 'pending',
-                                                  'badge-danger': invoice.status === 'failed'
+                                                  'badge-success': item.status === 'active',
+                                                  'badge-info': item.status === 'trial',
+                                                  'badge-warning': item.status === 'pending',
+                                                  'badge-danger': item.status === 'expired' || item.status === 'cancelled'
                                               }"
-                                              x-text="getStatusLabel(invoice.status)">
+                                              x-text="getStatusLabel(item.status)">
                                         </span>
                                     </td>
-                                    <td>
-                                        <button class="btn btn-sm btn-ghost text-sm opacity-50 cursor-not-allowed" disabled>
-                                            Скачать
-                                        </button>
+                                    <td class="text-sm text-gray-600">
+                                        <span x-text="formatDate(item.starts_at)"></span>
+                                        <span x-show="item.ends_at"> — <span x-text="formatDate(item.ends_at)"></span></span>
                                     </td>
+                                    <td class="text-right font-medium text-sm" x-text="item.amount_paid > 0 ? formatMoney(item.amount_paid) : '—'"></td>
+                                    <td class="text-sm text-gray-600" x-text="item.payment_method || '—'"></td>
                                 </tr>
                             </template>
                         </tbody>
@@ -190,86 +217,6 @@
             <p class="text-gray-500">Выберите компанию для просмотра биллинга</p>
         </div>
     </div>
-
-    <!-- Top Up Modal -->
-    <div x-show="showTopUpModal" class="modal-overlay" @click.self="showTopUpModal = false">
-        <div class="modal-content max-w-md">
-            <div class="modal-header">
-                <h3 class="modal-title">Пополнить баланс</h3>
-                <button @click="showTopUpModal = false" class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form @submit.prevent="topUpBalance()">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="form-label">Сумма пополнения</label>
-                            <input type="number" class="form-input" x-model="topUpAmount" required min="100" step="100" placeholder="1000">
-                            <p class="text-xs text-gray-500 mt-1">Минимальная сумма: 100 ₽</p>
-                        </div>
-                        <div class="flex gap-2">
-                            <button type="button" class="btn btn-sm btn-ghost" @click="topUpAmount = 1000">1000 ₽</button>
-                            <button type="button" class="btn btn-sm btn-ghost" @click="topUpAmount = 5000">5000 ₽</button>
-                            <button type="button" class="btn btn-sm btn-ghost" @click="topUpAmount = 10000">10000 ₽</button>
-                        </div>
-                    </div>
-                    <div class="flex justify-end gap-2 mt-6">
-                        <button type="button" class="btn btn-ghost" @click="showTopUpModal = false">Отмена</button>
-                        <button type="submit" class="btn btn-primary">Пополнить</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Plans Modal -->
-    <div x-show="showPlansModal" class="modal-overlay" @click.self="showPlansModal = false">
-        <div class="modal-content max-w-4xl">
-            <div class="modal-header">
-                <h3 class="modal-title">Выберите тарифный план</h3>
-                <button @click="showPlansModal = false" class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <template x-for="plan in plans" :key="plan.id">
-                        <div class="card" :class="plan.id === billing.plan ? 'ring-2 ring-blue-500' : ''">
-                            <div class="card-body">
-                                <h4 class="font-semibold text-lg mb-2" x-text="plan.name"></h4>
-                                <p class="text-3xl font-bold text-gray-900 mb-4">
-                                    <span x-text="formatMoney(plan.price)"></span>
-                                    <span class="text-sm text-gray-500 font-normal">/мес</span>
-                                </p>
-                                <ul class="space-y-2 mb-4 text-sm text-gray-600">
-                                    <template x-for="feature in plan.features" :key="feature">
-                                        <li class="flex items-start">
-                                            <svg class="w-5 h-5 text-green-500 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                            </svg>
-                                            <span x-text="feature"></span>
-                                        </li>
-                                    </template>
-                                </ul>
-                                <button
-                                    class="btn w-full"
-                                    :class="plan.id === billing.plan ? 'btn-ghost' : 'btn-primary'"
-                                    @click="changePlan(plan)"
-                                    :disabled="plan.id === billing.plan">
-                                    <span x-text="plan.id === billing.plan ? 'Текущий план' : 'Выбрать план'"></span>
-                                </button>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <script nonce="{{ $cspNonce ?? '' }}">
@@ -277,60 +224,22 @@ function billingTab() {
     return {
         companies: [],
         selectedCompanyId: '',
-        billing: {
-            balance: 0,
-            plan: 'Бесплатный',
-            expires_at: null,
-            monthly_usage: 0,
-            limits: [
-                { type: 'api_calls', name: 'API запросы', used: 0, max: 10000 },
-                { type: 'products', name: 'Товары', used: 0, max: 100 },
-                { type: 'users', name: 'Пользователи', used: 0, max: 5 }
-            ]
+        subscription: {
+            status: null,
+            is_trial: false,
+            trial_days_remaining: 0,
+            days_remaining: null,
+            starts_at: null,
+            ends_at: null,
         },
-        invoices: [],
-        loadingInvoices: false,
-        showTopUpModal: false,
-        showPlansModal: false,
-        topUpAmount: 1000,
-        plans: [
-            {
-                id: 'basic',
-                name: 'Базовый',
-                price: 0,
-                features: [
-                    '100 товаров',
-                    '10,000 API запросов',
-                    '5 пользователей',
-                    'Базовая поддержка'
-                ]
-            },
-            {
-                id: 'pro',
-                name: 'Профессиональный',
-                price: 2990,
-                features: [
-                    '1000 товаров',
-                    '100,000 API запросов',
-                    '20 пользователей',
-                    'Приоритетная поддержка',
-                    'Расширенная аналитика'
-                ]
-            },
-            {
-                id: 'enterprise',
-                name: 'Корпоративный',
-                price: 9990,
-                features: [
-                    'Неограниченно товаров',
-                    'Неограниченно API запросов',
-                    'Неограниченно пользователей',
-                    '24/7 поддержка',
-                    'Все функции',
-                    'Индивидуальные настройки'
-                ]
-            }
-        ],
+        plan: {
+            name: null,
+            formatted_price: null,
+            billing_period: null,
+        },
+        usageLimits: [],
+        history: [],
+        loadingHistory: false,
 
         async init() {
             await this.loadCompanies();
@@ -347,70 +256,69 @@ function billingTab() {
                 }
             } catch (error) {
                 console.error('Error loading companies:', error);
-                if (window.toast) {
-                    window.toast.error('Не удалось загрузить компании');
-                }
             }
         },
 
         async loadBillingInfo() {
             if (!this.selectedCompanyId) return;
 
-            // Биллинг в разработке — данные демонстрационные
-            this.billing = {
-                balance: 0,
-                plan: 'Бесплатный',
-                expires_at: null,
-                monthly_usage: 0,
-                limits: [
-                    { type: 'api_calls', name: 'API запросы', used: 0, max: 10000 },
-                    { type: 'products', name: 'Товары', used: 0, max: 100 },
-                    { type: 'users', name: 'Пользователи', used: 0, max: 5 }
-                ]
-            };
-
-            await this.loadInvoices();
-        },
-
-        async loadInvoices() {
-            if (!this.selectedCompanyId) return;
-            this.loadingInvoices = true;
             try {
-                // TODO: Подключить API биллинга
-                this.invoices = [];
+                const response = await window.api.get('/subscription/status');
+                const data = response.data;
+
+                if (data.has_subscription) {
+                    this.subscription = data.subscription;
+                    this.plan = data.plan;
+
+                    this.usageLimits = [
+                        { type: 'products', name: 'Товары', current: data.usage.products.current, max: data.usage.products.max },
+                        { type: 'orders', name: 'Заказы/мес', current: data.usage.orders.current, max: data.usage.orders.max },
+                        { type: 'ai', name: 'AI запросы', current: data.usage.ai_requests.current, max: data.usage.ai_requests.max },
+                        { type: 'accounts', name: 'Маркетплейсы', current: data.usage.marketplace_accounts.current, max: data.usage.marketplace_accounts.max },
+                        { type: 'users', name: 'Пользователи', current: data.usage.users.current, max: data.usage.users.max },
+                        { type: 'warehouses', name: 'Склады', current: data.usage.warehouses.current, max: data.usage.warehouses.max },
+                    ];
+                } else {
+                    this.subscription = { status: null, is_trial: false, trial_days_remaining: 0, days_remaining: null };
+                    this.plan = { name: null, formatted_price: null, billing_period: null };
+                    this.usageLimits = [];
+                }
+
+                await this.loadHistory();
             } catch (error) {
-                console.error('Error loading invoices:', error);
+                console.error('Error loading billing info:', error);
+                // Fallback для пользователей без подписки
+                this.subscription = { status: null, is_trial: false, trial_days_remaining: 0, days_remaining: null };
+                this.plan = { name: null, formatted_price: null, billing_period: null };
+                this.usageLimits = [];
+            }
+        },
+
+        async loadHistory() {
+            if (!this.selectedCompanyId) return;
+            this.loadingHistory = true;
+            try {
+                const response = await window.api.get('/subscription/history');
+                this.history = response.data.subscriptions || [];
+            } catch (error) {
+                console.error('Error loading history:', error);
+                this.history = [];
             } finally {
-                this.loadingInvoices = false;
-            }
-        },
-
-        async topUpBalance() {
-            if (window.toast) {
-                window.toast.info('Функция пополнения баланса находится в разработке');
-            }
-            this.showTopUpModal = false;
-        },
-
-        async changePlan(plan) {
-            if (window.toast) {
-                window.toast.info('Функция смены тарифа находится в разработке');
-            }
-            this.showPlansModal = false;
-        },
-
-        async downloadInvoice(invoice) {
-            if (window.toast) {
-                window.toast.info('Функция скачивания счетов находится в разработке');
+                this.loadingHistory = false;
             }
         },
 
         formatMoney(amount) {
             return new Intl.NumberFormat('ru-RU', {
                 style: 'currency',
-                currency: 'RUB',
+                currency: 'UZS',
                 minimumFractionDigits: 0
             }).format(amount || 0);
+        },
+
+        formatNumber(num) {
+            if (num >= 999999) return '∞';
+            return new Intl.NumberFormat('ru-RU').format(num);
         },
 
         formatDate(dateString) {
@@ -421,11 +329,13 @@ function billingTab() {
 
         getStatusLabel(status) {
             const labels = {
-                'paid': 'Оплачен',
-                'pending': 'Ожидает',
-                'failed': 'Отклонен'
+                'active': 'Активна',
+                'trial': 'Пробный период',
+                'pending': 'Ожидает оплаты',
+                'expired': 'Истекла',
+                'cancelled': 'Отменена'
             };
-            return labels[status] || status;
+            return labels[status] || status || 'Нет подписки';
         }
     };
 }
