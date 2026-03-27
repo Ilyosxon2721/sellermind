@@ -123,6 +123,23 @@
                                 </p>
                             </div>
 
+                            <!-- Тип продажи -->
+                            <div class="md:col-span-2 lg:col-span-3">
+                                <label class="form-label">Тип продажи *</label>
+                                <div class="flex gap-3">
+                                    <template x-for="st in [{value:'retail',label:'Розница',desc:'Штучная продажа покупателю',icon:'🛒'},{value:'wholesale',label:'Опт',desc:'Крупная партия контрагенту',icon:'📦'},{value:'direct',label:'Прямая',desc:'Instagram, звонок, знакомые',icon:'🤝'}]" :key="st.value">
+                                        <button type="button"
+                                                class="flex-1 border rounded-xl p-3 text-center transition-all cursor-pointer"
+                                                :class="selectedSaleType === st.value ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200' : 'border-gray-200 hover:border-gray-300'"
+                                                @click="selectedSaleType = st.value">
+                                            <span class="text-2xl block mb-1" x-text="st.icon"></span>
+                                            <span class="font-semibold text-sm block" x-text="st.label"></span>
+                                            <span class="text-xs text-gray-500 block mt-0.5" x-text="st.desc"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
                             <!-- 4. Контрагент/покупатель -->
                             <div>
                                 <label class="form-label">Контрагент (покупатель)</label>
@@ -471,6 +488,8 @@ function saleCreatePage() {
         productSearch: '',
         counterpartySearch: '',
         selectedCounterpartyName: '',
+
+        selectedSaleType: 'retail',
 
         sale: {
             sale_number: '',
@@ -919,6 +938,23 @@ function saleCreatePage() {
             <div class="flex items-center justify-between">
                 <span class="px-3 py-1 text-xs font-medium rounded-full" :class="getStatusBadgeClass() === 'badge-gray' ? 'bg-gray-100 text-gray-800' : 'bg-blue-100 text-blue-800'" x-text="getStatusLabel()"></span>
                 <span class="native-caption" x-text="sale.sale_number"></span>
+            </div>
+
+            {{-- Тип продажи --}}
+            <div class="native-card">
+                <p class="native-body font-semibold mb-3">Тип продажи *</p>
+                <div class="flex gap-2">
+                    <template x-for="st in [{value:'retail',label:'Розница',desc:'Штучная продажа покупателю',icon:'🛒'},{value:'wholesale',label:'Опт',desc:'Крупная партия контрагенту',icon:'📦'},{value:'direct',label:'Прямая',desc:'Instagram, звонок, знакомые',icon:'🤝'}]" :key="st.value">
+                        <button type="button"
+                                class="flex-1 border rounded-xl p-3 text-center transition-all"
+                                :class="selectedSaleType === st.value ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200' : 'border-gray-200'"
+                                @click="selectedSaleType = st.value">
+                            <span class="text-xl block" x-text="st.icon"></span>
+                            <span class="font-semibold text-xs block mt-1" x-text="st.label"></span>
+                            <span class="text-[10px] text-gray-500 block mt-0.5 leading-tight" x-text="st.desc"></span>
+                        </button>
+                    </template>
+                </div>
             </div>
 
             {{-- Основная информация --}}
