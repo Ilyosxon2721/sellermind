@@ -342,6 +342,14 @@ Route::middleware('auth.any')->group(function () {
         Route::get('{promotion}/stats', [PromotionController::class, 'stats']);
     });
 
+    // Business Analytics (ABC, ABCXYZ, SWOT)
+    Route::prefix('business-analytics')->group(function () {
+        Route::get('abc', [\App\Http\Controllers\Api\BusinessAnalyticsController::class, 'abcAnalysis']);
+        Route::get('abcxyz', [\App\Http\Controllers\Api\BusinessAnalyticsController::class, 'abcxyzAnalysis']);
+        Route::get('swot', [\App\Http\Controllers\Api\BusinessAnalyticsController::class, 'swotAnalysis']);
+        Route::post('swot', [\App\Http\Controllers\Api\BusinessAnalyticsController::class, 'saveSwotAnalysis']);
+    });
+
     // Sales Analytics
     Route::prefix('analytics')->group(function () {
         Route::get('dashboard', [SalesAnalyticsController::class, 'dashboard']);
