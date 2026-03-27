@@ -1084,6 +1084,15 @@ Route::prefix('v1/integration/tokens')->middleware('auth.any')->group(function (
     Route::delete('/{id}', [TokenController::class, 'destroy']);
 });
 
+// ── Модуль копирования карточек товаров ──
+Route::middleware(['web', 'auth.any'])->prefix('product-copy')->group(function () {
+    Route::get('sources', [\App\Http\Controllers\Api\ProductCopyController::class, 'sources']);
+    Route::get('sources/{sourceId}/products', [\App\Http\Controllers\Api\ProductCopyController::class, 'sourceProducts']);
+    Route::get('targets', [\App\Http\Controllers\Api\ProductCopyController::class, 'targets']);
+    Route::post('preview', [\App\Http\Controllers\Api\ProductCopyController::class, 'preview']);
+    Route::post('execute', [\App\Http\Controllers\Api\ProductCopyController::class, 'execute']);
+});
+
 // RISMENT Integration endpoints (requires RISMENT API token)
 Route::prefix('v1/integration')->middleware('risment.auth')->group(function () {
     // Products
