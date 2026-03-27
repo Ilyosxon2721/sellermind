@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Models\ProductVariant;
 use App\Models\UzumOrder;
 use App\Models\VariantMarketplaceLink;
@@ -13,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 
 class StockRecalculateController extends Controller
 {
+    use HasCompanyScope;
     // Statuses that should reduce stock (sold items)
     protected array $soldStatuses = [
         'new', 'in_assembly', 'in_supply', 'accepted_uzum',
@@ -26,11 +30,16 @@ class StockRecalculateController extends Controller
      * Show current stock status and what would be recalculated (dry-run)
      * GET /api/stock/recalculate-preview
      */
+    /**
+     * Предварительный просмотр пересчёта остатков (dry-run)
+     */
     public function preview(Request $request): JsonResponse
     {
+        $companyId = $this->getCompanyId();
         $accountId = $request->query('account_id');
 
         $query = UzumOrder::with('items')
+            ->whereHas('account', fn ($q) => $q->where('company_id', $companyId))
             ->whereIn('status', $this->soldStatuses)
             ->where(function ($q) {
                 $q->where('stock_status', 'none')
@@ -109,8 +118,12 @@ class StockRecalculateController extends Controller
      * POST /api/stock/set-initial
      * Body: { "stocks": { "FH25201-L-PINK": 129, "FH25201-M-PINK": 118, ... } }
      */
+    /**
+     * Установить начальные остатки по SKU
+     */
     public function setInitialStock(Request $request): JsonResponse
     {
+        $companyId = $this->getCompanyId();
         $stocks = $request->input('stocks', []);
 
         if (empty($stocks)) {
@@ -119,9 +132,12 @@ class StockRecalculateController extends Controller
 
         $results = [];
 
-        // Предзагрузка всех вариантов по SKU (N+1 fix)
+        // Предзагрузка всех вариантов по SKU с фильтрацией по компании (N+1 fix)
         $skus = array_keys($stocks);
-        $variants = ProductVariant::whereIn('sku', $skus)->get()->keyBy('sku');
+        $variants = ProductVariant::whereIn('sku', $skus)
+            ->whereHas('product', fn ($q) => $q->where('company_id', $companyId))
+            ->get()
+            ->keyBy('sku');
 
         foreach ($stocks as $sku => $stock) {
             $variant = $variants[$sku] ?? null;
@@ -152,11 +168,16 @@ class StockRecalculateController extends Controller
      * Apply stock recalculation
      * POST /api/stock/recalculate
      */
+    /**
+     * Применить пересчёт остатков
+     */
     public function recalculate(Request $request): JsonResponse
     {
+        $companyId = $this->getCompanyId();
         $accountId = $request->input('account_id');
 
         $query = UzumOrder::with('items')
+            ->whereHas('account', fn ($q) => $q->where('company_id', $companyId))
             ->whereIn('status', $this->soldStatuses)
             ->where(function ($q) {
                 $q->where('stock_status', 'none')
@@ -276,12 +297,17 @@ class StockRecalculateController extends Controller
      * Get all variants with their current stock
      * GET /api/stock/variants
      */
+    /**
+     * Получить все варианты с текущими остатками
+     */
     public function variants(Request $request): JsonResponse
     {
+        $companyId = $this->getCompanyId();
         $search = $request->query('search');
 
         $query = ProductVariant::query()
             ->select(['id', 'sku', 'barcode', 'stock_default'])
+            ->whereHas('product', fn ($q) => $q->where('company_id', $companyId))
             ->where('is_active', true)
             ->where('is_deleted', false);
 

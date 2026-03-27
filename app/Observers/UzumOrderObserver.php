@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Events\StockUpdated;
 use App\Events\UzumOrderUpdated;
+use App\Helpers\BroadcastHelper;
 use App\Models\UzumOrder;
 use App\Models\VariantMarketplaceLink;
 use App\Models\Warehouse\Sku;
@@ -59,15 +60,7 @@ class UzumOrderObserver
      */
     protected function safeBroadcast(UzumOrder $uzumOrder, string $action): void
     {
-        try {
-            broadcast(new UzumOrderUpdated($uzumOrder, $action))->toOthers();
-        } catch (\Exception $e) {
-            Log::debug('UzumOrderObserver broadcast failed', [
-                'order_id' => $uzumOrder->id,
-                'action' => $action,
-                'error' => $e->getMessage(),
-            ]);
-        }
+        BroadcastHelper::safe(new UzumOrderUpdated($uzumOrder, $action));
     }
 
     /**

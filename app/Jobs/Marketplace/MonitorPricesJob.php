@@ -3,6 +3,7 @@
 namespace App\Jobs\Marketplace;
 
 use App\Events\MarketplaceDataChanged;
+use App\Helpers\BroadcastHelper;
 use App\Models\MarketplaceAccount;
 use App\Services\Marketplaces\MarketplaceSyncService;
 use Illuminate\Bus\Queueable;
@@ -83,7 +84,7 @@ class MonitorPricesJob implements ShouldQueue
             $result = $syncService->syncPrices($this->account);
 
             // Отправляем событие об обновлении цен
-            broadcast(new MarketplaceDataChanged(
+            BroadcastHelper::safe(new MarketplaceDataChanged(
                 $this->account->company_id,
                 $this->account->id,
                 'prices',
@@ -91,7 +92,7 @@ class MonitorPricesJob implements ShouldQueue
                 0, // affectedCount
                 null, // changes
                 ['synced_at' => now()->toIso8601String()] // metadata
-            ))->toOthers();
+            ));
 
             Log::info("Prices synced for account {$this->account->id}");
 

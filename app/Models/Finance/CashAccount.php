@@ -7,6 +7,7 @@ use App\Models\MarketplaceAccount;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class CashAccount extends Model
 {
@@ -75,10 +76,6 @@ class CashAccount extends Model
         return $this->belongsTo(MarketplaceAccount::class);
     }
 
-    public function movements(): HasMany
-    {
-        return $this->hasMany(CashMovement::class);
-    }
 
     public function scopeOfType($query, string $type)
     {
@@ -133,8 +130,12 @@ class CashAccount extends Model
      */
     public function updateBalance(float $amount): void
     {
-        $this->balance += $amount;
-        $this->save();
+        DB::transaction(function () use ($amount) {
+            $fresh = static::lockForUpdate()->find($this->id);
+            $fresh->balance += $amount;
+            $fresh->save();
+            $this->balance = $fresh->balance;
+        });
     }
 
     /**
@@ -142,29 +143,17 @@ class CashAccount extends Model
      */
     public function recalculateBalance(): float
     {
-        // Проверяем какая связь используется
-        if (method_exists($this, 'movements') && $this->movements()->exists()) {
-            $movementsSum = $this->movements()
-                ->where('status', 'confirmed')
-                ->selectRaw("SUM(CASE WHEN type IN ('income', 'transfer_in') THEN amount ELSE -amount END) as total")
-                ->value('total') ?? 0;
+        $income = $this->transactions()
+            ->where('status', 'confirmed')
+            ->whereIn('type', ['income', 'transfer_in'])
+            ->sum('amount');
 
-            $this->balance = $this->initial_balance + $movementsSum;
-        } else {
-            // Fallback на старую логику с transactions
-            $income = $this->transactions()
-                ->where('status', 'confirmed')
-                ->whereIn('type', ['income', 'transfer_in'])
-                ->sum('amount');
+        $expense = $this->transactions()
+            ->where('status', 'confirmed')
+            ->whereIn('type', ['expense', 'transfer_out'])
+            ->sum('amount');
 
-            $expense = $this->transactions()
-                ->where('status', 'confirmed')
-                ->whereIn('type', ['expense', 'transfer_out'])
-                ->sum('amount');
-
-            $this->balance = $this->initial_balance + $income - $expense;
-        }
-
+        $this->balance = $this->initial_balance + $income - $expense;
         $this->save();
 
         return $this->balance;
@@ -184,7 +173,7 @@ class CashAccount extends Model
                 'name' => $marketplaceAccount->name.' (выплаты)',
                 'type' => self::TYPE_MARKETPLACE,
                 'marketplace' => $marketplaceAccount->marketplace,
-                'currency_code' => $marketplaceAccount->marketplace === 'uzum' ? 'UZS' : 'RUB',
+                'currency_code' => in_array($marketplaceAccount->marketplace, ['uzum', 'ym']) ? 'UZS' : 'RUB',
                 'balance' => 0,
                 'initial_balance' => 0,
                 'is_active' => true,

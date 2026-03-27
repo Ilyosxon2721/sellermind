@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Kpi;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Kpi\StoreSalesSphereRequest;
+use App\Http\Requests\Kpi\UpdateSalesSphereRequest;
 use App\Models\Kpi\SalesSphere;
 use App\Models\MarketplaceAccount;
 use App\Support\ApiResponder;
@@ -23,14 +25,17 @@ final class SalesSphereController extends Controller
     {
         $companyId = $request->user()->company_id;
 
+        $perPage = min((int) $request->get('per_page', 50), 100);
+
         $spheres = SalesSphere::byCompany($companyId)
             ->with('marketplaceAccount:id,name,marketplace')
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->get();
+            ->paginate($perPage);
 
         // Подгружаем названия привязанных аккаунтов для мульти-привязки
-        $allAccountIds = $spheres->pluck('marketplace_account_ids')->flatten()->filter()->unique()->values()->toArray();
+        $items = collect($spheres->items());
+        $allAccountIds = $items->pluck('marketplace_account_ids')->flatten()->filter()->unique()->values()->toArray();
         $accountsMap = [];
         if (! empty($allAccountIds)) {
             $accountsMap = MarketplaceAccount::whereIn('id', $allAccountIds)
@@ -39,34 +44,26 @@ final class SalesSphereController extends Controller
                 ->toArray();
         }
 
-        $spheres->each(function ($sphere) use ($accountsMap) {
+        $items->each(function ($sphere) use ($accountsMap) {
             $ids = $sphere->marketplace_account_ids ?? [];
             $sphere->linked_accounts = array_values(array_filter(
                 array_map(fn ($id) => $accountsMap[$id] ?? null, $ids)
             ));
         });
 
-        return $this->successResponse($spheres);
+        return $this->successResponse($spheres->items(), [
+            'current_page' => $spheres->currentPage(),
+            'last_page' => $spheres->lastPage(),
+            'per_page' => $spheres->perPage(),
+            'total' => $spheres->total(),
+        ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreSalesSphereRequest $request): JsonResponse
     {
         $companyId = $request->user()->company_id;
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'code' => 'nullable|string|max:50',
-            'description' => 'nullable|string|max:500',
-            'color' => 'nullable|string|max:7',
-            'icon' => 'nullable|string|max:50',
-            'marketplace_account_id' => 'nullable|integer|exists:marketplace_accounts,id',
-            'marketplace_account_ids' => 'nullable|array',
-            'marketplace_account_ids.*' => 'integer|exists:marketplace_accounts,id',
-            'offline_sale_types' => 'nullable|array',
-            'offline_sale_types.*' => 'string|in:retail,wholesale,direct',
-            'is_active' => 'boolean',
-            'sort_order' => 'integer|min:0',
-        ]);
+        $validated = $request->validated();
 
         $validated['company_id'] = $companyId;
         $validated['code'] = $validated['code'] ?? Str::slug($validated['name']);
@@ -101,25 +98,13 @@ final class SalesSphereController extends Controller
         return $this->successResponse($sphere);
     }
 
-    public function update(Request $request, int $id): JsonResponse
+    public function update(UpdateSalesSphereRequest $request, int $id): JsonResponse
     {
         $companyId = $request->user()->company_id;
 
         $sphere = SalesSphere::byCompany($companyId)->findOrFail($id);
 
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'description' => 'nullable|string|max:500',
-            'color' => 'nullable|string|max:7',
-            'icon' => 'nullable|string|max:50',
-            'marketplace_account_id' => 'nullable|integer|exists:marketplace_accounts,id',
-            'marketplace_account_ids' => 'nullable|array',
-            'marketplace_account_ids.*' => 'integer|exists:marketplace_accounts,id',
-            'offline_sale_types' => 'nullable|array',
-            'offline_sale_types.*' => 'string|in:retail,wholesale,direct',
-            'is_active' => 'boolean',
-            'sort_order' => 'integer|min:0',
-        ]);
+        $validated = $request->validated();
 
         // Синхронизируем старое поле с новым
         if (array_key_exists('marketplace_account_ids', $validated)) {
@@ -157,8 +142,8 @@ final class SalesSphereController extends Controller
         $companyId = $request->user()->company_id;
 
         $accounts = MarketplaceAccount::where('company_id', $companyId)
-            ->where('is_active', true)
-            ->select(['id', 'name', 'marketplace'])
+            ->select(['id', 'name', 'marketplace', 'is_active'])
+            ->orderBy('marketplace')
             ->orderBy('name')
             ->get();
 

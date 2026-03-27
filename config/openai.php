@@ -7,13 +7,13 @@ return [
 
     'models' => [
         'text' => env('OPENAI_TEXT_MODEL', 'gpt-4o-mini'),
-        'text_premium' => env('OPENAI_TEXT_PREMIUM_MODEL', 'gpt-5.1'),
+        'text_premium' => env('OPENAI_TEXT_PREMIUM_MODEL', 'gpt-4o'),
         'vision' => env('OPENAI_VISION_MODEL', 'gpt-4o'),
         'image' => env('OPENAI_IMAGE_MODEL', 'dall-e-3'),
         // Agent Mode models
         'agent_default' => env('OPENAI_AGENT_MODEL', 'gpt-4o-mini'),
         // KPI recommendations
-        'kpi' => env('OPENAI_KPI_MODEL', 'gpt-5.1'),
+        'kpi' => env('OPENAI_KPI_MODEL', 'gpt-4o'),
     ],
 
     'defaults' => [

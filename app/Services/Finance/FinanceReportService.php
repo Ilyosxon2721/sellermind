@@ -20,7 +20,7 @@ class FinanceReportService
             ->get();
 
         $byCategory = $transactions->groupBy(fn ($t) => $t->category?->name ?? 'Без категории')
-            ->map(fn ($group) => $group->sum('amount'))
+            ->map(fn ($group) => $group->sum('amount_base'))
             ->sortDesc();
 
         return $byCategory->map(fn ($amount, $name) => [
@@ -45,8 +45,8 @@ class FinanceReportService
         $expenses = $transactions->where('type', FinanceTransaction::TYPE_EXPENSE);
         $expensesByCategory = $this->groupByParentCategory($expenses);
 
-        $totalIncome = $income->sum('amount');
-        $totalExpenses = $expenses->sum('amount');
+        $totalIncome = $income->sum('amount_base');
+        $totalExpenses = $expenses->sum('amount_base');
 
         return [
             'income' => [
@@ -93,8 +93,8 @@ class FinanceReportService
         $runningBalance = 0;
 
         foreach ($grouped as $period => $group) {
-            $income = $group->where('type', FinanceTransaction::TYPE_INCOME)->sum('amount');
-            $expense = $group->where('type', FinanceTransaction::TYPE_EXPENSE)->sum('amount');
+            $income = $group->where('type', FinanceTransaction::TYPE_INCOME)->sum('amount_base');
+            $expense = $group->where('type', FinanceTransaction::TYPE_EXPENSE)->sum('amount_base');
             $net = $income - $expense;
             $runningBalance += $net;
 
@@ -198,7 +198,7 @@ class FinanceReportService
             }
 
             return $t->category?->name ?? 'Без категории';
-        })->map(fn ($group) => $group->sum('amount'))
+        })->map(fn ($group) => $group->sum('amount_base'))
             ->sortDesc()
             ->toArray();
     }
@@ -228,12 +228,12 @@ class FinanceReportService
 
             $children = $rootTransactions->filter(fn ($t) => $t->category?->parent_id === $root->id)
                 ->groupBy(fn ($t) => $t->category?->name ?? 'Другое')
-                ->map(fn ($group) => $group->sum('amount'))
+                ->map(fn ($group) => $group->sum('amount_base'))
                 ->toArray();
 
             $tree[] = [
                 'category' => $root->name,
-                'total' => $rootTransactions->sum('amount'),
+                'total' => $rootTransactions->sum('amount_base'),
                 'children' => $children,
             ];
         }

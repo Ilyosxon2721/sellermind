@@ -70,7 +70,17 @@ class InventoryController extends Controller
         $companyId = $this->getCompanyId();
 
         $validated = $request->validate([
-            'warehouse_id' => 'required|exists:warehouses,id',
+            'warehouse_id' => [
+                'required',
+                function ($attribute, $value, $fail) use ($companyId) {
+                    $exists = \App\Models\Warehouse\Warehouse::where('id', $value)
+                        ->where('company_id', $companyId)
+                        ->exists();
+                    if (! $exists) {
+                        $fail('Склад не найден или не принадлежит компании');
+                    }
+                },
+            ],
             'date' => 'required|date',
             'type' => 'in:full,partial',
             'notes' => 'nullable|string|max:2000',
@@ -238,7 +248,7 @@ class InventoryController extends Controller
             return response()->json(['error' => 'Результаты уже применены'], 400);
         }
 
-        $success = $inventory->applyResults();
+        $success = $inventory->applyResults(auth()->id());
 
         if ($success) {
             return response()->json([

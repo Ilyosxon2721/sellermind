@@ -63,6 +63,16 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->ip());
         });
 
+        // Rate limiter для ИИ-рекомендаций KPI (дорогая операция)
+        RateLimiter::for('kpi-ai', function (Request $request) {
+            return Limit::perMinute(5)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Rate limiter для массового расчёта KPI
+        RateLimiter::for('kpi-calculate', function (Request $request) {
+            return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
+        });
+
         // Register observers
         ProductVariant::observe(ProductVariantObserver::class);
         UzumOrder::observe(UzumOrderObserver::class);
@@ -81,5 +91,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Register event listeners
         Event::listen(StockUpdated::class, SyncStockToMarketplaces::class);
+
+        // KPI events → Telegram уведомления
+        Event::listen(\App\Events\Kpi\KpiBatchCalculated::class, \App\Listeners\Kpi\SendKpiBatchNotifications::class);
+        Event::listen(\App\Events\Kpi\KpiPlanApproved::class, \App\Listeners\Kpi\SendKpiApprovedNotification::class);
     }
 }

@@ -6,6 +6,7 @@ namespace App\Models\Kpi;
 
 use App\Models\Company;
 use App\Models\MarketplaceAccount;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -26,6 +27,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 final class SalesSphere extends Model
 {
+    use HasFactory;
+
     protected $table = 'kpi_sales_spheres';
 
     protected $fillable = [
@@ -38,7 +41,13 @@ final class SalesSphere extends Model
         'marketplace_account_id',
         'marketplace_account_ids',
         'offline_sale_types',
+        'store_ids',
+        'sale_sources',
         'is_active',
+        'is_manual',
+        'label_metric1',
+        'label_metric2',
+        'label_metric3',
         'sort_order',
     ];
 
@@ -46,9 +55,12 @@ final class SalesSphere extends Model
     {
         return [
             'is_active' => 'boolean',
+            'is_manual' => 'boolean',
             'sort_order' => 'integer',
             'marketplace_account_ids' => 'array',
             'offline_sale_types' => 'array',
+            'store_ids' => 'array',
+            'sale_sources' => 'array',
         ];
     }
 
@@ -124,6 +136,43 @@ final class SalesSphere extends Model
     public function scopeByCompany($query, int $companyId)
     {
         return $query->where('company_id', $companyId);
+    }
+
+    /**
+     * Привязана ли сфера к интернет-магазину (StoreOrder)
+     */
+    public function hasStoreLink(): bool
+    {
+        return ! empty($this->store_ids);
+    }
+
+    /**
+     * Привязана ли сфера к ручным/POS продажам (Sale)
+     */
+    public function hasSaleSourceLink(): bool
+    {
+        return ! empty($this->sale_sources);
+    }
+
+    /**
+     * Ручная сфера — данные вводятся вручную, без автосбора
+     */
+    public function isManual(): bool
+    {
+        return $this->is_manual || (! $this->hasMarketplaceLink() && ! $this->hasOfflineSaleLink() && ! $this->hasStoreLink() && ! $this->hasSaleSourceLink());
+    }
+
+    /**
+     * Получить название метрики (с fallback на стандартное)
+     */
+    public function getMetricLabel(int $num): string
+    {
+        return match ($num) {
+            1 => $this->label_metric1 ?? 'Оборот',
+            2 => $this->label_metric2 ?? 'Маржа',
+            3 => $this->label_metric3 ?? 'Заказы',
+            default => '',
+        };
     }
 
     public function scopeActive($query)

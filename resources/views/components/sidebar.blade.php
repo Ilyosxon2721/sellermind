@@ -351,6 +351,10 @@
                             <span class="text-xs">•</span>
                             <span class="text-sm">Калькулятор цен</span>
                         </a>
+                        <a href="/pricing/settings" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('pricing/settings*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                            <span class="text-xs">•</span>
+                            <span class="text-sm">Настройки</span>
+                        </a>
                     </div>
                 </div>
             </template>

@@ -3,6 +3,7 @@
 namespace App\Jobs\Marketplace;
 
 use App\Events\MarketplaceDataChanged;
+use App\Helpers\BroadcastHelper;
 use App\Models\MarketplaceAccount;
 use App\Services\Marketplaces\MarketplaceSyncService;
 use Illuminate\Bus\Queueable;
@@ -83,7 +84,7 @@ class MonitorProductsJob implements ShouldQueue
             $result = $syncService->syncProducts($this->account);
 
             // Отправляем событие об обновлении товаров
-            broadcast(new MarketplaceDataChanged(
+            BroadcastHelper::safe(new MarketplaceDataChanged(
                 $this->account->company_id,
                 $this->account->id,
                 'products',
@@ -91,7 +92,7 @@ class MonitorProductsJob implements ShouldQueue
                 0, // affectedCount
                 null, // changes
                 ['synced_at' => now()->toIso8601String()] // metadata
-            ))->toOthers();
+            ));
 
             Log::info("Products synced for account {$this->account->id}");
 

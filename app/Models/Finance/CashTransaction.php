@@ -7,6 +7,7 @@ use App\Models\Counterparty;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 class CashTransaction extends Model
 {
@@ -170,30 +171,35 @@ class CashTransaction extends Model
         ?int $sourceId = null,
         ?string $sourceType = null
     ): self {
-        $balanceBefore = $account->balance;
-        $balanceAfter = $balanceBefore + $amount;
+        return DB::transaction(function () use ($account, $amount, $reference, $payoutDate, $sourceId, $sourceType) {
+            // Блокируем счёт для атомарного обновления баланса
+            $account = CashAccount::lockForUpdate()->findOrFail($account->id);
 
-        $transaction = self::create([
-            'company_id' => $account->company_id,
-            'cash_account_id' => $account->id,
-            'type' => self::TYPE_INCOME,
-            'operation' => self::OP_MARKETPLACE_PAYOUT,
-            'amount' => $amount,
-            'currency_code' => $account->currency_code,
-            'balance_before' => $balanceBefore,
-            'balance_after' => $balanceAfter,
-            'source_type' => $sourceType,
-            'source_id' => $sourceId,
-            'reference' => $reference,
-            'description' => 'Выплата от маркетплейса',
-            'transaction_date' => $payoutDate,
-            'status' => self::STATUS_CONFIRMED,
-        ]);
+            $balanceBefore = $account->balance;
+            $balanceAfter = $balanceBefore + $amount;
 
-        // Обновляем баланс счёта
-        $account->update(['balance' => $balanceAfter]);
+            $transaction = self::create([
+                'company_id' => $account->company_id,
+                'cash_account_id' => $account->id,
+                'type' => self::TYPE_INCOME,
+                'operation' => self::OP_MARKETPLACE_PAYOUT,
+                'amount' => $amount,
+                'currency_code' => $account->currency_code,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceAfter,
+                'source_type' => $sourceType,
+                'source_id' => $sourceId,
+                'reference' => $reference,
+                'description' => 'Выплата от маркетплейса',
+                'transaction_date' => $payoutDate,
+                'status' => self::STATUS_CONFIRMED,
+            ]);
 
-        return $transaction;
+            // Обновляем баланс счёта
+            $account->update(['balance' => $balanceAfter]);
+
+            return $transaction;
+        });
     }
 
     /**

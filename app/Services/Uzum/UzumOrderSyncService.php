@@ -253,26 +253,6 @@ final class UzumOrderSyncService
         ];
     }
 
-    /**
-     * Получить количество заказов по статусам
-     */
-    public function getOrderCounts(MarketplaceAccount $account, string $shopIds): array
-    {
-        $uzum = new UzumApiManager($account);
-
-        return $uzum->orders()->count($shopIds);
-    }
-
-    /**
-     * Получить детали заказа
-     */
-    public function getOrderDetail(MarketplaceAccount $account, int $orderId): array
-    {
-        $uzum = new UzumApiManager($account);
-
-        return $uzum->orders()->detail($orderId);
-    }
-
     // ─── МАППИНГ ────────────────────────────────────────────────
 
     /**

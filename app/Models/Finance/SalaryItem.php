@@ -28,14 +28,14 @@ class SalaryItem extends Model
     ];
 
     protected $casts = [
-        'base_amount' => 'float',
-        'bonuses' => 'float',
-        'overtime' => 'float',
-        'gross_amount' => 'float',
-        'tax_amount' => 'float',
-        'pension_amount' => 'float',
-        'other_deductions' => 'float',
-        'net_amount' => 'float',
+        'base_amount' => 'decimal:2',
+        'bonuses' => 'decimal:2',
+        'overtime' => 'decimal:2',
+        'gross_amount' => 'decimal:2',
+        'tax_amount' => 'decimal:2',
+        'pension_amount' => 'decimal:2',
+        'other_deductions' => 'decimal:2',
+        'net_amount' => 'decimal:2',
         'is_paid' => 'boolean',
         'paid_at' => 'datetime',
     ];

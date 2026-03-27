@@ -24,6 +24,12 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                         <span>Обновить</span>
                     </button>
+                    <button class="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl transition-all shadow-lg shadow-indigo-500/25 flex items-center space-x-2"
+                            @click="calculatePrices()" :disabled="calculating || !scenarioId">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                        <span x-show="!calculating">Рассчитать цены</span>
+                        <span x-show="calculating">Расчёт...</span>
+                    </button>
                 </div>
             </div>
         </header>
@@ -94,7 +100,6 @@
                         <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Товар</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Артикул</th>
                             <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Себестоимость</th>
                             <template x-for="mp in marketplaces" :key="mp.code">
                                 <th class="px-4 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -104,6 +109,7 @@
                                     </div>
                                 </th>
                             </template>
+                            <th class="px-4 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider" x-show="scenarioId">Рекоменд.</th>
                         </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -135,11 +141,11 @@
                             <tr class="hover:bg-gray-50 transition-colors">
                                 <td class="px-6 py-4">
                                     <div class="text-sm font-semibold text-gray-900" x-text="product.name"></div>
-                                    <div class="text-xs text-gray-400 mt-0.5" x-show="product.count_variants > 0">
+                                    <div class="text-xs text-gray-400 mt-0.5" x-text="product.article || ''"></div>
+                                    <div class="text-xs text-gray-400" x-show="product.count_variants > 0">
                                         <span x-text="product.count_variants"></span> <span x-text="variantLabel(product.count_variants)"></span>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 text-sm text-gray-600" x-text="product.article || '\u2014'"></td>
                                 <td class="px-6 py-4 text-sm text-right text-gray-700" x-text="format(product.purchase_price)"></td>
                                 <template x-for="mp in marketplaces" :key="mp.code">
                                     <td class="px-4 py-4 text-center">
@@ -154,6 +160,17 @@
                                         </template>
                                     </td>
                                 </template>
+                                <td class="px-4 py-4 text-center" x-show="scenarioId">
+                                    <template x-if="getCalc(product.id)">
+                                        <div>
+                                            <div class="text-sm font-semibold text-indigo-600" x-text="format(getCalc(product.id).recommended_price)"></div>
+                                            <div class="text-xs text-gray-400" x-text="'мин: ' + format(getCalc(product.id).min_price)"></div>
+                                        </div>
+                                    </template>
+                                    <template x-if="!getCalc(product.id)">
+                                        <span class="text-gray-300">&mdash;</span>
+                                    </template>
+                                </td>
                             </tr>
                         </template>
                         </tbody>
@@ -206,10 +223,12 @@
             search: '',
             loading: false,
 
-            // Scenarios (kept for future pricing calculations)
+            // Scenarios & calculations
             scenarios: [],
             scenarioId: '',
             calculations: [],
+            calculating: false,
+            calculationsMap: {},
 
             toast: { show: false, message: '', type: 'success' },
 
@@ -335,8 +354,97 @@
                 }
             },
 
+            /**
+             * Получить расчёт для продукта
+             */
+            getCalc(productId) {
+                return this.calculationsMap[productId] || null;
+            },
+
+            /**
+             * Загрузить существующие расчёты для выбранного сценария
+             */
+            async loadCalculations() {
+                if (!this.scenarioId) {
+                    this.calculationsMap = {};
+                    this.calculations = [];
+                    return;
+                }
+                try {
+                    const params = new URLSearchParams({ scenario_id: this.scenarioId });
+                    const productIds = this.products.map(p => p.id);
+                    if (productIds.length) {
+                        productIds.forEach(id => params.append('product_ids[]', id));
+                    }
+                    const resp = await fetch('/api/marketplace/pricing/calculations?' + params.toString(), { headers: this.getAuthHeaders() });
+                    const json = await resp.json();
+                    if (resp.ok) {
+                        const calcs = json.data || [];
+                        this.calculations = calcs;
+                        const map = {};
+                        calcs.forEach(c => {
+                            if (c.product_id && (!map[c.product_id] || c.recommended_price > map[c.product_id].recommended_price)) {
+                                map[c.product_id] = c;
+                            }
+                        });
+                        this.calculationsMap = map;
+                    }
+                } catch (e) {
+                    console.error('loadCalculations error:', e);
+                }
+            },
+
+            /**
+             * Рассчитать цены для всех видимых товаров
+             */
+            async calculatePrices() {
+                if (!this.scenarioId || this.products.length === 0) return;
+                this.calculating = true;
+                try {
+                    const productIds = this.products.map(p => p.id);
+                    const channels = ['WB', 'OZON', 'UZUM', 'YM'];
+                    const promises = channels.map(code =>
+                        fetch('/api/marketplace/pricing/calculate', {
+                            method: 'POST',
+                            headers: this.getAuthHeaders(),
+                            body: JSON.stringify({
+                                scenario_id: parseInt(this.scenarioId),
+                                channel_code: code,
+                                product_ids: productIds
+                            })
+                        }).then(r => r.json()).catch(() => null)
+                    );
+                    const results = await Promise.all(promises);
+                    const map = {};
+                    results.forEach(json => {
+                        if (json && json.data) {
+                            json.data.forEach(c => {
+                                if (c.product_id) {
+                                    if (!map[c.product_id] || c.recommended_price > (map[c.product_id].recommended_price || 0)) {
+                                        map[c.product_id] = c;
+                                    }
+                                }
+                            });
+                        }
+                    });
+                    this.calculationsMap = map;
+                    this.calculations = Object.values(map);
+                    this.showToast('Цены рассчитаны', 'success');
+                } catch (e) {
+                    this.showToast(e.message || 'Ошибка расчёта', 'error');
+                } finally {
+                    this.calculating = false;
+                }
+            },
+
             async init() {
                 await Promise.all([this.loadProducts(), this.loadScenarios()]);
+                if (this.scenarioId) {
+                    await this.loadCalculations();
+                }
+                this.$watch('scenarioId', () => {
+                    this.loadCalculations();
+                });
             }
         }
     }
@@ -345,6 +453,9 @@
 {{-- PWA MODE --}}
 <div class="pwa-only min-h-screen" x-data="pricingPage()" style="background: #f2f2f7;">
     <x-pwa-header title="Цены" :backUrl="'/'">
+        <button @click="calculatePrices()" class="native-header-btn" :disabled="calculating || !scenarioId">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+        </button>
         <button @click="currentPage = 1; loadProducts()" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -449,6 +560,18 @@
                                 </template>
                             </div>
                         </template>
+                    </div>
+
+                    {{-- Recommended price --}}
+                    <div class="mt-3 pt-3 border-t border-gray-100" x-show="scenarioId && getCalc(product.id)">
+                        <div class="flex items-center justify-between">
+                            <span class="native-caption">Рекомендованная:</span>
+                            <span class="text-sm font-bold text-indigo-600" x-text="format(getCalc(product.id)?.recommended_price)"></span>
+                        </div>
+                        <div class="flex items-center justify-between mt-0.5">
+                            <span class="native-caption">Минимальная:</span>
+                            <span class="text-xs text-gray-500" x-text="format(getCalc(product.id)?.min_price)"></span>
+                        </div>
                     </div>
                 </div>
             </template>

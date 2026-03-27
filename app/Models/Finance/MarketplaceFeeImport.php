@@ -41,14 +41,14 @@ class MarketplaceFeeImport extends Model
     protected $casts = [
         'period_from' => 'date',
         'period_to' => 'date',
-        'total_sales' => 'float',
-        'commission_amount' => 'float',
-        'logistics_amount' => 'float',
-        'storage_amount' => 'float',
-        'ads_amount' => 'float',
-        'penalties_amount' => 'float',
-        'other_fees' => 'float',
-        'net_payout' => 'float',
+        'total_sales' => 'decimal:2',
+        'commission_amount' => 'decimal:2',
+        'logistics_amount' => 'decimal:2',
+        'storage_amount' => 'decimal:2',
+        'ads_amount' => 'decimal:2',
+        'penalties_amount' => 'decimal:2',
+        'other_fees' => 'decimal:2',
+        'net_payout' => 'decimal:2',
     ];
 
     public function company(): BelongsTo

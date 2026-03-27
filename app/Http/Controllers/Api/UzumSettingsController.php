@@ -9,6 +9,7 @@ use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceShop;
 use App\Services\Marketplaces\UzumClient;
 use App\Services\Uzum\Api\UzumApiManager;
+use App\Services\Uzum\Api\UzumEndpoints;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -244,7 +245,15 @@ class UzumSettingsController extends Controller
 
         try {
             $uzum = new UzumApiManager($account);
-            $response = $uzum->stocks()->get();
+
+            // Принудительное обновление кэша при ?refresh=1
+            if ($request->boolean('refresh')) {
+                $uzum->api()->flushCache();
+            }
+
+            $response = $request->boolean('refresh')
+                ? $uzum->api()->call(UzumEndpoints::FBS_STOCKS_GET)
+                : $uzum->stocks()->get();
             $skuList = $response['skuAmountList'] ?? $response['payload']['skuAmountList'] ?? [];
 
             $schemes = [];
@@ -331,10 +340,7 @@ class UzumSettingsController extends Controller
 
             $updatedRecords = $result['payload']['updatedRecords'] ?? $result['updatedRecords'] ?? 0;
 
-            if ($updatedRecords === 0) {
-                return response()->json(['message' => 'Uzum не применил изменение (updatedRecords=0).'], 422);
-            }
-
+            // updatedRecords=0 не ошибка — SKU может быть уже в нужном состоянии
             return response()->json([
                 'success' => true,
                 'updated_records' => $updatedRecords,

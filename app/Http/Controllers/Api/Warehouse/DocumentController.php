@@ -48,7 +48,7 @@ class DocumentController extends Controller
             $query->where('created_at', '<=', $request->to);
         }
 
-        return $this->successResponse($query->limit(200)->get());
+        return $this->successResponse($query->paginate($request->integer('per_page', 50)));
     }
 
     public function store(CreateDocumentRequest $request)
@@ -83,7 +83,7 @@ class DocumentController extends Controller
                 if ($attempts >= 3 || ! str_contains($e->getMessage(), 'Duplicate entry')) {
                     Log::error('Ошибка создания складского документа', ['type' => $data['type'], 'warehouse_id' => $data['warehouse_id'], 'attempt' => $attempts, 'error' => $e->getMessage()]);
 
-                    return $this->errorResponse('Ошибка создания документа: '.$e->getMessage(), 'create_failed', null, 422);
+                    return $this->errorResponse('Ошибка создания документа', 'create_failed', null, 422);
                 }
             }
         }
@@ -295,7 +295,18 @@ class DocumentController extends Controller
         }
 
         $data = $request->validate([
-            'warehouse_id' => ['sometimes', 'integer'],
+            'warehouse_id' => [
+                'sometimes',
+                'integer',
+                function ($attribute, $value, $fail) use ($companyId) {
+                    $exists = \App\Models\Warehouse\Warehouse::where('id', $value)
+                        ->where('company_id', $companyId)
+                        ->exists();
+                    if (! $exists) {
+                        $fail('Склад не найден или не принадлежит компании');
+                    }
+                },
+            ],
             'warehouse_to_id' => ['nullable', 'integer'],
             'comment' => ['nullable', 'string'],
             'reason' => ['nullable', 'string'],

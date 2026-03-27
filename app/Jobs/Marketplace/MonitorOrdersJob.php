@@ -3,6 +3,7 @@
 namespace App\Jobs\Marketplace;
 
 use App\Events\MarketplaceDataChanged;
+use App\Helpers\BroadcastHelper;
 use App\Models\MarketplaceAccount;
 use App\Models\WbOrder;
 use App\Services\Marketplaces\MarketplaceSyncService;
@@ -106,7 +107,7 @@ class MonitorOrdersJob implements ShouldQueue
             if ($newOrders > 0 || $hasUpdates) {
                 $changeType = $newOrders > 0 ? 'created' : 'updated';
 
-                broadcast(new MarketplaceDataChanged(
+                BroadcastHelper::safe(new MarketplaceDataChanged(
                     $this->account->company_id,
                     $this->account->id,
                     'orders',
@@ -117,7 +118,7 @@ class MonitorOrdersJob implements ShouldQueue
                         'new_count' => $newOrders,
                         'total_count' => $ordersAfter,
                     ] // metadata
-                ))->toOthers();
+                ));
 
                 Log::info("Orders changed for account {$this->account->id}: {$changeType}, new: {$newOrders}, total: {$ordersAfter}");
             }

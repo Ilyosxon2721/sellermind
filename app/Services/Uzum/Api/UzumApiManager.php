@@ -39,14 +39,14 @@ use App\Services\Uzum\Api\Plugins\StockPlugin;
  *   $stocks = $uzum->stocks()->get();
  *   $uzum->stocks()->updateOne($skuId, 50);
  *
- *   // Накладные
+ *   // Накладные и возвраты
  *   $invoices = $uzum->invoices()->fbsList();
  *   $uzum->invoices()->fbsCreate([...]);
  *   $returns = $uzum->invoices()->returns($shopId);
  *
  *   // Финансы
  *   $orders = $uzum->finance()->allOrders($shopIds);
- *   $summary = $uzum->finance()->expensesSummary($shopIds);
+ *   $expenses = $uzum->finance()->allExpenses($shopIds);
  *
  *   // Отзывы
  *   $reviews = $uzum->reviews()->list();

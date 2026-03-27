@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Events\MarketplaceDataChanged;
 use App\Events\MarketplaceSyncProgress;
+use App\Helpers\BroadcastHelper;
 use App\Jobs\Concerns\HandlesMarketplaceRateLimiting;
 use App\Models\MarketplaceAccount;
 use App\Models\Supply;
@@ -97,7 +98,7 @@ class SyncWildberriesSupplies implements ShouldBeUnique, ShouldQueue
         $orderService = new WildberriesOrderService($httpClient);
 
         // Отправляем событие о начале синхронизации
-        event(new MarketplaceSyncProgress(
+        BroadcastHelper::safeAll(new MarketplaceSyncProgress(
             $account->company_id,
             $account->id,
             'started',
@@ -214,7 +215,7 @@ class SyncWildberriesSupplies implements ShouldBeUnique, ShouldQueue
             ]);
 
             // Отправляем событие об успешном завершении
-            event(new MarketplaceSyncProgress(
+            BroadcastHelper::safeAll(new MarketplaceSyncProgress(
                 $account->company_id,
                 $account->id,
                 'completed',
@@ -230,7 +231,7 @@ class SyncWildberriesSupplies implements ShouldBeUnique, ShouldQueue
             ));
 
             // Сообщаем фронту об изменениях поставок
-            event(new MarketplaceDataChanged(
+            BroadcastHelper::safeAll(new MarketplaceDataChanged(
                 $account->company_id,
                 $account->id,
                 'supplies',
@@ -242,7 +243,7 @@ class SyncWildberriesSupplies implements ShouldBeUnique, ShouldQueue
 
             // И об изменённых заказах (изменение статуса из-за поставок)
             if (($ordersUpdatedBySupplies['updated'] ?? 0) > 0) {
-                event(new MarketplaceDataChanged(
+                BroadcastHelper::safeAll(new MarketplaceDataChanged(
                     $account->company_id,
                     $account->id,
                     'orders',
@@ -261,7 +262,7 @@ class SyncWildberriesSupplies implements ShouldBeUnique, ShouldQueue
             ]);
 
             // Отправляем событие об ошибке
-            event(new MarketplaceSyncProgress(
+            BroadcastHelper::safeAll(new MarketplaceSyncProgress(
                 $account->company_id,
                 $account->id,
                 'error',

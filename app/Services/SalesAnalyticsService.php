@@ -17,9 +17,23 @@ use Illuminate\Support\Facades\DB;
 final class SalesAnalyticsService
 {
     /**
-     * Статусы отменённых заказов (исключаются из расчёта выручки)
+     * Статусы отменённых заказов (исключаются из расчёта выручки).
+     * Yandex Market использует status_normalized: 'cancelled' (CANCELLED) и 'returned' (RETURNED).
+     * Ozon использует поле status: 'cancelled'/'canceled'.
+     * Uzum использует status_normalized.
      */
-    private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELLED', 'CANCELED', 'PENDING_CANCELLATION'];
+    private const CANCELLED_STATUSES = [
+        // Lowercase (status_normalized Uzum/YM, status Ozon)
+        'cancelled',
+        'canceled',
+        'returned',
+        // Uppercase (статусы Yandex Market в поле status, на случай прямых запросов)
+        'CANCELLED',
+        'CANCELED',
+        'RETURNED',
+        // Ozon специфичные
+        'PENDING_CANCELLATION',
+    ];
 
     /**
      * Валюты маркетплейсов: WB, Ozon, YandexMarket — RUB; Uzum — UZS
@@ -1355,6 +1369,13 @@ final class SalesAnalyticsService
             ->selectRaw('COUNT(*) as orders, SUM(total_price) as revenue, SUM(COALESCE(items_count, 1)) as quantity')
             ->first();
 
+        // TODO: Добавить таблицу ozon_order_items для точного подсчёта quantity.
+        // Сейчас используем количество заказов как приближение — у Ozon в поле products
+        // хранится JSON-массив товаров, но агрегация по JSON в SQL нетривиальна.
+        // Когда появится таблица ozon_order_items — заменить на:
+        // DB::table('ozon_orders')
+        //     ->leftJoin('ozon_order_items', 'ozon_orders.id', '=', 'ozon_order_items.ozon_order_id')
+        //     ->selectRaw('COUNT(DISTINCT ozon_orders.id) as orders, COALESCE(SUM(ozon_order_items.quantity), COUNT(DISTINCT ozon_orders.id)) as total_quantity, SUM(ozon_orders.total_price) as revenue')
         return [
             'quantity' => (int) ($row->quantity ?? 0),
             'revenue' => (float) ($row->revenue ?? 0),
@@ -1373,6 +1394,12 @@ final class SalesAnalyticsService
             ->selectRaw('COUNT(*) as orders, SUM(total_price) as revenue, SUM(COALESCE(items_count, 1)) as quantity')
             ->first();
 
+        // TODO: Добавить таблицу yandex_market_order_items для точного подсчёта quantity.
+        // Сейчас используем поле items_count из yandex_market_orders (сумма товаров в заказе).
+        // Когда появится таблица yandex_market_order_items — заменить на:
+        // DB::table('yandex_market_orders')
+        //     ->leftJoin('yandex_market_order_items', 'yandex_market_orders.id', '=', 'yandex_market_order_items.yandex_market_order_id')
+        //     ->selectRaw('COUNT(DISTINCT yandex_market_orders.id) as orders, COALESCE(SUM(yandex_market_order_items.quantity), SUM(yandex_market_orders.items_count)) as total_quantity, SUM(yandex_market_orders.total_price) as revenue')
         return [
             'quantity' => (int) ($row->quantity ?? 0),
             'revenue' => (float) ($row->revenue ?? 0),

@@ -86,7 +86,7 @@ class TaxCalculationService
                 'confirmed_at' => now(),
             ]);
 
-            $tax->paid_amount += $amount;
+            $tax->paid_amount = ($tax->paid_amount ?? 0) + $amount;
 
             if ($tax->paid_amount >= $tax->calculated_amount) {
                 $tax->status = TaxCalculation::STATUS_PAID;
@@ -134,14 +134,14 @@ class TaxCalculationService
 
         return match ($taxType) {
             // Упрощёнка - с дохода
-            TaxCalculation::TYPE_SIMPLIFIED => (clone $transactions)->income()->sum('amount'),
+            TaxCalculation::TYPE_SIMPLIFIED => (clone $transactions)->income()->sum('amount_base'),
 
             // Налог на прибыль - доход минус расход
-            TaxCalculation::TYPE_INCOME_TAX => (clone $transactions)->income()->sum('amount')
-                - (clone $transactions)->expense()->sum('amount'),
+            TaxCalculation::TYPE_INCOME_TAX => (clone $transactions)->income()->sum('amount_base')
+                - (clone $transactions)->expense()->sum('amount_base'),
 
             // НДС - с дохода
-            TaxCalculation::TYPE_VAT => (clone $transactions)->income()->sum('amount'),
+            TaxCalculation::TYPE_VAT => (clone $transactions)->income()->sum('amount_base'),
 
             // Социальный налог - с ФОТ (зарплаты)
             TaxCalculation::TYPE_SOCIAL_TAX => $this->getPayrollBase($companyId, $from, $to),
@@ -162,7 +162,7 @@ class TaxCalculationService
             ->confirmed()
             ->where('category_id', $salaryCategory->id)
             ->inPeriod($from, $to)
-            ->sum('amount');
+            ->sum('amount_base');
     }
 
     protected function getDueDate(string $periodType, int $year, ?int $month, ?int $quarter): Carbon

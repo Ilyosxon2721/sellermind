@@ -109,12 +109,127 @@
                         </div>
                     </div>
 
+                    {{-- Прогноз на конец месяца --}}
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6" x-show="forecast.total_days">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Прогноз на конец месяца</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-blue-600" x-text="(forecast.progress_percent || 0).toFixed(1) + '%'"></div>
+                                <div class="text-sm text-gray-500">Прошло месяца</div>
+                                <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                    <div class="bg-blue-600 h-2 rounded-full transition-all" :style="'width:' + Math.min(forecast.progress_percent || 0, 100) + '%'"></div>
+                                </div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold"
+                                     :class="(forecast.forecast_achievement || 0) >= 100 ? 'text-green-600' : 'text-yellow-600'"
+                                     x-text="(forecast.forecast_achievement || 0).toFixed(1) + '%'"></div>
+                                <div class="text-sm text-gray-500">Прогноз выполнения</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-green-600" x-text="forecast.on_track_count || 0"></div>
+                                <div class="text-sm text-gray-500">В плане</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-red-600" x-text="forecast.at_risk_count || 0"></div>
+                                <div class="text-sm text-gray-500">Под угрозой</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Рейтинг сотрудников --}}
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6" x-show="ranking.length > 0">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Рейтинг сотрудников</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b text-left text-gray-500">
+                                        <th class="pb-3 pr-4">#</th>
+                                        <th class="pb-3 pr-4">Сотрудник</th>
+                                        <th class="pb-3 pr-4 text-right">Выполнение</th>
+                                        <th class="pb-3 pr-4 text-right">Бонус</th>
+                                        <th class="pb-3 text-right">Планов</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="item in ranking" :key="item.employee_id">
+                                        <tr class="border-b last:border-0">
+                                            <td class="py-3 pr-4 font-bold" x-text="item.rank"></td>
+                                            <td class="py-3 pr-4" x-text="item.employee_name"></td>
+                                            <td class="py-3 pr-4 text-right">
+                                                <span class="px-2 py-1 rounded-full text-xs font-medium"
+                                                    :class="{
+                                                        'bg-green-100 text-green-800': item.avg_achievement >= 100,
+                                                        'bg-yellow-100 text-yellow-800': item.avg_achievement >= 80 && item.avg_achievement < 100,
+                                                        'bg-red-100 text-red-800': item.avg_achievement < 80
+                                                    }"
+                                                    x-text="item.avg_achievement.toFixed(1) + '%'">
+                                                </span>
+                                            </td>
+                                            <td class="py-3 pr-4 text-right" x-text="Number(item.total_bonus).toLocaleString() + ' сум'"></td>
+                                            <td class="py-3 text-right" x-text="item.plans_count"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     {{-- Кнопка рассчитать --}}
                     <div class="flex justify-end mb-4">
                         <button @click="calculateAll()" :disabled="calculating"
                                 class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50">
                             <span x-text="calculating ? '{{ __('kpi.dashboard.calculating') }}' : '{{ __('kpi.dashboard.calculate') }}'"></span>
                         </button>
+                    </div>
+
+                    {{-- Инфо: как считается оборот --}}
+                    <div x-data="{ showInfo: false }" class="mb-4">
+                        <button @click="showInfo = !showInfo" class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span x-text="showInfo ? 'Скрыть' : 'Как считается оборот?'"></span>
+                        </button>
+                        <div x-show="showInfo" x-transition class="mt-3 bg-blue-50 border border-blue-200 rounded-xl p-5 text-sm text-blue-900">
+                            <h4 class="font-semibold mb-3">Как считается оборот по маркетплейсам</h4>
+                            <div class="space-y-2.5">
+                                <div class="flex items-start gap-3">
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-700 text-xs font-bold flex-shrink-0">W</span>
+                                    <div>
+                                        <span class="font-medium">Wildberries</span> — <span class="text-green-700 font-medium">чистый оборот</span> (сумма к перечислению продавцу, за вычетом комиссии WB, логистики и удержаний)
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-3">
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex-shrink-0">U</span>
+                                    <div>
+                                        <span class="font-medium">Uzum Market</span> — <span class="text-green-700 font-medium">чистый оборот</span> (прибыль продавца из финансового отчёта, за вычетом комиссии Uzum). Если финансовые данные ещё не загружены — используется полная сумма заказа.
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-3">
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex-shrink-0">O</span>
+                                    <div>
+                                        <span class="font-medium">Ozon</span> — <span class="text-orange-600 font-medium">валовый оборот</span> (полная сумма заказа, без вычета комиссии). API Ozon пока не предоставляет данные о комиссии в заказах.
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-3">
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-100 text-red-700 text-xs font-bold flex-shrink-0">Я</span>
+                                    <div>
+                                        <span class="font-medium">Yandex Market</span> — <span class="text-orange-600 font-medium">валовый оборот</span> (полная сумма заказа, без вычета комиссии). API YM пока не предоставляет данные о комиссии в заказах.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 pt-3 border-t border-blue-200 text-blue-700">
+                                <p><strong>Маржа</strong> рассчитывается как оборот минус себестоимость товаров. Для корректного расчёта заполните себестоимость в карточках товаров.</p>
+                                <p class="mt-1"><strong>Заказы</strong> — количество завершённых заказов (без отменённых и возвратов).</p>
+                            </div>
+                            <div class="mt-3 pt-3 border-t border-blue-200">
+                                <h4 class="font-semibold text-amber-800 mb-2">&#9888; Важно: валюта</h4>
+                                <div class="text-amber-800 space-y-1">
+                                    <p><strong>Uzum Market</strong> — суммы в <strong>узбекских сумах (UZS)</strong></p>
+                                    <p><strong>Wildberries, Ozon, Yandex Market</strong> — суммы в <strong>российских рублях (RUB)</strong></p>
+                                    <p class="text-sm mt-2">При установке плановых показателей учитывайте валюту маркетплейса. Суммы разных маркетплейсов <strong>не конвертируются</strong> автоматически.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {{-- Таблица дашборда --}}
@@ -124,8 +239,9 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left">{{ __('kpi.plans.employee') }}</th>
                                     <th class="px-4 py-3 text-left">{{ __('kpi.plans.sphere') }}</th>
-                                    <th class="px-4 py-3 text-right">{{ __('kpi.plans.target') }}</th>
-                                    <th class="px-4 py-3 text-right">{{ __('kpi.plans.actual') }}</th>
+                                    <th class="px-4 py-3 text-right">Оборот (план / факт)</th>
+                                    <th class="px-4 py-3 text-right">Маржа (план / факт)</th>
+                                    <th class="px-4 py-3 text-right">Заказы (план / факт)</th>
                                     <th class="px-4 py-3 text-right">{{ __('kpi.plans.achievement') }}</th>
                                     <th class="px-4 py-3 text-right">{{ __('kpi.plans.bonus') }}</th>
                                     <th class="px-4 py-3 text-center">{{ __('kpi.plans.status') }}</th>
@@ -134,19 +250,39 @@
                             <tbody class="divide-y divide-gray-100">
                                 <template x-for="p in (dashboard.plans ?? [])" :key="p.id">
                                     <tr class="hover:bg-gray-50">
-                                        <td class="px-4 py-3 font-medium text-gray-900" x-text="p.employee?.name ?? '—'"></td>
+                                        <td class="px-4 py-3 font-medium text-gray-900" x-text="p.employee ? ((p.employee.last_name || '') + ' ' + (p.employee.first_name || '')).trim() || '—' : '—'"></td>
                                         <td class="px-4 py-3">
                                             <span class="inline-flex items-center gap-1.5">
-                                                <span class="w-2.5 h-2.5 rounded-full" :style="'background:' + (p.sales_sphere?.color ?? '#6B7280')"></span>
-                                                <span x-text="p.sales_sphere?.name ?? '—'"></span>
+                                                <span class="w-2.5 h-2.5 rounded-full" :style="'background:' + ((p.salesSphere || p.sales_sphere)?.color ?? '#6B7280')"></span>
+                                                <span x-text="(p.salesSphere || p.sales_sphere)?.name ?? '—'"></span>
                                             </span>
                                         </td>
-                                        <td class="px-4 py-3 text-right" x-text="fmt(p.target_revenue)"></td>
-                                        <td class="px-4 py-3 text-right" x-text="fmt(p.actual_revenue)"></td>
+                                        <td class="px-4 py-3 text-right text-xs">
+                                            <div x-text="fmt(p.target_revenue) + ' / ' + fmt(p.actual_revenue)"></div>
+                                            <div class="text-gray-400" x-text="'вес: ' + (p.weight_revenue ?? 0) + '%'"></div>
+                                        </td>
+                                        <td class="px-4 py-3 text-right text-xs">
+                                            <div x-text="fmt(p.target_margin) + ' / ' + fmt(p.actual_margin)"></div>
+                                            <div class="text-gray-400" x-text="'вес: ' + (p.weight_margin ?? 0) + '%'"></div>
+                                        </td>
+                                        <td class="px-4 py-3 text-right text-xs">
+                                            <div x-text="(p.target_orders ?? 0) + ' / ' + (p.actual_orders ?? 0)"></div>
+                                            <div class="text-gray-400" x-text="'вес: ' + (p.weight_orders ?? 0) + '%'"></div>
+                                        </td>
                                         <td class="px-4 py-3 text-right font-medium"
                                             :class="p.achievement_percent >= 100 ? 'text-green-600' : 'text-orange-500'"
                                             x-text="(p.achievement_percent ?? 0).toFixed(1) + '%'"></td>
-                                        <td class="px-4 py-3 text-right font-medium" x-text="fmt(p.bonus_amount)"></td>
+                                        <td class="px-4 py-3 text-right font-medium">
+                                            <div>
+                                                <span x-text="fmt(p.bonus_amount) + ' ' + (p.sphere_currency ?? 'UZS')"></span>
+                                            </div>
+                                            <template x-if="p.sphere_currency === 'RUB' && p.bonus_amount_uzs > 0 && p.bonus_amount > 0">
+                                                <div class="text-xs text-green-600 mt-0.5" x-text="'≈ ' + fmt(p.bonus_amount_uzs) + ' сум'"></div>
+                                            </template>
+                                            <template x-if="!p.kpi_bonus_scale_id && p.bonus_amount == 0">
+                                                <div class="text-xs text-orange-500 mt-0.5">Шкала не привязана</div>
+                                            </template>
+                                        </td>
                                         <td class="px-4 py-3 text-center">
                                             <span class="px-2 py-1 text-xs font-medium rounded-full"
                                                   :class="statusClass(p.status)" x-text="statusLabel(p.status)"></span>
@@ -160,13 +296,6 @@
                         </div>
                     </div>
 
-                    {{-- График динамики KPI --}}
-                    <div class="bg-white rounded-xl border border-gray-200 p-5 mt-6">
-                        <h3 class="text-sm font-semibold text-gray-700 mb-4">{{ __('kpi.dashboard.chart_title') ?? 'Динамика выполнения KPI' }}</h3>
-                        <div style="height: 300px;">
-                            <canvas id="kpiChart"></canvas>
-                        </div>
-                    </div>
                 </div>
 
                 {{-- ============ ПЛАНЫ ============ --}}
@@ -185,8 +314,9 @@
                                     <th class="px-4 py-3 text-left">{{ __('kpi.plans.employee') }}</th>
                                     <th class="px-4 py-3 text-left">{{ __('kpi.plans.sphere') }}</th>
                                     <th class="px-4 py-3 text-left">{{ __('kpi.plans.period') }}</th>
-                                    <th class="px-4 py-3 text-right">{{ __('kpi.plans.revenue') }} ({{ __('kpi.plans.target') }})</th>
-                                    <th class="px-4 py-3 text-right">{{ __('kpi.plans.revenue') }} ({{ __('kpi.plans.actual') }})</th>
+                                    <th class="px-4 py-3 text-right">Оборот (план / факт)</th>
+                                    <th class="px-4 py-3 text-right">Маржа (план / факт)</th>
+                                    <th class="px-4 py-3 text-right">Заказы (план / факт)</th>
                                     <th class="px-4 py-3 text-right">{{ __('kpi.plans.achievement') }}</th>
                                     <th class="px-4 py-3 text-right">{{ __('kpi.plans.bonus') }}</th>
                                     <th class="px-4 py-3 text-center">{{ __('kpi.plans.status') }}</th>
@@ -196,15 +326,35 @@
                             <tbody class="divide-y divide-gray-100">
                                 <template x-for="p in plans" :key="p.id">
                                     <tr class="hover:bg-gray-50">
-                                        <td class="px-4 py-3 font-medium text-gray-900" x-text="p.employee?.name ?? '—'"></td>
-                                        <td class="px-4 py-3" x-text="p.sales_sphere?.name ?? '—'"></td>
+                                        <td class="px-4 py-3 font-medium text-gray-900" x-text="p.employee ? ((p.employee.last_name || '') + ' ' + (p.employee.first_name || '')).trim() || '—' : '—'"></td>
+                                        <td class="px-4 py-3" x-text="(p.salesSphere || p.sales_sphere)?.name ?? '—'"></td>
                                         <td class="px-4 py-3 text-gray-500" x-text="monthName(p.period_month) + ' ' + p.period_year"></td>
-                                        <td class="px-4 py-3 text-right" x-text="fmt(p.target_revenue)"></td>
-                                        <td class="px-4 py-3 text-right" x-text="fmt(p.actual_revenue)"></td>
+                                        <td class="px-4 py-3 text-right text-xs">
+                                            <div x-text="fmt(p.target_revenue) + ' / ' + fmt(p.actual_revenue)"></div>
+                                            <div class="text-gray-400" x-text="'вес: ' + (p.weight_revenue ?? 0) + '%'"></div>
+                                        </td>
+                                        <td class="px-4 py-3 text-right text-xs">
+                                            <div x-text="fmt(p.target_margin) + ' / ' + fmt(p.actual_margin)"></div>
+                                            <div class="text-gray-400" x-text="'вес: ' + (p.weight_margin ?? 0) + '%'"></div>
+                                        </td>
+                                        <td class="px-4 py-3 text-right text-xs">
+                                            <div x-text="(p.target_orders ?? 0) + ' / ' + (p.actual_orders ?? 0)"></div>
+                                            <div class="text-gray-400" x-text="'вес: ' + (p.weight_orders ?? 0) + '%'"></div>
+                                        </td>
                                         <td class="px-4 py-3 text-right font-medium"
                                             :class="p.achievement_percent >= 100 ? 'text-green-600' : 'text-orange-500'"
                                             x-text="(p.achievement_percent ?? 0).toFixed(1) + '%'"></td>
-                                        <td class="px-4 py-3 text-right font-medium" x-text="fmt(p.bonus_amount)"></td>
+                                        <td class="px-4 py-3 text-right font-medium">
+                                            <div>
+                                                <span x-text="fmt(p.bonus_amount) + ' ' + (p.sphere_currency ?? 'UZS')"></span>
+                                            </div>
+                                            <template x-if="p.sphere_currency === 'RUB' && p.bonus_amount_uzs > 0 && p.bonus_amount > 0">
+                                                <div class="text-xs text-green-600 mt-0.5" x-text="'≈ ' + fmt(p.bonus_amount_uzs) + ' сум'"></div>
+                                            </template>
+                                            <template x-if="!p.kpi_bonus_scale_id && p.bonus_amount == 0">
+                                                <div class="text-xs text-orange-500 mt-0.5">Шкала не привязана</div>
+                                            </template>
+                                        </td>
                                         <td class="px-4 py-3 text-center">
                                             <span class="px-2 py-1 text-xs font-medium rounded-full"
                                                   :class="statusClass(p.status)" x-text="statusLabel(p.status)"></span>
@@ -220,6 +370,7 @@
                                                 <template x-if="p.status === 'calculated'">
                                                     <button @click="approvePlan(p.id)" class="text-green-600 hover:text-green-800 text-xs font-medium">{{ __('kpi.plans.approve') }}</button>
                                                 </template>
+                                                <button @click="copyPlan(p)" class="text-gray-500 hover:text-gray-700 text-xs font-medium" title="Копировать на след. месяц">Копировать</button>
                                                 <template x-if="p.status !== 'approved'">
                                                     <button @click="deletePlan(p.id)" class="text-red-500 hover:text-red-700 text-xs font-medium ml-2">{{ __('kpi.plans.delete') }}</button>
                                                 </template>
@@ -254,7 +405,10 @@
                                         </div>
                                         <div>
                                             <h3 class="font-semibold text-gray-900" x-text="s.name"></h3>
-                                            <p class="text-xs text-gray-500" x-text="(s.linked_accounts && s.linked_accounts.length) ? s.linked_accounts.map(function(a) { return a.name + ' (' + a.marketplace + ')'; }).join(', ') : (s.offline_sale_types && s.offline_sale_types.length) ? s.offline_sale_types.map(function(t) { return {retail:'Розница',wholesale:'Опт',direct:'Прямые'}[t] || t; }).join(', ') : (s.description || '{{ __('kpi.spheres.no_marketplace') }}')"></p>
+                                            <p class="text-xs text-gray-500" x-text="[
+                                                (s.linked_accounts && s.linked_accounts.length) ? s.linked_accounts.map(function(a) { return a.name + ' (' + a.marketplace + ')'; }).join(', ') : '',
+                                                (s.offline_sale_types && s.offline_sale_types.length) ? s.offline_sale_types.map(function(t) { return {retail:'Розница',wholesale:'Опт',direct:'Прямые'}[t] || t; }).join(', ') : ''
+                                            ].filter(Boolean).join(' + ') || (s.description || '{{ __('kpi.spheres.no_marketplace') }}')"></p>
                                         </div>
                                     </div>
                                     <span class="w-2.5 h-2.5 rounded-full mt-1" :class="s.is_active ? 'bg-green-400' : 'bg-gray-300'"></span>
@@ -328,7 +482,7 @@
     </div>
 
     {{-- ============ МОДАЛКА: ПЛАН ============ --}}
-    <div x-show="showPlanModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showPlanModal = false">
+    <div x-cloak x-show="showPlanModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showPlanModal = false">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="p-6">
                 <div class="flex items-center justify-between mb-4">
@@ -395,17 +549,29 @@
                             </div>
                         </div>
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Валюта плана</label>
+                        <div class="flex gap-2">
+                            <template x-for="cur in [{code:'UZS',label:'🇺🇿 Сум (UZS)'},{code:'USD',label:'🇺🇸 Доллар (USD)'},{code:'RUB',label:'🇷🇺 Рубль (RUB)'},{code:'EUR',label:'🇪🇺 Евро (EUR)'}]" :key="cur.code">
+                                <label class="flex-1 relative flex items-center justify-center gap-1.5 px-3 py-2 border-2 rounded-lg cursor-pointer text-sm transition-colors"
+                                       :class="planForm.currency === cur.code ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300 text-gray-600'">
+                                    <input type="radio" :value="cur.code" x-model="planForm.currency" class="sr-only">
+                                    <span x-text="cur.label"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
                     <div class="grid grid-cols-3 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.plans.revenue') }} ({{ __('kpi.plans.target') }})</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Оборот (план) <span class="text-gray-400 text-xs" x-text="planForm.currency"></span></label>
                             <input type="number" x-model="planForm.target_revenue" class="w-full rounded-lg border-gray-300 text-sm" min="0">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.plans.margin') }} ({{ __('kpi.plans.target') }})</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Маржа (план) <span class="text-gray-400 text-xs" x-text="planForm.currency"></span></label>
                             <input type="number" x-model="planForm.target_margin" class="w-full rounded-lg border-gray-300 text-sm" min="0">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.plans.orders') }} ({{ __('kpi.plans.target') }})</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Заказы (план)</label>
                             <input type="number" x-model="planForm.target_orders" class="w-full rounded-lg border-gray-300 text-sm" min="0">
                         </div>
                     </div>
@@ -440,131 +606,263 @@
     </div>
 
     {{-- ============ МОДАЛКА: СФЕРА ============ --}}
-    <div x-show="showSphereModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showSphereModal = false">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-md" @click.stop>
+    <div x-cloak x-show="showSphereModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showSphereModal = false">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="p-6">
-                <h3 class="text-lg font-semibold mb-4" x-text="sphereForm.id ? '{{ __('kpi.spheres.edit') }}' : '{{ __('kpi.spheres.new') }}'"></h3>
+                <h3 class="text-lg font-semibold mb-1" x-text="sphereForm.id ? 'Редактировать сферу' : 'Новая сфера'"></h3>
+                <p class="text-sm text-gray-500 mb-5">Сфера определяет откуда берутся данные и как называются метрики KPI</p>
+
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.spheres.name') }}</label>
-                        <input type="text" x-model="sphereForm.name" class="w-full rounded-lg border-gray-300 text-sm">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Название</label>
+                        <input type="text" x-model="sphereForm.name" class="w-full rounded-lg border-gray-300 text-sm" placeholder="Например: Склад, Доставка, Wildberries">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.spheres.description') }}</label>
-                        <input type="text" x-model="sphereForm.description" class="w-full rounded-lg border-gray-300 text-sm">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                        <input type="text" x-model="sphereForm.description" class="w-full rounded-lg border-gray-300 text-sm" placeholder="Краткое описание сферы">
                     </div>
+
+                    {{-- Режим: автоматический vs ручной --}}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.spheres.marketplace') }}</label>
-                        <div class="border border-gray-300 rounded-lg max-h-40 overflow-y-auto">
-                            <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100">
-                                <input type="checkbox"
-                                       :checked="(sphereForm.marketplace_account_ids || []).length === 0"
-                                       @change="sphereForm.marketplace_account_ids = []"
-                                       class="rounded border-gray-300 text-blue-600">
-                                <span class="text-sm text-gray-500">{{ __('kpi.spheres.no_marketplace') }}</span>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Тип сферы</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="relative flex flex-col items-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-colors"
+                                   :class="!sphereForm.is_manual ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
+                                <input type="radio" :checked="!sphereForm.is_manual" @change="sphereForm.is_manual = false" class="sr-only">
+                                <span class="text-2xl">🔄</span>
+                                <span class="text-sm font-medium text-center">Автоматический</span>
+                                <span class="text-xs text-gray-500 text-center">Данные из маркетплейсов или продаж</span>
                             </label>
-                            <template x-for="ma in marketplaceAccounts" :key="ma.id">
-                                <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
-                                    <input type="checkbox"
-                                           :value="ma.id"
-                                           :checked="(sphereForm.marketplace_account_ids || []).includes(ma.id)"
-                                           @change="toggleMarketplace(ma.id)"
-                                           class="rounded border-gray-300 text-blue-600">
-                                    <span class="text-sm" x-text="ma.name + ' (' + ma.marketplace + ')'"></span>
-                                </label>
-                            </template>
+                            <label class="relative flex flex-col items-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-colors"
+                                   :class="sphereForm.is_manual ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
+                                <input type="radio" :checked="sphereForm.is_manual" @change="sphereForm.is_manual = true" class="sr-only">
+                                <span class="text-2xl">✏️</span>
+                                <span class="text-sm font-medium text-center">Ручной</span>
+                                <span class="text-xs text-gray-500 text-center">Склад, доставка, поддержка и т.п.</span>
+                            </label>
                         </div>
-                        <p class="text-xs text-gray-400 mt-1">Привязка к маркетплейсу позволит автоматически собирать данные</p>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Ручные продажи (автосбор)</label>
-                        <div class="border border-gray-300 rounded-lg">
-                            <template x-for="ost in [{value:'retail',label:'Розница (штучные)'},{value:'wholesale',label:'Опт (оптовые)'},{value:'direct',label:'Прямые продажи'}]" :key="ost.value">
-                                <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
-                                    <input type="checkbox"
-                                           :value="ost.value"
-                                           :checked="(sphereForm.offline_sale_types || []).includes(ost.value)"
-                                           @change="toggleOfflineSaleType(ost.value)"
-                                           class="rounded border-gray-300 text-blue-600">
-                                    <span class="text-sm" x-text="ost.label"></span>
-                                </label>
-                            </template>
+
+                    {{-- Автоматический: маркетплейсы --}}
+                    <template x-if="!sphereForm.is_manual">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Маркетплейс-аккаунты</label>
+                                <div class="border border-gray-300 rounded-lg max-h-40 overflow-y-auto">
+                                    <template x-for="ma in marketplaceAccounts" :key="ma.id">
+                                        <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                                            <input type="checkbox"
+                                                   :value="ma.id"
+                                                   :checked="(sphereForm.marketplace_account_ids || []).includes(ma.id)"
+                                                   @change="toggleMarketplace(ma.id)"
+                                                   class="rounded border-gray-300 text-blue-600">
+                                            <span class="text-sm" x-text="ma.name + ' (' + ma.marketplace + ')'"></span>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Ручные продажи</label>
+                                <div class="border border-gray-300 rounded-lg">
+                                    <template x-for="ost in [{value:'retail',label:'Розница'},{value:'wholesale',label:'Опт'},{value:'direct',label:'Прямые продажи'}]" :key="ost.value">
+                                        <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
+                                            <input type="checkbox"
+                                                   :value="ost.value"
+                                                   :checked="(sphereForm.offline_sale_types || []).includes(ost.value)"
+                                                   @change="toggleOfflineSaleType(ost.value)"
+                                                   class="rounded border-gray-300 text-blue-600">
+                                            <span class="text-sm" x-text="ost.label"></span>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Интернет-магазин (Store)</label>
+                                <div class="border border-gray-300 rounded-lg max-h-32 overflow-y-auto">
+                                    <template x-for="st in stores" :key="st.id">
+                                        <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                                            <input type="checkbox"
+                                                   :value="st.id"
+                                                   :checked="(sphereForm.store_ids || []).includes(st.id)"
+                                                   @change="toggleStoreId(st.id)"
+                                                   class="rounded border-gray-300 text-blue-600">
+                                            <span class="text-sm" x-text="st.name"></span>
+                                        </label>
+                                    </template>
+                                    <template x-if="stores.length === 0">
+                                        <p class="px-3 py-2 text-xs text-gray-400">Нет интернет-магазинов</p>
+                                    </template>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Ручные/POS продажи (Sale)</label>
+                                <div class="border border-gray-300 rounded-lg">
+                                    <template x-for="src in [{value:'manual',label:'Ручные продажи'},{value:'pos',label:'POS-продажи (касса)'}]" :key="src.value">
+                                        <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
+                                            <input type="checkbox"
+                                                   :value="src.value"
+                                                   :checked="(sphereForm.sale_sources || []).includes(src.value)"
+                                                   @change="toggleSaleSource(src.value)"
+                                                   class="rounded border-gray-300 text-blue-600">
+                                            <span class="text-sm" x-text="src.label"></span>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
                         </div>
-                        <p class="text-xs text-gray-400 mt-1">Выберите типы ручных продаж для автоматического расчёта KPI</p>
-                    </div>
+                    </template>
+
+                    {{-- Ручной: кастомные названия метрик --}}
+                    <template x-if="sphereForm.is_manual">
+                        <div class="space-y-3">
+                            <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                <p class="text-sm text-amber-800">Задайте свои названия для 3 метрик KPI. Факт вводится вручную.</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Метрика 1 (вместо «Оборот»)</label>
+                                <input type="text" x-model="sphereForm.label_metric1" class="w-full rounded-lg border-gray-300 text-sm" placeholder="Например: Обработано посылок, Выручка, Собрано заказов">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Метрика 2 (вместо «Маржа»)</label>
+                                <input type="text" x-model="sphereForm.label_metric2" class="w-full rounded-lg border-gray-300 text-sm" placeholder="Например: Скорость (мин/заказ), Без брака, Рейтинг">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Метрика 3 (вместо «Заказы»)</label>
+                                <input type="text" x-model="sphereForm.label_metric3" class="w-full rounded-lg border-gray-300 text-sm" placeholder="Например: Доставлено, Кол-во смен, Звонки">
+                            </div>
+                        </div>
+                    </template>
+
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.spheres.color') }}</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Цвет</label>
                             <input type="color" x-model="sphereForm.color" class="w-full h-10 rounded-lg border-gray-300">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.spheres.icon') }}</label>
-                            <input type="text" x-model="sphereForm.icon" class="w-full rounded-lg border-gray-300 text-sm" placeholder="📊">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Иконка</label>
+                            <input type="text" x-model="sphereForm.icon" class="w-full rounded-lg border-gray-300 text-sm" placeholder="📦">
                         </div>
                     </div>
                     <div>
                         <label class="flex items-center gap-2 text-sm">
                             <input type="checkbox" x-model="sphereForm.is_active" class="rounded border-gray-300 text-blue-600">
-                            {{ __('kpi.spheres.active') }}
+                            Активная
                         </label>
                     </div>
                 </div>
                 <div class="flex justify-end gap-3 mt-6">
-                    <button @click="showSphereModal = false" class="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">{{ __('kpi.cancel') }}</button>
-                    <button @click="saveSphere()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">{{ __('kpi.save') }}</button>
+                    <button @click="showSphereModal = false" class="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Отмена</button>
+                    <button @click="saveSphere()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">Сохранить</button>
                 </div>
             </div>
         </div>
     </div>
 
     {{-- ============ МОДАЛКА: ШКАЛА ============ --}}
-    <div x-show="showScaleModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showScaleModal = false">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" @click.stop>
+    <div x-cloak x-show="showScaleModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showScaleModal = false">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="p-6">
-                <h3 class="text-lg font-semibold mb-4" x-text="scaleForm.id ? '{{ __('kpi.scales.edit') }}' : '{{ __('kpi.scales.new') }}'"></h3>
-                <div class="space-y-4">
+                <h3 class="text-lg font-semibold mb-1" x-text="scaleForm.id ? 'Редактировать шкалу бонусов' : 'Новая шкала бонусов'"></h3>
+                <p class="text-sm text-gray-500 mb-5">Шкала определяет какой бонус получит сотрудник при разном уровне выполнения KPI</p>
+
+                <div class="space-y-5">
+                    {{-- Название --}}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.scales.name') }}</label>
-                        <input type="text" x-model="scaleForm.name" class="w-full rounded-lg border-gray-300 text-sm">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Название шкалы</label>
+                        <input type="text" x-model="scaleForm.name" class="w-full rounded-lg border-gray-300 text-sm" placeholder="Например: Стандартная шкала для менеджеров">
                     </div>
+
                     <div>
                         <label class="flex items-center gap-2 text-sm">
                             <input type="checkbox" x-model="scaleForm.is_default" class="rounded border-gray-300 text-blue-600">
-                            {{ __('kpi.scales.default') }}
+                            Использовать по умолчанию для новых планов
                         </label>
+                    </div>
+
+                    {{-- Пояснение --}}
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p class="text-sm text-blue-800 font-medium mb-2">Как это работает?</p>
+                        <p class="text-sm text-blue-700">Добавьте ступени: при каком проценте выполнения KPI какой бонус получит сотрудник. Например:</p>
+                        <ul class="text-sm text-blue-700 mt-2 space-y-1">
+                            <li>Выполнил <b>80–99%</b> плана &rarr; бонус <b>3%</b> от оборота</li>
+                            <li>Выполнил <b>100–119%</b> плана &rarr; бонус <b>5%</b> от оборота</li>
+                            <li>Выполнил <b>120%+</b> плана &rarr; бонус <b>7%</b> от оборота</li>
+                        </ul>
                     </div>
 
                     {{-- Ступени --}}
                     <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="text-sm font-medium text-gray-700">{{ __('kpi.scales.tiers') }}</label>
-                            <button @click="addTier()" class="text-xs text-blue-600 hover:text-blue-800">+ {{ __('kpi.scales.add_tier') }}</button>
+                        <div class="flex items-center justify-between mb-3">
+                            <label class="text-sm font-medium text-gray-700">Ступени бонусов</label>
+                            <button @click="addTier()" class="text-sm text-blue-600 hover:text-blue-800 font-medium">+ Добавить ступень</button>
                         </div>
-                        <template x-for="(tier, idx) in scaleForm.tiers" :key="idx">
-                            <div class="flex items-center gap-2 mb-2">
-                                <input type="number" x-model="tier.min_percent" placeholder="От %" class="w-20 rounded-lg border-gray-300 text-sm" min="0">
-                                <input type="number" x-model="tier.max_percent" placeholder="До %" class="w-20 rounded-lg border-gray-300 text-sm" min="0">
-                                <select x-model="tier.bonus_type" class="flex-1 rounded-lg border-gray-300 text-sm">
-                                    <option value="fixed">{{ __('kpi.scales.type_fixed') }}</option>
-                                    <option value="percent_revenue">{{ __('kpi.scales.type_percent_revenue') }}</option>
-                                    <option value="percent_margin">{{ __('kpi.scales.type_percent_margin') }}</option>
-                                </select>
-                                <input type="number" x-model="tier.bonus_value" placeholder="Значение" class="w-24 rounded-lg border-gray-300 text-sm" min="0" step="0.01">
-                                <button @click="scaleForm.tiers.splice(idx, 1)" class="text-red-400 hover:text-red-600">&times;</button>
+
+                        <template x-if="scaleForm.tiers.length === 0">
+                            <div class="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+                                <p class="text-gray-400 text-sm mb-2">Нет ступеней</p>
+                                <button @click="addTier()" class="text-sm text-blue-600 hover:text-blue-800 font-medium">+ Добавить первую ступень</button>
                             </div>
                         </template>
+
+                        <div class="space-y-3">
+                            <template x-for="(tier, idx) in scaleForm.tiers" :key="idx">
+                                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 relative">
+                                    <button @click="scaleForm.tiers.splice(idx, 1)" class="absolute top-2 right-2 text-gray-400 hover:text-red-500 text-lg" title="Удалить ступень">&times;</button>
+
+                                    <p class="text-xs font-semibold text-gray-500 uppercase mb-3" x-text="'Ступень ' + (idx + 1)"></p>
+
+                                    <div class="grid grid-cols-2 gap-3 mb-3">
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Выполнение KPI от (%)</label>
+                                            <input type="number" x-model="tier.min_percent" class="w-full rounded-lg border-gray-300 text-sm" min="0" max="300" placeholder="80">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Выполнение KPI до (%) <span class="text-gray-400">— пусто = без ограничения</span></label>
+                                            <input type="number" x-model="tier.max_percent" class="w-full rounded-lg border-gray-300 text-sm" min="0" max="300" placeholder="100 или пусто">
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Тип бонуса</label>
+                                            <select x-model="tier.bonus_type" class="w-full rounded-lg border-gray-300 text-sm">
+                                                <option value="fixed">Фиксированная сумма (сум)</option>
+                                                <option value="percent_revenue">% от оборота</option>
+                                                <option value="percent_margin">% от маржи</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1" x-text="tier.bonus_type === 'fixed' ? 'Сумма бонуса (сум)' : 'Процент (%)'"></label>
+                                            <input type="number" x-model="tier.bonus_value" class="w-full rounded-lg border-gray-300 text-sm" min="0" step="0.01"
+                                                   :placeholder="tier.bonus_type === 'fixed' ? '500 000' : '5'">
+                                        </div>
+                                    </div>
+
+                                    {{-- Пример расчёта --}}
+                                    <div class="mt-3 bg-white rounded-lg px-3 py-2 border border-gray-100">
+                                        <p class="text-xs text-gray-500">
+                                            <span class="font-medium">Пример:</span>
+                                            <span x-show="tier.bonus_type === 'fixed'" x-text="'при выполнении ' + (tier.min_percent || '?') + '–' + (tier.max_percent || '...') + '% KPI сотрудник получит ' + (tier.bonus_value ? parseInt(tier.bonus_value).toLocaleString('ru-RU') : '?') + ' сум'"></span>
+                                            <span x-show="tier.bonus_type === 'percent_revenue'" x-text="'при выполнении ' + (tier.min_percent || '?') + '–' + (tier.max_percent || '...') + '% KPI сотрудник получит ' + (tier.bonus_value || '?') + '% от оборота (при обороте 100 млн = ' + (tier.bonus_value ? (1000000 * tier.bonus_value / 100 * 100).toLocaleString('ru-RU') : '?') + ' сум)'"></span>
+                                            <span x-show="tier.bonus_type === 'percent_margin'" x-text="'при выполнении ' + (tier.min_percent || '?') + '–' + (tier.max_percent || '...') + '% KPI сотрудник получит ' + (tier.bonus_value || '?') + '% от маржи'"></span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
                     </div>
                 </div>
+
                 <div class="flex justify-end gap-3 mt-6">
-                    <button @click="showScaleModal = false" class="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">{{ __('kpi.cancel') }}</button>
-                    <button @click="saveScale()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">{{ __('kpi.save') }}</button>
+                    <button @click="showScaleModal = false" class="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Отмена</button>
+                    <button @click="saveScale()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">Сохранить</button>
                 </div>
             </div>
         </div>
     </div>
 
     {{-- ============ МОДАЛКА: ФАКТИЧЕСКИЕ ДАННЫЕ ============ --}}
-    <div x-show="showActualsModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showActualsModal = false">
+    <div x-cloak x-show="showActualsModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showActualsModal = false">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-md" @click.stop>
             <div class="p-6">
                 <h3 class="text-lg font-semibold mb-1">Ввод фактических данных</h3>

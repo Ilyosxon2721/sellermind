@@ -629,6 +629,18 @@ Route::middleware('auth.any')->group(function () {
             Route::get('accounts/{account}/sku-schemes', [UzumSettingsController::class, 'skuSchemes']);
             Route::post('accounts/{account}/sku-schemes/bulk', [UzumSettingsController::class, 'bulkUpdateSkuSchemes']);
             Route::post('accounts/{account}/sku-schemes/{skuId}', [UzumSettingsController::class, 'updateSkuScheme']);
+
+            // Накладные и возвраты
+            Route::get('accounts/{account}/invoices/fbs', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'fbsList']);
+            Route::post('accounts/{account}/invoices/fbs', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'fbsCreate']);
+            Route::get('accounts/{account}/invoices/fbs/{invoiceId}', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'fbsDetail']);
+            Route::get('accounts/{account}/invoices/fbs/{invoiceId}/orders', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'fbsOrders']);
+            Route::get('accounts/{account}/invoices/fbs/{invoiceId}/closing-docs', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'fbsClosingDocs']);
+            Route::get('accounts/{account}/invoices/shop/{shopId}', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'shopInvoices']);
+            Route::get('accounts/{account}/invoices/shop/{shopId}/products', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'shopInvoiceProducts']);
+            Route::get('accounts/{account}/returns', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'allReturns']);
+            Route::get('accounts/{account}/returns/shop/{shopId}', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'returns']);
+            Route::get('accounts/{account}/returns/shop/{shopId}/{returnId}', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'returnDetail']);
         });
 
         // Yandex Market
@@ -637,6 +649,7 @@ Route::middleware('auth.any')->group(function () {
             Route::get('accounts/{account}/campaigns', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'campaigns']);
             Route::put('accounts/{account}/settings', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'saveSettings']);
             Route::post('accounts/{account}/sync-catalog', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'syncCatalog']);
+            Route::post('accounts/{account}/copy-products', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'copyProducts']);
             Route::post('accounts/{account}/sync-orders', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'syncOrders']);
             Route::get('accounts/{account}/orders', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'orders']);
 
@@ -772,6 +785,12 @@ Route::middleware('auth.any')->group(function () {
             Route::get('publish-jobs', [\App\Http\Controllers\Api\Pricing\PublishJobController::class, 'index']);
             Route::get('publish-jobs/{id}/export.csv', [\App\Http\Controllers\Api\Pricing\PublishJobController::class, 'exportCsv']);
 
+            // Channel Cost Rules (затраты каналов)
+            Route::get('channel-cost-rules', [\App\Http\Controllers\Api\Pricing\ChannelCostRuleController::class, 'index']);
+            Route::post('channel-cost-rules', [\App\Http\Controllers\Api\Pricing\ChannelCostRuleController::class, 'store']);
+            Route::put('channel-cost-rules/{id}', [\App\Http\Controllers\Api\Pricing\ChannelCostRuleController::class, 'update']);
+            Route::delete('channel-cost-rules/{id}', [\App\Http\Controllers\Api\Pricing\ChannelCostRuleController::class, 'destroy']);
+
             // Pricing Calculator (калькулятор ценообразования)
             Route::prefix('calculator')->group(function () {
                 Route::post('calculate', [\App\Http\Controllers\Api\Pricing\CalculatorController::class, 'calculate']);
@@ -787,10 +806,12 @@ Route::middleware('auth.any')->group(function () {
             Route::get('policies', [\App\Http\Controllers\Api\Autopricing\PolicyController::class, 'index']);
             Route::post('policies', [\App\Http\Controllers\Api\Autopricing\PolicyController::class, 'store']);
             Route::put('policies/{id}', [\App\Http\Controllers\Api\Autopricing\PolicyController::class, 'update']);
+            Route::delete('policies/{id}', [\App\Http\Controllers\Api\Autopricing\PolicyController::class, 'destroy']);
 
             Route::get('rules', [\App\Http\Controllers\Api\Autopricing\RuleController::class, 'index']);
             Route::post('rules', [\App\Http\Controllers\Api\Autopricing\RuleController::class, 'store']);
             Route::put('rules/{id}', [\App\Http\Controllers\Api\Autopricing\RuleController::class, 'update']);
+            Route::delete('rules/{id}', [\App\Http\Controllers\Api\Autopricing\RuleController::class, 'destroy']);
 
             Route::get('proposals', [\App\Http\Controllers\Api\Autopricing\ProposalController::class, 'index']);
             Route::post('calc', [\App\Http\Controllers\Api\Autopricing\ProposalController::class, 'calculate']);
@@ -910,6 +931,8 @@ Route::middleware('auth.any')->group(function () {
         Route::prefix('kpi')->group(function () {
             Route::get('dashboard', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'dashboard']);
             Route::get('chart-data', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'chartData']);
+            Route::get('ranking', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'ranking']);
+            Route::get('forecast', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'forecast']);
 
             // Маркетплейс-аккаунты для привязки
             Route::get('marketplace-accounts', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'marketplaceAccounts']);
@@ -935,41 +958,12 @@ Route::middleware('auth.any')->group(function () {
             Route::put('plans/{id}', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'update']);
             Route::delete('plans/{id}', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'destroy']);
             Route::put('plans/{id}/actuals', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'updateActuals']);
-            Route::post('plans/calculate', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'calculate']);
-            Route::post('plans/ai-suggest', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'aiSuggest']);
+            Route::post('plans/calculate', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'calculate'])->middleware('throttle:kpi-calculate');
+            Route::post('plans/ai-suggest', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'aiSuggest'])->middleware('throttle:kpi-ai');
             Route::post('plans/{id}/approve', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'approve']);
-            Route::get('chart-data', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'chartData']);
         });
     });
 
-    // Backward-compatible KPI routes (without finance/ prefix)
-    Route::prefix('kpi')->group(function () {
-        Route::get('dashboard', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'dashboard']);
-        Route::get('marketplace-accounts', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'marketplaceAccounts']);
-
-        Route::get('spheres', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'index']);
-        Route::post('spheres', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'store']);
-        Route::get('spheres/{id}', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'show']);
-        Route::put('spheres/{id}', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'update']);
-        Route::delete('spheres/{id}', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'destroy']);
-
-        Route::get('bonus-scales', [\App\Http\Controllers\Api\Kpi\BonusScaleController::class, 'index']);
-        Route::post('bonus-scales', [\App\Http\Controllers\Api\Kpi\BonusScaleController::class, 'store']);
-        Route::get('bonus-scales/{id}', [\App\Http\Controllers\Api\Kpi\BonusScaleController::class, 'show']);
-        Route::put('bonus-scales/{id}', [\App\Http\Controllers\Api\Kpi\BonusScaleController::class, 'update']);
-        Route::delete('bonus-scales/{id}', [\App\Http\Controllers\Api\Kpi\BonusScaleController::class, 'destroy']);
-
-        Route::get('plans', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'index']);
-        Route::post('plans', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'store']);
-        Route::get('plans/{id}', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'show']);
-        Route::put('plans/{id}', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'update']);
-        Route::delete('plans/{id}', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'destroy']);
-        Route::put('plans/{id}/actuals', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'updateActuals']);
-        Route::post('plans/calculate', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'calculate']);
-        Route::post('plans/ai-suggest', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'aiSuggest']);
-        Route::post('plans/{id}/approve', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'approve']);
-        Route::get('chart-data', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'chartData']);
-    });
 
     // Admin Routes
     Route::prefix('admin')->group(function () {

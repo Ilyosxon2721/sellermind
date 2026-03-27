@@ -68,10 +68,10 @@ class FinanceDebt extends Model
     protected $casts = [
         'debt_date' => 'date',
         'due_date' => 'date',
-        'original_amount' => 'float',
-        'amount_paid' => 'float',
-        'amount_outstanding' => 'float',
-        'interest_rate' => 'float',
+        'original_amount' => 'decimal:2',
+        'amount_paid' => 'decimal:2',
+        'amount_outstanding' => 'decimal:2',
+        'interest_rate' => 'decimal:4',
         'written_off_at' => 'datetime',
     ];
 
@@ -150,7 +150,11 @@ class FinanceDebt extends Model
         $this->amount_paid += $amount;
         $this->amount_outstanding = max(0, $this->original_amount - $this->amount_paid);
 
-        if ($this->amount_outstanding <= 0) {
+        if ($this->amount_paid > $this->original_amount) {
+            // Переплата — фиксируем и закрываем долг
+            $this->amount_outstanding = 0;
+            $this->status = self::STATUS_PAID;
+        } elseif ($this->amount_outstanding <= 0) {
             $this->status = self::STATUS_PAID;
         } elseif ($this->amount_paid > 0) {
             $this->status = self::STATUS_PARTIALLY_PAID;

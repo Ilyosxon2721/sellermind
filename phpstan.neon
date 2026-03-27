@@ -24,8 +24,6 @@ parameters:
     ignoreErrors:
         - '#Unsafe usage of new static#'
         - '#Called .env. outside of the config directory#'
-        - '#Class App\\Models\\MarketplaceOrder not found#'
-        - '#Class App\\Models\\MarketplaceOrderItem not found#'
         - '#Class App\\Models\\Finance\\CashMovement not found#'
         - '#Class App\\Models\\Warehouse not found#'
 

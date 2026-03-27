@@ -47,6 +47,18 @@ class PolicyController extends Controller
         return $this->successResponse($policy);
     }
 
+    public function destroy($id)
+    {
+        $companyId = Auth::user()?->company_id;
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+        $policy = AutopricingPolicy::byCompany($companyId)->findOrFail($id);
+        $policy->delete();
+
+        return $this->successResponse(null, ['message' => 'Политика удалена']);
+    }
+
     protected function validateData(Request $request): array
     {
         return $request->validate([

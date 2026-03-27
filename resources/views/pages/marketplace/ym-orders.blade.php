@@ -15,9 +15,9 @@
          :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <!-- YM Header -->
         <header class="bg-white border-b border-gray-200">
-            <div class="px-6 py-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
+            <div class="px-4 sm:px-6 py-3 sm:py-4">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="flex items-center space-x-3 sm:space-x-4">
                         <a href="/marketplace/{{ $accountId }}" class="text-gray-400 hover:text-gray-600 transition">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -30,14 +30,14 @@
                                 </svg>
                             </div>
                             <div>
-                                <h1 class="text-xl font-bold text-[#1a1a1a]">Заказы и отгрузки</h1>
+                                <h1 class="text-lg sm:text-xl font-bold text-[#1a1a1a]">Заказы и отгрузки</h1>
                                 <p class="text-sm text-gray-500">{{ $accountName ?? 'Яндекс Маркет' }}</p>
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Action Buttons -->
-                    <div class="flex items-center space-x-3">
+                    <div class="flex items-center flex-wrap gap-2 sm:gap-3">
                         <!-- Label Format Selector -->
                         <div class="relative" x-data="{ open: false }">
                             <button @click="open = !open" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 flex items-center space-x-2">
@@ -82,7 +82,7 @@
             </div>
             
             <!-- Status Tabs -->
-            <div class="px-6 flex items-center space-x-1 border-t border-gray-100">
+            <div class="px-4 sm:px-6 flex items-center space-x-1 border-t border-gray-100 overflow-x-auto">
                 <template x-for="tab in statusTabs" :key="tab.value">
                     <button @click="activeTab = tab.value; loadOrders()"
                             class="px-4 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap"
@@ -101,19 +101,19 @@
         
         <main class="flex-1 overflow-y-auto">
             <!-- Messages -->
-            <div x-show="syncMessage" x-transition class="px-6 pt-4">
-                <div class="px-4 py-3 rounded-lg" 
+            <div x-show="syncMessage" x-transition class="px-4 sm:px-6 pt-4">
+                <div class="px-4 py-3 rounded-lg"
                      :class="syncSuccess ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'">
                     <span x-text="syncMessage"></span>
                 </div>
             </div>
-            
+
             <!-- Statistics Panel -->
-            <div class="px-6 py-4">
-                <div class="bg-white rounded-xl border border-gray-200 p-5">
-                    <div class="flex items-center justify-between mb-4">
+            <div class="px-4 sm:px-6 py-4">
+                <div class="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                         <h3 class="font-semibold text-[#1a1a1a]">Статистика</h3>
-                        <div class="flex items-center space-x-2">
+                        <div class="flex items-center flex-wrap gap-2">
                             <input type="date" x-model="dateFrom" @change="loadOrders(); loadStats()"
                                    class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#FFCC00] focus:border-[#FFCC00]">
                             <span class="text-gray-400">—</span>
@@ -121,25 +121,25 @@
                                    class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#FFCC00] focus:border-[#FFCC00]">
                         </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-6">
-                        <div class="text-center p-4 bg-gray-50 rounded-xl">
-                            <div class="text-3xl font-bold text-[#1a1a1a]" x-text="stats.ordersCount"></div>
-                            <div class="text-sm text-gray-500 mt-1">Заказов</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
+                        <div class="text-center p-3 sm:p-4 bg-gray-50 rounded-xl">
+                            <div class="text-2xl sm:text-3xl font-bold text-[#1a1a1a]" x-text="stats.ordersCount"></div>
+                            <div class="text-xs sm:text-sm text-gray-500 mt-1">Заказов</div>
                         </div>
-                        <div class="text-center p-4 bg-gray-50 rounded-xl">
-                            <div class="text-3xl font-bold text-[#1a1a1a]" x-text="formatPrice(stats.totalSum)"></div>
-                            <div class="text-sm text-gray-500 mt-1">Общая сумма</div>
+                        <div class="text-center p-3 sm:p-4 bg-gray-50 rounded-xl">
+                            <div class="text-2xl sm:text-3xl font-bold text-[#1a1a1a]" x-text="formatPrice(stats.totalSum)"></div>
+                            <div class="text-xs sm:text-sm text-gray-500 mt-1">Общая сумма</div>
                         </div>
-                        <div class="text-center p-4 bg-gray-50 rounded-xl">
-                            <div class="text-3xl font-bold text-[#1a1a1a]" x-text="formatPrice(stats.avgCheck)"></div>
-                            <div class="text-sm text-gray-500 mt-1">Средний чек</div>
+                        <div class="text-center p-3 sm:p-4 bg-gray-50 rounded-xl">
+                            <div class="text-2xl sm:text-3xl font-bold text-[#1a1a1a]" x-text="formatPrice(stats.avgCheck)"></div>
+                            <div class="text-xs sm:text-sm text-gray-500 mt-1">Средний чек</div>
                         </div>
                     </div>
                 </div>
             </div>
-            
+
             <!-- Filters -->
-            <div class="px-6 pb-4">
+            <div class="px-4 sm:px-6 pb-4">
                 <div class="bg-white rounded-xl border border-gray-200 p-4">
                     <div class="flex items-center space-x-4">
                         <div class="flex-1 relative">
@@ -179,7 +179,7 @@
             </div>
             
             <!-- Orders List -->
-            <div x-show="orders.length > 0" class="px-6 pb-6 space-y-4">
+            <div x-show="orders.length > 0" class="px-4 sm:px-6 pb-6 space-y-4">
                 <template x-for="order in orders" :key="order.id">
                     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
                         <!-- Order Header -->
@@ -441,7 +441,7 @@
                 <h3 class="text-lg font-bold text-[#1a1a1a] mb-4">Добавить грузоместо</h3>
                 
                 <div class="space-y-4">
-                    <div class="grid grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label class="text-sm text-gray-600">Вес (грамм)</label>
                             <input type="number" x-model="boxData.weight" class="w-full px-3 py-2 border border-gray-300 rounded-lg mt-1" placeholder="1000">

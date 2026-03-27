@@ -187,6 +187,15 @@ Schedule::command('ym:push-stocks')
     })
     ->appendOutputTo(storage_path('logs/marketplace-sync.log'));
 
+// Синхронизация курсов валют из ЦБ Узбекистана — ежедневно в 9:00
+Schedule::command('finance:sync-currency-rates')
+    ->dailyAt('09:00')
+    ->withoutOverlapping(10)
+    ->onFailure(function () {
+        \Log::error('Currency rates sync failed');
+    })
+    ->appendOutputTo(storage_path('logs/currency-rates.log'));
+
 // Кэширование расходов маркетплейсов (WB, Ozon, Uzum, Yandex)
 // Синхронизируем в кэш-таблицу каждые 4 часа для быстрой загрузки страницы финансов
 Schedule::command('marketplace:sync-expenses --period=30days')
@@ -303,6 +312,18 @@ Schedule::command('subscriptions:check-expiring --notify-days=7,3,1 --mark-expir
 | Automatically process stock reservations for marketplace orders
 |
 */
+
+// Освобождение истёкших резервов остатков (каждый час)
+Schedule::command('warehouse:release-expired-reservations')
+    ->hourly()
+    ->withoutOverlapping(10)
+    ->onSuccess(function () {
+        \Log::info('Expired reservations release completed');
+    })
+    ->onFailure(function () {
+        \Log::error('Expired reservations release failed');
+    })
+    ->appendOutputTo(storage_path('logs/stock-processing.log'));
 
 // Обработка резервов для заказов (обрабатывает заказы, которые могли быть пропущены)
 Schedule::command('orders:process-stocks')
@@ -491,6 +512,36 @@ Schedule::call(function () {
     ->at('18:00')->daily()
     ->name('uzum-analytics:crawl-products-18')
     ->withoutOverlapping(30);
+
+/*
+|--------------------------------------------------------------------------
+| KPI Scheduled Tasks
+|--------------------------------------------------------------------------
+|
+| Автоматический расчёт KPI планов
+|
+*/
+
+// KPI: Ежедневный расчёт KPI планов в 06:00
+Schedule::command('kpi:calculate')
+    ->dailyAt('06:00')
+    ->withoutOverlapping(30)
+    ->onSuccess(function () {
+        \Log::info('KPI: Расчёт планов завершён успешно');
+    })
+    ->onFailure(function () {
+        \Log::error('KPI: Ошибка расчёта планов');
+    })
+    ->appendOutputTo(storage_path('logs/kpi-calculation.log'));
+
+// KPI: Утренний отчёт в Telegram в 09:30 (после расчёта в 06:00)
+Schedule::command('kpi:morning-report')
+    ->dailyAt('09:30')
+    ->withoutOverlapping(10)
+    ->onFailure(function () {
+        \Log::error('KPI: Ошибка отправки утреннего отчёта');
+    })
+    ->appendOutputTo(storage_path('logs/kpi-morning-report.log'));
 
 // Ежедневная проверка структуры Uzum API (#084)
 Schedule::command('uzum:check-api-structure')
