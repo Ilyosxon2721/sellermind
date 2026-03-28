@@ -423,4 +423,54 @@ class YandexMarketController extends Controller
             ], 500);
         }
     }
+
+    // ==================== PRINT DOCUMENTS ====================
+
+    /**
+     * Печать чека для заказа YM
+     */
+    public function printReceipt(Request $request, MarketplaceAccount $account, string $orderId)
+    {
+        $this->authorizeAccount($request, $account);
+
+        $order = \App\Models\YandexMarketOrder::where('marketplace_account_id', $account->id)
+            ->where('order_id', $orderId)
+            ->firstOrFail();
+
+        $company = $account->company;
+
+        return view('marketplace.ym-orders.print.receipt', compact('order', 'company'));
+    }
+
+    /**
+     * Печать счёт-фактуры для заказа YM
+     */
+    public function printInvoice(Request $request, MarketplaceAccount $account, string $orderId)
+    {
+        $this->authorizeAccount($request, $account);
+
+        $order = \App\Models\YandexMarketOrder::where('marketplace_account_id', $account->id)
+            ->where('order_id', $orderId)
+            ->firstOrFail();
+
+        $company = $account->company;
+
+        return view('marketplace.ym-orders.print.invoice', compact('order', 'company'));
+    }
+
+    /**
+     * Печать товарной накладной для заказа YM
+     */
+    public function printWaybill(Request $request, MarketplaceAccount $account, string $orderId)
+    {
+        $this->authorizeAccount($request, $account);
+
+        $order = \App\Models\YandexMarketOrder::where('marketplace_account_id', $account->id)
+            ->where('order_id', $orderId)
+            ->firstOrFail();
+
+        $company = $account->company;
+
+        return view('marketplace.ym-orders.print.waybill', compact('order', 'company'));
+    }
 }
