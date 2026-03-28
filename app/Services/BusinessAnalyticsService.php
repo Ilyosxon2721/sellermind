@@ -348,7 +348,7 @@ final class BusinessAnalyticsService
                             DB::raw('COALESCE(wb_order_items.external_offer_id, wb_orders.article, CAST(wb_orders.nm_id AS CHAR)) as external_offer_id'),
                             DB::raw('MAX(COALESCE(wb_order_items.name, wb_orders.product_name, wb_orders.article)) as name'),
                             DB::raw('SUM(wb_order_items.quantity) as total_quantity'),
-                            DB::raw('SUM(COALESCE(wb_order_items.price * wb_order_items.quantity, 0)) as total_revenue')
+                            DB::raw('SUM(COALESCE(wb_order_items.price * wb_order_items.quantity, 0)) / 100 as total_revenue')
                         )
                         ->groupBy('external_offer_id')
                         ->get()
@@ -393,13 +393,14 @@ final class BusinessAnalyticsService
                     ->whereIn('marketplace_account_id', $accountIds)
                     ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
                     ->whereNotIn('status', self::CANCELLED_STATUSES)
-                    ->select('order_id', 'posting_number', 'total_price as order_total', 'products', 'order_data')
+                    ->select('order_id', 'posting_number', 'total_price as order_total', 'currency', 'products', 'order_data')
                     ->get();
 
                 $ozonProductItems = collect();
                 $ordersWithoutProducts = collect();
 
                 foreach ($ozonOrders as $order) {
+                    $orderCurrency = $order->currency ?? 'RUB';
                     $products = !empty($order->products) ? json_decode($order->products, true) : [];
                     if (empty($products) && !empty($order->order_data)) {
                         $orderData = json_decode($order->order_data, true);
@@ -417,6 +418,7 @@ final class BusinessAnalyticsService
                                 'name' => $product['name'] ?? $sku,
                                 'quantity' => (int) ($product['quantity'] ?? 1),
                                 'total_price' => (float) ($product['total'] ?? (($product['price'] ?? 0) * ($product['quantity'] ?? 1))),
+                                'currency' => $orderCurrency,
                             ]);
                         }
                     } else {
@@ -425,28 +427,32 @@ final class BusinessAnalyticsService
                     }
                 }
 
-                // Товары из JSON
+                // Товары из JSON — группируем по SKU + валюте, потом конвертируем
                 if ($ozonProductItems->isNotEmpty()) {
                     $ozonItems = $ozonProductItems
                         ->groupBy('external_offer_id')
-                        ->map(fn ($rows) => [
-                            'external_offer_id' => $rows->first()['external_offer_id'],
-                            'name' => $rows->first()['name'],
-                            'total_quantity' => (int) $rows->sum('quantity'),
-                            'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'RUB'),
-                        ]);
+                        ->map(function ($rows) {
+                            $currency = $rows->first()['currency'] ?? 'RUB';
+                            return [
+                                'external_offer_id' => $rows->first()['external_offer_id'],
+                                'name' => $rows->first()['name'],
+                                'total_quantity' => (int) $rows->sum('quantity'),
+                                'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), $currency),
+                            ];
+                        });
                     $allItems = $allItems->merge($ozonItems);
                 }
 
                 // Fallback: заказы без JSON товаров — как order-level
                 if ($ordersWithoutProducts->isNotEmpty()) {
                     foreach ($ordersWithoutProducts as $order) {
+                        $orderCurrency = $order->currency ?? 'RUB';
                         $key = 'ozon_order_' . ($order->posting_number ?? $order->order_id);
                         $allItems->push([
                             'external_offer_id' => $key,
                             'name' => 'Ozon #' . ($order->posting_number ?? $order->order_id),
                             'total_quantity' => 1,
-                            'total_revenue' => $this->convertToDisplay((float) ($order->order_total ?? 0), 'RUB'),
+                            'total_revenue' => $this->convertToDisplay((float) ($order->order_total ?? 0), $orderCurrency),
                         ]);
                     }
                 }
@@ -458,11 +464,12 @@ final class BusinessAnalyticsService
                     ->whereIn('marketplace_account_id', $accountIds)
                     ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
                     ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
-                    ->select('order_data')
+                    ->select('order_data', 'currency')
                     ->get();
 
                 $ymProductItems = collect();
                 foreach ($ymOrders as $order) {
+                    $orderCurrency = $order->currency ?? 'RUB';
                     $orderData = !empty($order->order_data) ? json_decode($order->order_data, true) : [];
                     $items = $orderData['items'] ?? [];
                     foreach ($items as $item) {
@@ -477,23 +484,27 @@ final class BusinessAnalyticsService
                             'name' => $item['offerName'] ?? $item['name'] ?? $offerId,
                             'quantity' => $count,
                             'total_price' => $price * $count,
+                            'currency' => $orderCurrency,
                         ]);
                     }
                 }
 
                 $ymItems = $ymProductItems
                     ->groupBy('external_offer_id')
-                    ->map(fn ($rows) => [
-                        'external_offer_id' => $rows->first()['external_offer_id'],
-                        'name' => $rows->first()['name'],
-                        'total_quantity' => (int) $rows->sum('quantity'),
-                        'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'RUB'),
-                    ]);
+                    ->map(function ($rows) {
+                        $currency = $rows->first()['currency'] ?? 'RUB';
+                        return [
+                            'external_offer_id' => $rows->first()['external_offer_id'],
+                            'name' => $rows->first()['name'],
+                            'total_quantity' => (int) $rows->sum('quantity'),
+                            'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), $currency),
+                        ];
+                    });
                 $allItems = $allItems->merge($ymItems);
             }
         }
 
-        // Ручные продажи — SQL-агрегация
+        // Ручные продажи — SQL-агрегация (currency из sales, по умолчанию UZS)
         if ($this->shouldIncludeSource($source, 'manual')) {
             $manualItems = DB::table('sale_items')
                 ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
@@ -505,7 +516,8 @@ final class BusinessAnalyticsService
                     DB::raw('COALESCE(sale_items.sku, sale_items.product_name) as external_offer_id'),
                     DB::raw('MAX(sale_items.product_name) as name'),
                     DB::raw('SUM(sale_items.quantity) as total_quantity'),
-                    DB::raw('SUM(COALESCE(sale_items.total, 0)) as total_revenue')
+                    DB::raw('SUM(COALESCE(sale_items.total, 0)) as total_revenue'),
+                    DB::raw('MAX(sales.currency) as currency')
                 )
                 ->groupBy('external_offer_id')
                 ->get()
@@ -513,12 +525,12 @@ final class BusinessAnalyticsService
                     'external_offer_id' => $row->external_offer_id,
                     'name' => $row->name ?? $row->external_offer_id,
                     'total_quantity' => (int) $row->total_quantity,
-                    'total_revenue' => (float) $row->total_revenue,
+                    'total_revenue' => $this->convertToDisplay((float) $row->total_revenue, $row->currency ?? 'UZS'),
                 ]);
             $allItems = $allItems->merge($manualItems);
         }
 
-        // Оффлайн продажи — SQL-агрегация
+        // Оффлайн продажи — SQL-агрегация (currency_code из offline_sales, по умолчанию UZS)
         if ($this->shouldIncludeSource($source, 'offline')) {
             $offlineItems = DB::table('offline_sale_items')
                 ->join('offline_sales', 'offline_sale_items.offline_sale_id', '=', 'offline_sales.id')
@@ -530,7 +542,8 @@ final class BusinessAnalyticsService
                     DB::raw('COALESCE(offline_sale_items.sku_code, offline_sale_items.product_name) as external_offer_id'),
                     DB::raw('MAX(offline_sale_items.product_name) as name'),
                     DB::raw('SUM(offline_sale_items.quantity) as total_quantity'),
-                    DB::raw('SUM(COALESCE(offline_sale_items.line_total, 0)) as total_revenue')
+                    DB::raw('SUM(COALESCE(offline_sale_items.line_total, 0)) as total_revenue'),
+                    DB::raw('MAX(offline_sales.currency_code) as currency')
                 )
                 ->groupBy('external_offer_id')
                 ->get()
@@ -538,7 +551,7 @@ final class BusinessAnalyticsService
                     'external_offer_id' => $row->external_offer_id,
                     'name' => $row->name ?? $row->external_offer_id,
                     'total_quantity' => (int) $row->total_quantity,
-                    'total_revenue' => (float) $row->total_revenue,
+                    'total_revenue' => $this->convertToDisplay((float) $row->total_revenue, $row->currency ?? 'UZS'),
                 ]);
             $allItems = $allItems->merge($offlineItems);
         }
@@ -586,7 +599,7 @@ final class BusinessAnalyticsService
                 $customers = $customers->merge($wbCustomers);
             }
 
-            // Ozon — по customer_name
+            // Ozon — по customer_name (с учётом валюты заказа)
             if ($this->shouldIncludeSource($source, 'ozon')) {
                 $ozonCustomers = DB::table('ozon_orders')
                     ->whereIn('marketplace_account_id', $accountIds)
@@ -597,13 +610,14 @@ final class BusinessAnalyticsService
                     ->select(
                         'customer_name',
                         DB::raw('SUM(COALESCE(total_price, 0)) as total_amount'),
-                        DB::raw('COUNT(*) as order_count')
+                        DB::raw('COUNT(*) as order_count'),
+                        DB::raw('MAX(currency) as currency')
                     )
                     ->groupBy('customer_name')
                     ->get()
                     ->map(fn ($row) => [
                         'customer_name' => $row->customer_name,
-                        'total_amount' => $this->convertToDisplay((float) $row->total_amount, 'RUB'),
+                        'total_amount' => $this->convertToDisplay((float) $row->total_amount, $row->currency ?? 'RUB'),
                         'order_count' => (int) $row->order_count,
                     ]);
                 $customers = $customers->merge($ozonCustomers);
@@ -632,7 +646,7 @@ final class BusinessAnalyticsService
                 $customers = $customers->merge($uzumCustomers);
             }
 
-            // YM — по customer_name
+            // YM — по customer_name (с учётом валюты заказа)
             if ($this->shouldIncludeSource($source, 'ym')) {
                 $ymCustomers = DB::table('yandex_market_orders')
                     ->whereIn('marketplace_account_id', $accountIds)
@@ -643,13 +657,14 @@ final class BusinessAnalyticsService
                     ->select(
                         'customer_name',
                         DB::raw('SUM(COALESCE(total_price, 0)) as total_amount'),
-                        DB::raw('COUNT(*) as order_count')
+                        DB::raw('COUNT(*) as order_count'),
+                        DB::raw('MAX(currency) as currency')
                     )
                     ->groupBy('customer_name')
                     ->get()
                     ->map(fn ($row) => [
                         'customer_name' => $row->customer_name,
-                        'total_amount' => $this->convertToDisplay((float) $row->total_amount, 'RUB'),
+                        'total_amount' => $this->convertToDisplay((float) $row->total_amount, $row->currency ?? 'RUB'),
                         'order_count' => (int) $row->order_count,
                     ]);
                 $customers = $customers->merge($ymCustomers);
@@ -818,7 +833,8 @@ final class BusinessAnalyticsService
                         DB::raw('MAX(COALESCE(wildberries_orders.subject, wildberries_orders.supplier_article, CAST(wildberries_orders.nm_id AS CHAR))) as name'),
                         DB::raw('COUNT(*) as total_qty'),
                         DB::raw('SUM(COALESCE(wildberries_orders.for_pay, wildberries_orders.finished_price, wildberries_orders.total_price, 0)) as total_revenue'),
-                        DB::raw('AVG(marketplace_products.purchase_price) as avg_cost')
+                        DB::raw('AVG(marketplace_products.purchase_price) as avg_cost'),
+                        DB::raw('MAX(marketplace_products.purchase_price_currency) as cost_currency')
                     )
                     ->groupBy('sku')
                     ->get();
@@ -829,12 +845,13 @@ final class BusinessAnalyticsService
                     foreach ($wbItems as $row) {
                         $qty = (int) $row->total_qty;
                         $avgCost = $row->avg_cost;
+                        $costCurrency = $row->cost_currency ?? 'UZS';
                         $allItems->push([
                             'sku' => $row->sku,
                             'name' => $row->name,
                             'quantity' => $qty,
                             'revenue' => $this->convertToDisplay((float) $row->total_revenue, 'RUB'),
-                            'cost' => $avgCost ? $this->convertToDisplay((float) $avgCost * $qty, 'RUB') : null,
+                            'cost' => $avgCost ? $this->convertToDisplay((float) $avgCost * $qty, $costCurrency) : null,
                             'has_cost' => $avgCost !== null,
                         ]);
                     }
@@ -853,8 +870,9 @@ final class BusinessAnalyticsService
                             DB::raw('COALESCE(wb_order_items.external_offer_id, wb_orders.article) as sku'),
                             DB::raw('MAX(COALESCE(wb_order_items.name, wb_orders.product_name)) as name'),
                             DB::raw('SUM(wb_order_items.quantity) as total_qty'),
-                            DB::raw('SUM(COALESCE(wb_order_items.price * wb_order_items.quantity, 0)) as total_revenue'),
-                            DB::raw('AVG(marketplace_products.purchase_price) as avg_cost')
+                            DB::raw('SUM(COALESCE(wb_order_items.price * wb_order_items.quantity, 0)) / 100 as total_revenue'),
+                            DB::raw('AVG(marketplace_products.purchase_price) as avg_cost'),
+                            DB::raw('MAX(marketplace_products.purchase_price_currency) as cost_currency')
                         )
                         ->groupBy('sku')
                         ->get();
@@ -862,12 +880,13 @@ final class BusinessAnalyticsService
                     foreach ($wbFbsItems as $row) {
                         $qty = (int) $row->total_qty;
                         $avgCost = $row->avg_cost;
+                        $costCurrency = $row->cost_currency ?? 'UZS';
                         $allItems->push([
                             'sku' => $row->sku,
                             'name' => $row->name ?? $row->sku,
                             'quantity' => $qty,
                             'revenue' => $this->convertToDisplay((float) $row->total_revenue, 'RUB'),
-                            'cost' => $avgCost ? $this->convertToDisplay((float) $avgCost * $qty, 'RUB') : null,
+                            'cost' => $avgCost ? $this->convertToDisplay((float) $avgCost * $qty, $costCurrency) : null,
                             'has_cost' => $avgCost !== null,
                         ]);
                     }
@@ -908,17 +927,18 @@ final class BusinessAnalyticsService
                 }
             }
 
-            // Ozon — извлекаем товары из JSON поля products
+            // Ozon — извлекаем товары из JSON поля products (с учётом валюты)
             if ($this->shouldIncludeSource($source, 'ozon')) {
                 $ozonOrders = DB::table('ozon_orders')
                     ->whereIn('marketplace_account_id', $accountIds)
                     ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
                     ->whereNotIn('status', self::CANCELLED_STATUSES)
-                    ->select('products', 'order_data')
+                    ->select('products', 'order_data', 'currency')
                     ->get();
 
                 $ozonProductItems = collect();
                 foreach ($ozonOrders as $order) {
+                    $orderCurrency = $order->currency ?? 'RUB';
                     $products = !empty($order->products) ? json_decode($order->products, true) : [];
                     if (empty($products) && !empty($order->order_data)) {
                         $orderData = json_decode($order->order_data, true);
@@ -934,16 +954,18 @@ final class BusinessAnalyticsService
                             'name' => $product['name'] ?? $sku,
                             'quantity' => (int) ($product['quantity'] ?? 1),
                             'revenue' => (float) ($product['total'] ?? (($product['price'] ?? 0) * ($product['quantity'] ?? 1))),
+                            'currency' => $orderCurrency,
                         ]);
                     }
                 }
 
                 foreach ($ozonProductItems->groupBy('sku') as $sku => $rows) {
+                    $currency = $rows->first()['currency'] ?? 'RUB';
                     $allItems->push([
                         'sku' => $sku,
                         'name' => $rows->first()['name'],
                         'quantity' => (int) $rows->sum('quantity'),
-                        'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), 'RUB'),
+                        'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), $currency),
                         'cost' => null,
                         'has_cost' => false,
                     ]);
@@ -964,7 +986,8 @@ final class BusinessAnalyticsService
                     $allItems = $allItems->map(function ($item) use ($costMap) {
                         if (!$item['has_cost'] && isset($costMap[$item['sku']])) {
                             $unitCost = (float) $costMap[$item['sku']];
-                            $totalCost = $this->convertToDisplay($unitCost * $item['quantity'], 'RUB');
+                            // Себестоимость хранится в валюте отображения компании
+                            $totalCost = $unitCost * $item['quantity'];
                             $item['cost'] = $totalCost;
                             $item['has_cost'] = true;
                         }
@@ -973,17 +996,18 @@ final class BusinessAnalyticsService
                 }
             }
 
-            // YM — извлекаем товары из JSON поля order_data.items
+            // YM — извлекаем товары из JSON поля order_data.items (с учётом валюты)
             if ($this->shouldIncludeSource($source, 'ym')) {
                 $ymOrders = DB::table('yandex_market_orders')
                     ->whereIn('marketplace_account_id', $accountIds)
                     ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
                     ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
-                    ->select('order_data')
+                    ->select('order_data', 'currency')
                     ->get();
 
                 $ymProductItems = collect();
                 foreach ($ymOrders as $order) {
+                    $orderCurrency = $order->currency ?? 'RUB';
                     $orderData = !empty($order->order_data) ? json_decode($order->order_data, true) : [];
                     $items = $orderData['items'] ?? [];
                     foreach ($items as $item) {
@@ -998,16 +1022,18 @@ final class BusinessAnalyticsService
                             'name' => $item['offerName'] ?? $item['name'] ?? $offerId,
                             'quantity' => $count,
                             'revenue' => $price * $count,
+                            'currency' => $orderCurrency,
                         ]);
                     }
                 }
 
                 foreach ($ymProductItems->groupBy('sku') as $sku => $rows) {
+                    $currency = $rows->first()['currency'] ?? 'RUB';
                     $allItems->push([
                         'sku' => $sku,
                         'name' => $rows->first()['name'],
                         'quantity' => (int) $rows->sum('quantity'),
-                        'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), 'RUB'),
+                        'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), $currency),
                         'cost' => null,
                         'has_cost' => false,
                     ]);
@@ -1028,7 +1054,8 @@ final class BusinessAnalyticsService
                     $allItems = $allItems->map(function ($item) use ($costMap) {
                         if (!$item['has_cost'] && isset($costMap[$item['sku']])) {
                             $unitCost = (float) $costMap[$item['sku']];
-                            $totalCost = $this->convertToDisplay($unitCost * $item['quantity'], 'RUB');
+                            // Себестоимость хранится в валюте отображения компании
+                            $totalCost = $unitCost * $item['quantity'];
                             $item['cost'] = $totalCost;
                             $item['has_cost'] = true;
                         }
@@ -1184,11 +1211,16 @@ final class BusinessAnalyticsService
      */
     protected function convertToDisplay(float $amount, string $currency): float
     {
-        if ($this->currencyService === null) {
+        if ($this->currencyService === null || $amount == 0.0) {
             return $amount;
         }
 
-        return $this->currencyService->convertToDisplay($amount, $currency);
+        try {
+            return $this->currencyService->convertToDisplay($amount, $currency);
+        } catch (\Exception $e) {
+            // Если конвертация не удалась — возвращаем исходную сумму
+            return $amount;
+        }
     }
 
     /**
