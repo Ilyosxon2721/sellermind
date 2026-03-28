@@ -18,7 +18,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900">Бизнес-аналитика</h1>
-                    <p class="text-sm text-gray-500">ABC, ABCXYZ и SWOT анализы</p>
+                    <p class="text-sm text-gray-500">ABC, ABCXYZ, SWOT и рейтинги товаров</p>
                 </div>
                 <div class="flex items-center space-x-3">
                     <template x-if="activeTab !== 'swot'">
@@ -54,6 +54,11 @@
                         class="flex-1 py-2 px-4 rounded-md text-sm font-medium transition">
                     SWOT Анализ
                 </button>
+                <button @click="switchTab('rankings')"
+                        :class="activeTab === 'rankings' ? 'bg-white shadow text-blue-700' : 'text-gray-600 hover:text-gray-900'"
+                        class="flex-1 py-2 px-4 rounded-md text-sm font-medium transition">
+                    Рейтинг товаров
+                </button>
             </div>
         </header>
 
@@ -71,6 +76,11 @@
             {{-- SWOT Анализ --}}
             <div x-show="activeTab === 'swot'" x-cloak>
                 @include('pages.business-analytics.swot-tab')
+            </div>
+
+            {{-- Рейтинг товаров --}}
+            <div x-show="activeTab === 'rankings'" x-cloak>
+                @include('pages.business-analytics.rankings-tab')
             </div>
         </main>
     </div>
@@ -100,6 +110,9 @@
             <button @click="switchTab('swot')"
                     :class="activeTab === 'swot' ? 'bg-white shadow text-blue-700' : 'text-gray-500'"
                     class="flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition">SWOT</button>
+            <button @click="switchTab('rankings')"
+                    :class="activeTab === 'rankings' ? 'bg-white shadow text-blue-700' : 'text-gray-500'"
+                    class="flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition">Рейтинг</button>
         </div>
     </div>
 
@@ -112,6 +125,9 @@
         </div>
         <div x-show="activeTab === 'swot'" x-cloak>
             @include('pages.business-analytics.swot-tab')
+        </div>
+        <div x-show="activeTab === 'rankings'" x-cloak>
+            @include('pages.business-analytics.rankings-tab')
         </div>
     </div>
 
@@ -172,6 +188,19 @@ function businessAnalyticsPage() {
         abcBarChart: null,
         abcTopChart: null,
 
+        // Rankings данные
+        rankingMode: 'sales',
+        salesData: { products: [], summary: { total_products: 0, total_quantity: 0, total_revenue: 0, avg_items_per_product: 0 } },
+        marginData: { products: [], summary: { total_products: 0, total_revenue: 0, total_cost: 0, total_profit: 0, avg_margin: 0, products_with_cost: 0, products_without_cost: 0 } },
+        salesPage: 1,
+        salesPerPage: 20,
+        marginPage: 1,
+        marginPerPage: 20,
+        salesTopChartObj: null,
+        salesShareChartObj: null,
+        marginBarChartObj: null,
+        marginProfitChartObj: null,
+
         // ABCXYZ данные
         abcxyzData: {
             matrix: {},
@@ -205,6 +234,10 @@ function businessAnalyticsPage() {
             if (this.activeTab === 'abc') this.loadAbcData();
             else if (this.activeTab === 'abcxyz') this.loadAbcxyzData();
             else if (this.activeTab === 'swot') this.loadSwotData();
+            else if (this.activeTab === 'rankings') {
+                if (this.rankingMode === 'sales') this.loadSalesRanking();
+                else this.loadMarginRanking();
+            }
         },
 
         getCompanyId() {
@@ -444,6 +477,194 @@ function businessAnalyticsPage() {
 
         removeSwotItem(type, index) {
             this.swot[type].splice(index, 1);
+        },
+
+        // Рейтинг по продажам — пагинация
+        getSalesPagedProducts() {
+            const start = (this.salesPage - 1) * this.salesPerPage;
+            return this.salesData.products.slice(start, start + this.salesPerPage);
+        },
+        salesTotalPages() {
+            return Math.max(1, Math.ceil(this.salesData.products.length / this.salesPerPage));
+        },
+
+        // Рейтинг по маржинальности — пагинация
+        getMarginPagedProducts() {
+            const start = (this.marginPage - 1) * this.marginPerPage;
+            return this.marginData.products.slice(start, start + this.marginPerPage);
+        },
+        marginTotalPages() {
+            return Math.max(1, Math.ceil(this.marginData.products.length / this.marginPerPage));
+        },
+
+        // Загрузка рейтинга по продажам
+        async loadSalesRanking() {
+            this.loading = true;
+            try {
+                const params = { period: this.period };
+                const companyId = this.getCompanyId();
+                if (companyId) params.company_id = companyId;
+
+                const response = await window.api.get('/business-analytics/rankings/sales', { params, silent: true });
+                if (response?.data) {
+                    this.salesData = response.data;
+                    this.salesPage = 1;
+                    this.$nextTick(() => this.renderSalesCharts());
+                }
+            } catch (e) {
+                console.error('Sales ranking error:', e);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // Загрузка рейтинга по маржинальности
+        async loadMarginRanking() {
+            this.loading = true;
+            try {
+                const params = { period: this.period };
+                const companyId = this.getCompanyId();
+                if (companyId) params.company_id = companyId;
+
+                const response = await window.api.get('/business-analytics/rankings/margin', { params, silent: true });
+                if (response?.data) {
+                    this.marginData = response.data;
+                    this.marginPage = 1;
+                    this.$nextTick(() => this.renderMarginCharts());
+                }
+            } catch (e) {
+                console.error('Margin ranking error:', e);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // Графики рейтинга по продажам
+        renderSalesCharts() {
+            if (typeof Chart === 'undefined') return;
+            const fmt = v => new Intl.NumberFormat('ru-RU').format(Math.round(v));
+            const fmtCompact = v => new Intl.NumberFormat('ru-RU', {notation:'compact'}).format(v);
+
+            // Топ-10 горизонтальный bar
+            const topCtx = document.getElementById('salesTopChart');
+            if (topCtx && this.salesData.products.length > 0) {
+                if (this.salesTopChartObj) this.salesTopChartObj.destroy();
+                const top10 = this.salesData.products.slice(0, 10);
+                const colors = top10.map((_, i) => `hsl(${210 + i * 12}, 70%, ${50 + i * 3}%)`);
+                this.salesTopChartObj = new Chart(topCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: top10.map(p => (p.product_name || '').substring(0, 25)),
+                        datasets: [{
+                            label: 'Продано (шт)',
+                            data: top10.map(p => p.quantity),
+                            backgroundColor: colors.map(c => c.replace(')', ', 0.6)').replace('hsl', 'hsla')),
+                            borderColor: colors,
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { x: { beginAtZero: true, ticks: { callback: v => fmtCompact(v) } } },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { callbacks: { label: ctx => ' ' + fmt(ctx.raw) + ' шт' } }
+                        }
+                    }
+                });
+            }
+
+            // Donut — доля топ-5 vs остальные
+            const shareCtx = document.getElementById('salesShareChart');
+            if (shareCtx && this.salesData.products.length > 0) {
+                if (this.salesShareChartObj) this.salesShareChartObj.destroy();
+                const top5 = this.salesData.products.slice(0, 5);
+                const restQty = this.salesData.summary.total_quantity - top5.reduce((s, p) => s + p.quantity, 0);
+                const labels = [...top5.map(p => (p.product_name || '').substring(0, 20)), 'Остальные'];
+                const data = [...top5.map(p => p.quantity), Math.max(0, restQty)];
+                const bgColors = ['#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#e5e7eb'];
+                this.salesShareChartObj = new Chart(shareCtx, {
+                    type: 'doughnut',
+                    data: { labels, datasets: [{ data, backgroundColor: bgColors, borderWidth: 2, borderColor: '#fff' }] },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true, font: { size: 11 } } },
+                            tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)} шт` } }
+                        }
+                    }
+                });
+            }
+        },
+
+        // Графики рейтинга по маржинальности
+        renderMarginCharts() {
+            if (typeof Chart === 'undefined') return;
+            const fmt = v => new Intl.NumberFormat('ru-RU').format(Math.round(v));
+
+            // Топ-10 по маржинальности (горизонтальный bar)
+            const barCtx = document.getElementById('marginBarChart');
+            if (barCtx) {
+                if (this.marginBarChartObj) this.marginBarChartObj.destroy();
+                const withCost = this.marginData.products.filter(p => p.has_cost);
+                const top10 = withCost.slice(0, 10);
+                if (top10.length > 0) {
+                    const colors = top10.map(p => p.margin_percent >= 30 ? '#22c55e' : (p.margin_percent >= 15 ? '#eab308' : '#ef4444'));
+                    this.marginBarChartObj = new Chart(barCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: top10.map(p => (p.name || '').substring(0, 25)),
+                            datasets: [{
+                                label: 'Маржа %',
+                                data: top10.map(p => p.margin_percent),
+                                backgroundColor: colors.map(c => c + '44'),
+                                borderColor: colors,
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: { x: { beginAtZero: true, ticks: { callback: v => v + '%' } } },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: { callbacks: { label: ctx => ` Маржа: ${ctx.raw}%` } }
+                            }
+                        }
+                    });
+                }
+            }
+
+            // Donut — Выручка / Себестоимость / Прибыль
+            const profitCtx = document.getElementById('marginProfitChart');
+            if (profitCtx) {
+                if (this.marginProfitChartObj) this.marginProfitChartObj.destroy();
+                const s = this.marginData.summary;
+                this.marginProfitChartObj = new Chart(profitCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Себестоимость', 'Прибыль'],
+                        datasets: [{
+                            data: [Math.max(0, s.total_cost), Math.max(0, s.total_profit)],
+                            backgroundColor: ['#ef4444', '#22c55e'],
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true } },
+                            tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)} сум` } }
+                        }
+                    }
+                });
+            }
         },
 
         formatMoney(value) {
