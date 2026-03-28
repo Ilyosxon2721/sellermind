@@ -664,10 +664,6 @@ Route::middleware('auth.any')->group(function () {
             Route::get('accounts/{account}/returns/shop/{shopId}', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'returns']);
             Route::get('accounts/{account}/returns/shop/{shopId}/{returnId}', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'returnDetail']);
 
-            // Документы заказов: чек, накладная, счёт-фактура
-            Route::get('accounts/{account}/orders/{orderId}/receipt', [\App\Http\Controllers\Api\UzumOrderDocumentController::class, 'receipt']);
-            Route::get('accounts/{account}/orders/{orderId}/waybill', [\App\Http\Controllers\Api\UzumOrderDocumentController::class, 'waybill']);
-            Route::get('accounts/{account}/orders/{orderId}/invoice', [\App\Http\Controllers\Api\UzumOrderDocumentController::class, 'invoice']);
         });
 
         // Yandex Market
