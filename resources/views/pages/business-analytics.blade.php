@@ -138,6 +138,8 @@
 
 @endsection
 
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" nonce="{{ $cspNonce ?? '' }}"></script>
 <script nonce="{{ $cspNonce ?? '' }}">
 function businessAnalyticsPage() {
     return {
@@ -160,6 +162,16 @@ function businessAnalyticsPage() {
             products: []
         },
 
+        // ABC пагинация и фильтр
+        abcPage: 1,
+        abcPerPage: 20,
+        abcFilter: 'all',
+
+        // Charts
+        abcPieChart: null,
+        abcBarChart: null,
+        abcTopChart: null,
+
         // ABCXYZ данные
         abcxyzData: {
             matrix: {},
@@ -178,7 +190,6 @@ function businessAnalyticsPage() {
         swotSaving: false,
 
         async init() {
-            // Ждём загрузку auth store
             if (this.$store && this.$store.auth) {
                 await this.$nextTick();
             }
@@ -204,6 +215,139 @@ function businessAnalyticsPage() {
             }
         },
 
+        // Пагинация ABC
+        getFilteredProducts() {
+            if (this.abcFilter === 'all') return this.abcData.products;
+            return this.abcData.products.filter(p => p.category === this.abcFilter);
+        },
+
+        getPagedProducts() {
+            const filtered = this.getFilteredProducts();
+            const start = (this.abcPage - 1) * this.abcPerPage;
+            return filtered.slice(start, start + this.abcPerPage);
+        },
+
+        abcTotalPages() {
+            return Math.max(1, Math.ceil(this.getFilteredProducts().length / this.abcPerPage));
+        },
+
+        // Графики ABC
+        renderAbcCharts() {
+            if (typeof Chart === 'undefined') return;
+
+            const cats = this.abcData.summary.categories;
+
+            // Pie Chart
+            const pieCtx = document.getElementById('abcPieChart');
+            if (pieCtx) {
+                if (this.abcPieChart) this.abcPieChart.destroy();
+                this.abcPieChart = new Chart(pieCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['A — Лидеры', 'B — Средний', 'C — Аутсайдеры'],
+                        datasets: [{
+                            data: [cats.A?.revenue || 0, cats.B?.revenue || 0, cats.C?.revenue || 0],
+                            backgroundColor: ['#22c55e', '#eab308', '#ef4444'],
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true } },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => {
+                                        const val = new Intl.NumberFormat('ru-RU').format(Math.round(ctx.raw));
+                                        const pct = cats[['A','B','C'][ctx.dataIndex]]?.percentage || 0;
+                                        return ` ${ctx.label}: ${val} сум (${pct}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Bar Chart
+            const barCtx = document.getElementById('abcBarChart');
+            if (barCtx) {
+                if (this.abcBarChart) this.abcBarChart.destroy();
+                this.abcBarChart = new Chart(barCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['A', 'B', 'C'],
+                        datasets: [
+                            {
+                                label: '% Ассортимента',
+                                data: [cats.A?.assortment_percentage || 0, cats.B?.assortment_percentage || 0, cats.C?.assortment_percentage || 0],
+                                backgroundColor: ['rgba(34,197,94,0.3)', 'rgba(234,179,8,0.3)', 'rgba(239,68,68,0.3)'],
+                                borderColor: ['#22c55e', '#eab308', '#ef4444'],
+                                borderWidth: 2
+                            },
+                            {
+                                label: '% Выручки',
+                                data: [cats.A?.percentage || 0, cats.B?.percentage || 0, cats.C?.percentage || 0],
+                                backgroundColor: ['rgba(34,197,94,0.7)', 'rgba(234,179,8,0.7)', 'rgba(239,68,68,0.7)'],
+                                borderColor: ['#16a34a', '#ca8a04', '#dc2626'],
+                                borderWidth: 2
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } }
+                        },
+                        plugins: {
+                            legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true } },
+                            tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}%` } }
+                        }
+                    }
+                });
+            }
+
+            // Top Products horizontal bar
+            const topCtx = document.getElementById('abcTopProductsChart');
+            if (topCtx && this.abcData.products.length > 0) {
+                if (this.abcTopChart) this.abcTopChart.destroy();
+                const top10 = this.abcData.products.slice(0, 10);
+                const colors = top10.map(p => p.category === 'A' ? '#22c55e' : (p.category === 'B' ? '#eab308' : '#ef4444'));
+                this.abcTopChart = new Chart(topCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: top10.map(p => (p.product_name || '').substring(0, 25)),
+                        datasets: [{
+                            label: 'Выручка',
+                            data: top10.map(p => p.revenue || 0),
+                            backgroundColor: colors.map(c => c + '33'),
+                            borderColor: colors,
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { beginAtZero: true, ticks: { callback: v => new Intl.NumberFormat('ru-RU', {notation:'compact'}).format(v) } }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => ' ' + new Intl.NumberFormat('ru-RU').format(Math.round(ctx.raw)) + ' сум'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        },
+
         async loadAbcData() {
             this.loading = true;
             try {
@@ -217,6 +361,8 @@ function businessAnalyticsPage() {
                 });
                 if (response?.data) {
                     this.abcData = response.data;
+                    this.abcPage = 1;
+                    this.$nextTick(() => this.renderAbcCharts());
                 }
             } catch (e) {
                 console.error('ABC load error:', e);
@@ -307,3 +453,4 @@ function businessAnalyticsPage() {
     }
 }
 </script>
+@endpush
