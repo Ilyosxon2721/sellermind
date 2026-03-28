@@ -54,13 +54,15 @@
         {{-- Графики --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Топ-10 по количеству продаж</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-1">Топ-10 по количеству продаж</h3>
+                <p class="text-xs text-gray-500 mb-3">Самые продаваемые товары (по штукам)</p>
                 <div class="relative" style="height: 320px;">
                     <canvas id="salesTopChart"></canvas>
                 </div>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Доля в продажах</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-1">Доля в продажах</h3>
+                <p class="text-xs text-gray-500 mb-3">Топ-5 товаров vs остальные (по количеству)</p>
                 <div class="relative" style="height: 320px;">
                     <canvas id="salesShareChart"></canvas>
                 </div>
@@ -189,13 +191,15 @@
         {{-- Графики --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Топ-10 по маржинальности</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-1">Топ-10 по маржинальности</h3>
+                <p class="text-xs text-gray-500 mb-3">Товары с наибольшей наценкой (выручка - себестоимость)</p>
                 <div class="relative" style="height: 320px;">
                     <canvas id="marginBarChart"></canvas>
                 </div>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Структура: Выручка / Себестоимость / Прибыль</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-1">Структура прибыли</h3>
+                <p class="text-xs text-gray-500 mb-3">Соотношение себестоимости и чистой прибыли</p>
                 <div class="relative" style="height: 320px;">
                     <canvas id="marginProfitChart"></canvas>
                 </div>

@@ -17,6 +17,8 @@ class BusinessAnalyticsController extends Controller
 {
     use HasCompanyScope;
 
+    private const VALID_SOURCES = ['all', 'wb', 'ozon', 'uzum', 'ym', 'manual', 'offline'];
+
     public function __construct(
         protected BusinessAnalyticsService $service,
         protected CurrencyConversionService $currencyService,
@@ -38,6 +40,16 @@ class BusinessAnalyticsController extends Controller
     }
 
     /**
+     * Получить валидированный источник из запроса
+     */
+    private function getSource(Request $request): string
+    {
+        $source = $request->input('source', 'all');
+
+        return in_array($source, self::VALID_SOURCES) ? $source : 'all';
+    }
+
+    /**
      * ABC-анализ товаров
      */
     public function abcAnalysis(Request $request): JsonResponse
@@ -45,10 +57,11 @@ class BusinessAnalyticsController extends Controller
         $this->configureCurrencyService();
         $companyId = $this->getCompanyId();
         $period = $request->input('period', '30days');
+        $source = $this->getSource($request);
 
-        $cacheKey = "business_abc_{$companyId}_{$period}";
-        $data = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period) {
-            return $this->service->getAbcAnalysis($companyId, $period);
+        $cacheKey = "business_abc_{$companyId}_{$period}_{$source}";
+        $data = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period, $source) {
+            return $this->service->getAbcAnalysis($companyId, $period, $source);
         });
 
         return response()->json($data);
@@ -62,10 +75,11 @@ class BusinessAnalyticsController extends Controller
         $this->configureCurrencyService();
         $companyId = $this->getCompanyId();
         $period = $request->input('period', '90days');
+        $source = $this->getSource($request);
 
-        $cacheKey = "business_abcxyz_{$companyId}_{$period}";
-        $data = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period) {
-            return $this->service->getAbcxyzAnalysis($companyId, $period);
+        $cacheKey = "business_abcxyz_{$companyId}_{$period}_{$source}";
+        $data = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period, $source) {
+            return $this->service->getAbcxyzAnalysis($companyId, $period, $source);
         });
 
         return response()->json($data);
@@ -91,10 +105,11 @@ class BusinessAnalyticsController extends Controller
         $this->configureCurrencyService();
         $companyId = $this->getCompanyId();
         $period = $request->input('period', '30days');
+        $source = $this->getSource($request);
 
-        $cacheKey = "business_sales_ranking_{$companyId}_{$period}";
-        $data = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period) {
-            return $this->service->getProductSalesRanking($companyId, $period);
+        $cacheKey = "business_sales_ranking_{$companyId}_{$period}_{$source}";
+        $data = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period, $source) {
+            return $this->service->getProductSalesRanking($companyId, $period, $source);
         });
 
         return response()->json($data);
@@ -108,10 +123,11 @@ class BusinessAnalyticsController extends Controller
         $this->configureCurrencyService();
         $companyId = $this->getCompanyId();
         $period = $request->input('period', '30days');
+        $source = $this->getSource($request);
 
-        $cacheKey = "business_margin_ranking_{$companyId}_{$period}";
-        $data = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period) {
-            return $this->service->getProductMarginRanking($companyId, $period);
+        $cacheKey = "business_margin_ranking_{$companyId}_{$period}_{$source}";
+        $data = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period, $source) {
+            return $this->service->getProductMarginRanking($companyId, $period, $source);
         });
 
         return response()->json($data);
