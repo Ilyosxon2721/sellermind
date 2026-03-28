@@ -269,10 +269,21 @@ function businessAnalyticsPage() {
         newItem: { strengths: '', weaknesses: '', opportunities: '', threats: '' },
         swotSaving: false,
 
+        // Флаг для отложенного рендера графиков
+        _pendingChart: null,
+
         async init() {
             if (this.$store && this.$store.auth) {
                 await this.$nextTick();
             }
+            // Отслеживаем loading → false для рендера графиков
+            this.$watch('loading', (val) => {
+                if (!val && this._pendingChart) {
+                    const fn = this._pendingChart;
+                    this._pendingChart = null;
+                    this.$nextTick(() => setTimeout(() => fn(), 50));
+                }
+            });
             await this.loadAbcData();
         },
 
@@ -554,7 +565,7 @@ function businessAnalyticsPage() {
                 if (response?.data) {
                     this.abcData = response.data;
                     this.abcPage = 1;
-                    this.$nextTick(() => setTimeout(() => this.renderAbcCharts(), 100));
+                    this._pendingChart = () => this.renderAbcCharts();
                 }
             } catch (e) {
                 console.error('ABC load error:', e);
@@ -668,7 +679,7 @@ function businessAnalyticsPage() {
                 if (response?.data) {
                     this.salesData = response.data;
                     this.salesPage = 1;
-                    this.$nextTick(() => setTimeout(() => this.renderSalesCharts(), 100));
+                    this._pendingChart = () => this.renderSalesCharts();
                 }
             } catch (e) {
                 console.error('Sales ranking error:', e);
@@ -689,7 +700,7 @@ function businessAnalyticsPage() {
                 if (response?.data) {
                     this.marginData = response.data;
                     this.marginPage = 1;
-                    this.$nextTick(() => setTimeout(() => this.renderMarginCharts(), 100));
+                    this._pendingChart = () => this.renderMarginCharts();
                 }
             } catch (e) {
                 console.error('Margin ranking error:', e);
