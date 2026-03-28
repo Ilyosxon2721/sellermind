@@ -39,7 +39,8 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {{-- Pie Chart: Распределение выручки --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Распределение выручки</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-1">Распределение выручки</h3>
+                <p class="text-xs text-gray-500 mb-3">Доля каждой категории A/B/C в общей выручке</p>
                 <div class="relative" style="height: 280px;">
                     <canvas id="abcPieChart"></canvas>
                 </div>
@@ -47,7 +48,8 @@
 
             {{-- Bar Chart: Кол-во товаров и выручка --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Товары vs Выручка</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-1">Товары vs Выручка</h3>
+                <p class="text-xs text-gray-500 mb-3">Сравнение: % товаров в ассортименте и % выручки</p>
                 <div class="relative" style="height: 280px;">
                     <canvas id="abcBarChart"></canvas>
                 </div>
@@ -56,7 +58,8 @@
 
         {{-- Топ-10 товаров — горизонтальный bar chart --}}
         <div x-show="abcData.products.length > 0" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Топ-10 товаров по выручке</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-1">Топ-10 товаров по выручке</h3>
+            <p class="text-xs text-gray-500 mb-3">Наиболее прибыльные товары за выбранный период</p>
             <div class="relative" style="height: 320px;">
                 <canvas id="abcTopProductsChart"></canvas>
             </div>
