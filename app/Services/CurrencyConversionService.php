@@ -135,10 +135,17 @@ class CurrencyConversionService
             }
         }
 
-        // Check cached rates
-        $cachedRate = Cache::get("exchange_rate:{$rateKey}");
-        if ($cachedRate !== null) {
-            return (float) $cachedRate;
+        // Check cached rates (graceful fallback if Redis is down)
+        try {
+            $cachedRate = Cache::get("exchange_rate:{$rateKey}");
+            if ($cachedRate !== null) {
+                return (float) $cachedRate;
+            }
+        } catch (\RedisException|\Predis\ClientException $e) {
+            Log::warning('CurrencyConversion: кэш недоступен при получении курса', [
+                'key' => $rateKey,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         // Check default rates
@@ -152,7 +159,11 @@ class CurrencyConversionService
         // Try to fetch from API
         $fetchedRate = $this->fetchRateFromApi($from, $to);
         if ($fetchedRate !== null) {
-            Cache::put("exchange_rate:{$rateKey}", $fetchedRate, self::RATE_CACHE_TTL);
+            try {
+                Cache::put("exchange_rate:{$rateKey}", $fetchedRate, self::RATE_CACHE_TTL);
+            } catch (\RedisException|\Predis\ClientException $e) {
+                // Ignore cache write failure
+            }
 
             return $fetchedRate;
         }
@@ -163,7 +174,11 @@ class CurrencyConversionService
             $rubToTarget = $this->getRate('RUB', $to);
             if ($fromToRub !== 1.0 || $rubToTarget !== 1.0) {
                 $crossRate = $fromToRub * $rubToTarget;
-                Cache::put("exchange_rate:{$rateKey}", $crossRate, self::RATE_CACHE_TTL);
+                try {
+                    Cache::put("exchange_rate:{$rateKey}", $crossRate, self::RATE_CACHE_TTL);
+                } catch (\RedisException|\Predis\ClientException $e) {
+                    // Ignore cache write failure
+                }
 
                 return $crossRate;
             }
