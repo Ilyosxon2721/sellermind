@@ -296,7 +296,7 @@ final class BusinessAnalyticsService
         $allItems = collect();
 
         if ($accountIds->isNotEmpty()) {
-            // WB
+            // WB — SQL-агрегация по товарам (как в SalesAnalyticsService)
             if ($this->shouldIncludeSource($source, 'wb')) {
                 $wbItems = DB::table('wildberries_orders')
                     ->whereIn('marketplace_account_id', $accountIds)
@@ -305,22 +305,22 @@ final class BusinessAnalyticsService
                     ->where('is_return', false)
                     ->select(
                         DB::raw('COALESCE(supplier_article, CAST(nm_id AS CHAR)) as external_offer_id'),
-                        DB::raw('COALESCE(subject, supplier_article, CAST(nm_id AS CHAR)) as name'),
-                        DB::raw('1 as quantity'),
-                        DB::raw('for_pay as total_price')
+                        DB::raw('MAX(COALESCE(subject, supplier_article, CAST(nm_id AS CHAR))) as name'),
+                        DB::raw('COUNT(*) as total_quantity'),
+                        DB::raw('SUM(COALESCE(for_pay, finished_price, total_price, 0)) as total_revenue')
                     )
-                    ->get()
                     ->groupBy('external_offer_id')
-                    ->map(fn ($rows) => [
-                        'external_offer_id' => $rows->first()->external_offer_id,
-                        'name' => $rows->first()->name,
-                        'total_quantity' => $rows->count(),
-                        'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'RUB'),
+                    ->get()
+                    ->map(fn ($row) => [
+                        'external_offer_id' => $row->external_offer_id,
+                        'name' => $row->name,
+                        'total_quantity' => (int) $row->total_quantity,
+                        'total_revenue' => $this->convertToDisplay((float) $row->total_revenue, 'RUB'),
                     ]);
                 $allItems = $allItems->merge($wbItems);
             }
 
-            // Uzum
+            // Uzum — SQL-агрегация по товарам
             if ($this->shouldIncludeSource($source, 'uzum')) {
                 $uzumItems = DB::table('uzum_order_items')
                     ->join('uzum_orders', 'uzum_order_items.uzum_order_id', '=', 'uzum_orders.id')
@@ -329,17 +329,17 @@ final class BusinessAnalyticsService
                     ->whereNotIn('uzum_orders.status_normalized', self::CANCELLED_STATUSES)
                     ->select(
                         'uzum_order_items.external_offer_id',
-                        'uzum_order_items.name',
-                        'uzum_order_items.quantity',
-                        'uzum_order_items.total_price'
+                        DB::raw('MAX(uzum_order_items.name) as name'),
+                        DB::raw('SUM(uzum_order_items.quantity) as total_quantity'),
+                        DB::raw('SUM(uzum_order_items.total_price) as total_revenue')
                     )
+                    ->groupBy('uzum_order_items.external_offer_id')
                     ->get()
-                    ->groupBy('external_offer_id')
-                    ->map(fn ($rows) => [
-                        'external_offer_id' => $rows->first()->external_offer_id,
-                        'name' => $rows->first()->name ?? $rows->first()->external_offer_id,
-                        'total_quantity' => (int) $rows->sum('quantity'),
-                        'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'UZS'),
+                    ->map(fn ($row) => [
+                        'external_offer_id' => $row->external_offer_id,
+                        'name' => $row->name ?? $row->external_offer_id,
+                        'total_quantity' => (int) $row->total_quantity,
+                        'total_revenue' => $this->convertToDisplay((float) $row->total_revenue, 'UZS'),
                     ]);
                 $allItems = $allItems->merge($uzumItems);
             }
@@ -426,7 +426,7 @@ final class BusinessAnalyticsService
             }
         }
 
-        // Ручные продажи
+        // Ручные продажи — SQL-агрегация
         if ($this->shouldIncludeSource($source, 'manual')) {
             $manualItems = DB::table('sale_items')
                 ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
@@ -436,22 +436,22 @@ final class BusinessAnalyticsService
                 ->whereNull('sales.deleted_at')
                 ->select(
                     DB::raw('COALESCE(sale_items.sku, sale_items.product_name) as external_offer_id'),
-                    'sale_items.product_name as name',
-                    'sale_items.quantity',
-                    'sale_items.total as total_price'
+                    DB::raw('MAX(sale_items.product_name) as name'),
+                    DB::raw('SUM(sale_items.quantity) as total_quantity'),
+                    DB::raw('SUM(COALESCE(sale_items.total, 0)) as total_revenue')
                 )
-                ->get()
                 ->groupBy('external_offer_id')
-                ->map(fn ($rows) => [
-                    'external_offer_id' => $rows->first()->external_offer_id,
-                    'name' => $rows->first()->name ?? $rows->first()->external_offer_id,
-                    'total_quantity' => (int) $rows->sum('quantity'),
-                    'total_revenue' => (float) $rows->sum('total_price'),
+                ->get()
+                ->map(fn ($row) => [
+                    'external_offer_id' => $row->external_offer_id,
+                    'name' => $row->name ?? $row->external_offer_id,
+                    'total_quantity' => (int) $row->total_quantity,
+                    'total_revenue' => (float) $row->total_revenue,
                 ]);
             $allItems = $allItems->merge($manualItems);
         }
 
-        // Оффлайн продажи
+        // Оффлайн продажи — SQL-агрегация
         if ($this->shouldIncludeSource($source, 'offline')) {
             $offlineItems = DB::table('offline_sale_items')
                 ->join('offline_sales', 'offline_sale_items.offline_sale_id', '=', 'offline_sales.id')
@@ -461,17 +461,17 @@ final class BusinessAnalyticsService
                 ->whereNull('offline_sales.deleted_at')
                 ->select(
                     DB::raw('COALESCE(offline_sale_items.sku_code, offline_sale_items.product_name) as external_offer_id'),
-                    'offline_sale_items.product_name as name',
-                    'offline_sale_items.quantity',
-                    'offline_sale_items.line_total as total_price'
+                    DB::raw('MAX(offline_sale_items.product_name) as name'),
+                    DB::raw('SUM(offline_sale_items.quantity) as total_quantity'),
+                    DB::raw('SUM(COALESCE(offline_sale_items.line_total, 0)) as total_revenue')
                 )
-                ->get()
                 ->groupBy('external_offer_id')
-                ->map(fn ($rows) => [
-                    'external_offer_id' => $rows->first()->external_offer_id,
-                    'name' => $rows->first()->name ?? $rows->first()->external_offer_id,
-                    'total_quantity' => (int) $rows->sum('quantity'),
-                    'total_revenue' => (float) $rows->sum('total_price'),
+                ->get()
+                ->map(fn ($row) => [
+                    'external_offer_id' => $row->external_offer_id,
+                    'name' => $row->name ?? $row->external_offer_id,
+                    'total_quantity' => (int) $row->total_quantity,
+                    'total_revenue' => (float) $row->total_revenue,
                 ]);
             $allItems = $allItems->merge($offlineItems);
         }
@@ -654,7 +654,7 @@ final class BusinessAnalyticsService
                         DB::raw('COALESCE(wildberries_orders.supplier_article, CAST(wildberries_orders.nm_id AS CHAR)) as sku'),
                         DB::raw('COALESCE(wildberries_orders.subject, wildberries_orders.supplier_article, CAST(wildberries_orders.nm_id AS CHAR)) as name'),
                         DB::raw('1 as quantity'),
-                        DB::raw('wildberries_orders.for_pay as revenue'),
+                        DB::raw('COALESCE(wildberries_orders.for_pay, wildberries_orders.finished_price, wildberries_orders.total_price) as revenue'),
                         DB::raw('marketplace_products.purchase_price as cost_price'),
                         DB::raw("'RUB' as currency")
                     )
