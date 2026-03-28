@@ -294,11 +294,10 @@ final class UzumOrderSyncService
             'delivered_at' => $orderData['dateDelivered'] ?? null,
             'items' => $items,
             'raw_payload' => $orderData,
-            // Uzum API возвращает поле scheme: 'FBS'|'DBS' в теле каждого заказа.
+            // Uzum API возвращает поле scheme: 'FBS'|'DBS'|'EDBS' в теле каждого заказа.
+            // Также проверяем deliveryType и deliveryMode как альтернативные имена.
             // Если поле отсутствует — передаём null, чтобы не перезаписывать существующий delivery_type.
-            'delivery_type' => isset($orderData['scheme'])
-                ? strtoupper($orderData['scheme'])
-                : (isset($orderData['deliveryType']) ? strtoupper($orderData['deliveryType']) : null),
+            'delivery_type' => $this->detectDeliveryType($orderData),
             'delivery_address_full' => $address['fullAddress'] ?? null,
             'delivery_city' => $address['city'] ?? null,
             'delivery_street' => $address['street'] ?? null,
@@ -307,6 +306,48 @@ final class UzumOrderSyncService
             'delivery_longitude' => $address['longitude'] ?? null,
             'delivery_latitude' => $address['latitude'] ?? null,
         ];
+    }
+
+    /**
+     * Определить тип доставки из данных заказа Uzum API
+     *
+     * Проверяет несколько полей: scheme, deliveryType, deliveryMode, shippingType.
+     * Возвращает null если определить не удалось.
+     */
+    private function detectDeliveryType(array $orderData): ?string
+    {
+        // Прямые поля типа доставки
+        foreach (['scheme', 'deliveryType', 'deliveryMode', 'shippingType', 'type'] as $field) {
+            if (! empty($orderData[$field])) {
+                $value = strtoupper($orderData[$field]);
+                if (in_array($value, ['FBS', 'DBS', 'EDBS', 'FBO'])) {
+                    return $value;
+                }
+            }
+        }
+
+        // Проверка вложенных полей
+        $deliveryInfo = $orderData['deliveryInfo'] ?? [];
+        if (! empty($deliveryInfo['deliveryType'])) {
+            $value = strtoupper($deliveryInfo['deliveryType']);
+            if (in_array($value, ['FBS', 'DBS', 'EDBS', 'FBO'])) {
+                return $value;
+            }
+        }
+        if (! empty($deliveryInfo['type'])) {
+            $value = strtoupper($deliveryInfo['type']);
+            if (in_array($value, ['FBS', 'DBS', 'EDBS', 'FBO'])) {
+                return $value;
+            }
+        }
+
+        // Эвристика: если есть полный адрес доставки с улицей/домом — вероятно DBS
+        $address = $deliveryInfo['address'] ?? [];
+        if (! empty($address['street']) && ! empty($address['house'])) {
+            return 'DBS';
+        }
+
+        return null;
     }
 
     // ─── ПЕРСИСТЕНЦИЯ ───────────────────────────────────────────

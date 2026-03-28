@@ -88,25 +88,48 @@ final class UzumOrderDocumentController extends Controller
 
         $raw = $order->raw_payload ?? [];
 
-        // Тип доставки: приоритет raw_payload.scheme → delivery_type → 'FBS'
-        $deliveryType = strtoupper($raw['scheme'] ?? $order->delivery_type ?? 'FBS');
+        // Тип доставки: проверяем несколько полей в raw_payload, затем delivery_type
+        $deliveryType = null;
+        foreach (['scheme', 'deliveryType', 'deliveryMode', 'shippingType'] as $field) {
+            if (! empty($raw[$field]) && in_array(strtoupper($raw[$field]), ['FBS', 'DBS', 'EDBS', 'FBO'])) {
+                $deliveryType = strtoupper($raw[$field]);
+                break;
+            }
+        }
+        // Fallback: deliveryInfo.deliveryType
+        if (! $deliveryType) {
+            $diType = $raw['deliveryInfo']['deliveryType'] ?? $raw['deliveryInfo']['type'] ?? null;
+            if ($diType && in_array(strtoupper($diType), ['FBS', 'DBS', 'EDBS', 'FBO'])) {
+                $deliveryType = strtoupper($diType);
+            }
+        }
+        // Fallback: наличие адреса с улицей + домом → DBS
+        if (! $deliveryType) {
+            $address = $raw['deliveryInfo']['address'] ?? [];
+            if (! empty($address['street']) && ! empty($address['house'])) {
+                $deliveryType = 'DBS';
+            }
+        }
+        $deliveryType = $deliveryType ?? strtoupper($order->delivery_type ?? 'FBS');
 
-        // Данные покупателя из raw_payload
+        // Данные покупателя: DB → raw_payload → deliveryInfo
+        $di = $raw['deliveryInfo'] ?? [];
         $customerName = $order->customer_name
-            ?: ($raw['customerFullName'] ?? $raw['customer_name'] ?? $raw['recipientFullName'] ?? null);
+            ?: ($di['customerFullname'] ?? $raw['customerFullName'] ?? $raw['customerFullname'] ?? $di['recipientFullName'] ?? null);
         $customerPhone = $order->customer_phone
-            ?: ($raw['customerPhone'] ?? $raw['customer_phone'] ?? $raw['recipientPhone'] ?? null);
+            ?: ($di['customerPhone'] ?? $raw['customerPhone'] ?? $di['recipientPhone'] ?? null);
 
         // Адрес доставки для DBS
+        $addr = $di['address'] ?? [];
         $deliveryAddress = $order->delivery_address_full
-            ?: ($raw['deliveryAddress'] ?? $raw['delivery_address'] ?? null);
-        if (! $deliveryAddress && ($order->delivery_city || $order->delivery_street)) {
+            ?: ($addr['fullAddress'] ?? $raw['deliveryAddress'] ?? null);
+        if (! $deliveryAddress) {
             $deliveryAddress = implode(', ', array_filter([
-                $order->delivery_city,
-                $order->delivery_street,
-                $order->delivery_home ? 'д. ' . $order->delivery_home : null,
-                $order->delivery_flat ? 'кв. ' . $order->delivery_flat : null,
-            ]));
+                $order->delivery_city ?: ($addr['city'] ?? null),
+                $order->delivery_street ?: ($addr['street'] ?? null),
+                ($order->delivery_home ?: ($addr['house'] ?? null)) ? 'д. ' . ($order->delivery_home ?: $addr['house']) : null,
+                ($order->delivery_flat ?: ($addr['apartment'] ?? null)) ? 'кв. ' . ($order->delivery_flat ?: $addr['apartment']) : null,
+            ])) ?: null;
         }
 
         return [
