@@ -86,12 +86,39 @@ final class UzumOrderDocumentController extends Controller
             ->where('external_id', $order->shop_id)
             ->first();
 
+        $raw = $order->raw_payload ?? [];
+
+        // Тип доставки: приоритет raw_payload.scheme → delivery_type → 'FBS'
+        $deliveryType = strtoupper($raw['scheme'] ?? $order->delivery_type ?? 'FBS');
+
+        // Данные покупателя из raw_payload
+        $customerName = $order->customer_name
+            ?: ($raw['customerFullName'] ?? $raw['customer_name'] ?? $raw['recipientFullName'] ?? null);
+        $customerPhone = $order->customer_phone
+            ?: ($raw['customerPhone'] ?? $raw['customer_phone'] ?? $raw['recipientPhone'] ?? null);
+
+        // Адрес доставки для DBS
+        $deliveryAddress = $order->delivery_address_full
+            ?: ($raw['deliveryAddress'] ?? $raw['delivery_address'] ?? null);
+        if (! $deliveryAddress && ($order->delivery_city || $order->delivery_street)) {
+            $deliveryAddress = implode(', ', array_filter([
+                $order->delivery_city,
+                $order->delivery_street,
+                $order->delivery_home ? 'д. ' . $order->delivery_home : null,
+                $order->delivery_flat ? 'кв. ' . $order->delivery_flat : null,
+            ]));
+        }
+
         return [
             'order' => $order,
             'items' => $order->items,
             'account' => $account,
             'shopName' => $shop?->name ?? $account->name ?? 'Uzum Market',
             'date' => now()->format('d.m.Y H:i'),
+            'deliveryType' => $deliveryType,
+            'customerName' => $customerName,
+            'customerPhone' => $customerPhone,
+            'deliveryAddress' => $deliveryAddress,
         ];
     }
 }

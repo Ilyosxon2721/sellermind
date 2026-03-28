@@ -385,8 +385,8 @@
                                                             </button>
                                                         </template>
 
-                                                        <!-- Print Sticker (In Assembly) -->
-                                                        <template x-if="order.status === 'in_assembly'">
+                                                        <!-- Print Sticker (In Assembly, only FBS) -->
+                                                        <template x-if="order.status === 'in_assembly' && !isDbs(order)">
                                                             <button @click="printOrderSticker(order)"
                                                                     :disabled="order.printing"
                                                                     class="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition disabled:opacity-50"
@@ -599,7 +599,7 @@
                                 Взять в работу
                             </button>
                         </template>
-                        <template x-if="selectedOrder?.status === 'in_assembly'">
+                        <template x-if="selectedOrder?.status === 'in_assembly' && !isDbs(selectedOrder)">
                             <button @click="printOrderSticker(selectedOrder)"
                                     class="flex-1 px-4 py-2 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition flex items-center justify-center space-x-2">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1186,6 +1186,11 @@ function uzumOrdersPage() {
             order.processing = false;
         },
 
+        isDbs(order) {
+            const scheme = (order.delivery_type || order.deliveryType || order.scheme || order.raw_payload?.scheme || '').toUpperCase();
+            return scheme === 'DBS' || scheme === 'EDBS';
+        },
+
         openDocument(order, type) {
             if (!order?.external_order_id) return;
             const url = `/marketplace/${this.accountId}/uzum-orders/${order.external_order_id}/${type}`;
@@ -1193,6 +1198,10 @@ function uzumOrdersPage() {
         },
 
         async printOrderSticker(order) {
+            if (this.isDbs(order)) {
+                this.showMessage('Этикетки недоступны для DBS заказов — доставка осуществляется продавцом', 'error');
+                return;
+            }
             order.printing = true;
             try {
                 // If already has sticker path, print existing
@@ -1240,8 +1249,13 @@ function uzumOrdersPage() {
                         this.showMessage('Не удалось сгенерировать этикетку', 'error');
                     }
                 } else {
-                    const err = await res.json();
-                    this.showMessage(err.message || 'Ошибка генерации этикетки', 'error');
+                    const err = await res.json().catch(() => ({}));
+                    const apiMsg = err.errors?.[0]?.message || err.message || '';
+                    if (apiMsg.includes('sticker not found') || apiMsg.includes('seller-order-17')) {
+                        this.showMessage('Этикетки недоступны для данного типа заказа', 'error');
+                    } else {
+                        this.showMessage(apiMsg || 'Ошибка генерации этикетки', 'error');
+                    }
                 }
             } catch (e) {
                 console.error('Print sticker error:', e);

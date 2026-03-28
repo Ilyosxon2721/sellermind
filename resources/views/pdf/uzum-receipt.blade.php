@@ -79,12 +79,10 @@
             <td>Дата:</td>
             <td class="right">{{ $date }}</td>
         </tr>
-        @if($order->delivery_type)
         <tr>
             <td>Тип:</td>
-            <td class="right">{{ strtoupper($order->delivery_type) }}</td>
+            <td class="right">{{ $deliveryType }}</td>
         </tr>
-        @endif
     </table>
 
     <div class="divider"></div>
@@ -125,13 +123,16 @@
 
     <div class="divider"></div>
 
-    @if($order->customer_name || $order->customer_phone)
+    @if($customerName || $customerPhone || $deliveryAddress)
     <div class="info-row">
-        @if($order->customer_name)
-        <div>Покупатель: {{ $order->customer_name }}</div>
+        @if($customerName)
+        <div>Покупатель: {{ $customerName }}</div>
         @endif
-        @if($order->customer_phone)
-        <div>Тел.: {{ $order->customer_phone }}</div>
+        @if($customerPhone)
+        <div>Тел.: {{ $customerPhone }}</div>
+        @endif
+        @if($deliveryAddress)
+        <div>Адрес: {{ $deliveryAddress }}</div>
         @endif
     </div>
     <div class="divider"></div>

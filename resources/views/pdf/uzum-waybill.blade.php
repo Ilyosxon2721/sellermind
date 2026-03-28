@@ -119,27 +119,23 @@
             <span class="info-label">Маркетплейс:</span> Uzum Market
         </div>
         <div class="info-row">
-            <span class="info-label">Тип доставки:</span> {{ strtoupper($order->delivery_type ?? 'FBS') }}
+            <span class="info-label">Тип доставки:</span> {{ $deliveryType }}
         </div>
     </div>
 
     <div class="info-block">
         <h3>Получатель</h3>
         <div class="info-row">
-            <span class="info-label">ФИО:</span> {{ $order->customer_name ?? '---' }}
+            <span class="info-label">ФИО:</span> {{ $customerName ?? '---' }}
         </div>
-        @if($order->customer_phone)
+        @if($customerPhone)
         <div class="info-row">
-            <span class="info-label">Телефон:</span> {{ $order->customer_phone }}
+            <span class="info-label">Телефон:</span> {{ $customerPhone }}
         </div>
         @endif
-        @if($order->delivery_address_full)
+        @if($deliveryAddress)
         <div class="info-row">
-            <span class="info-label">Адрес доставки:</span> {{ $order->delivery_address_full }}
-        </div>
-        @elseif($order->delivery_city)
-        <div class="info-row">
-            <span class="info-label">Город:</span> {{ $order->delivery_city }}
+            <span class="info-label">Адрес доставки:</span> {{ $deliveryAddress }}
         </div>
         @endif
     </div>
