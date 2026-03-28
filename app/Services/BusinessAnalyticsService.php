@@ -496,6 +496,321 @@ final class BusinessAnalyticsService
     }
 
     /**
+     * Рейтинг товаров по количеству продаж
+     */
+    public function getProductSalesRanking(int $companyId, string $period = '30days'): array
+    {
+        $this->forCompany($companyId);
+        $dateRange = $this->getDateRange($period);
+        $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
+
+        $items = $this->getAggregatedProductRevenue($accountIds, $dateRange);
+
+        if ($items->isEmpty()) {
+            return [
+                'products' => [],
+                'summary' => [
+                    'total_products' => 0,
+                    'total_quantity' => 0,
+                    'total_revenue' => 0,
+                    'avg_items_per_product' => 0,
+                ],
+                'period' => $period,
+            ];
+        }
+
+        $sorted = $items->sortByDesc('total_quantity')->values();
+        $totalQuantity = $sorted->sum('total_quantity');
+        $totalRevenue = $sorted->sum('total_revenue');
+
+        $products = [];
+        foreach ($sorted as $index => $item) {
+            $qty = (int) $item['total_quantity'];
+            $rev = (float) $item['total_revenue'];
+            $products[] = [
+                'rank' => $index + 1,
+                'product_name' => $item['name'],
+                'sku' => $item['external_offer_id'],
+                'quantity' => $qty,
+                'revenue' => round($rev, 2),
+                'avg_price' => $qty > 0 ? round($rev / $qty, 2) : 0,
+                'share_percent' => $totalQuantity > 0 ? round(($qty / $totalQuantity) * 100, 2) : 0,
+            ];
+        }
+
+        return [
+            'products' => $products,
+            'summary' => [
+                'total_products' => count($products),
+                'total_quantity' => $totalQuantity,
+                'total_revenue' => round($totalRevenue, 2),
+                'avg_items_per_product' => count($products) > 0 ? round($totalQuantity / count($products), 1) : 0,
+            ],
+            'period' => $period,
+        ];
+    }
+
+    /**
+     * Рейтинг товаров по маржинальности
+     */
+    public function getProductMarginRanking(int $companyId, string $period = '30days'): array
+    {
+        $this->forCompany($companyId);
+        $dateRange = $this->getDateRange($period);
+        $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
+
+        $allItems = collect();
+
+        if ($accountIds->isNotEmpty()) {
+            // WB — себестоимость через marketplace_products.purchase_price
+            $wbItems = DB::table('wildberries_orders')
+                ->leftJoin('marketplace_products', function ($join) {
+                    $join->on('wildberries_orders.marketplace_account_id', '=', 'marketplace_products.marketplace_account_id')
+                        ->on(DB::raw('COALESCE(wildberries_orders.supplier_article, CAST(wildberries_orders.nm_id AS CHAR))'), '=', 'marketplace_products.external_offer_id');
+                })
+                ->whereIn('wildberries_orders.marketplace_account_id', $accountIds)
+                ->whereBetween('wildberries_orders.order_date', [$dateRange['from'], $dateRange['to']])
+                ->where('wildberries_orders.is_cancel', false)
+                ->where('wildberries_orders.is_return', false)
+                ->select(
+                    DB::raw('COALESCE(wildberries_orders.supplier_article, CAST(wildberries_orders.nm_id AS CHAR)) as sku'),
+                    DB::raw('COALESCE(wildberries_orders.subject, wildberries_orders.supplier_article, CAST(wildberries_orders.nm_id AS CHAR)) as name'),
+                    DB::raw('1 as quantity'),
+                    DB::raw('wildberries_orders.for_pay as revenue'),
+                    DB::raw('marketplace_products.purchase_price as cost_price'),
+                    DB::raw("'RUB' as currency")
+                )
+                ->get();
+
+            foreach ($wbItems->groupBy('sku') as $sku => $rows) {
+                $costPrice = $rows->first()->cost_price;
+                $allItems->push([
+                    'sku' => $sku,
+                    'name' => $rows->first()->name,
+                    'quantity' => $rows->count(),
+                    'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), 'RUB'),
+                    'cost' => $costPrice ? $this->convertToDisplay((float) $costPrice * $rows->count(), 'RUB') : null,
+                    'has_cost' => $costPrice !== null,
+                ]);
+            }
+
+            // Uzum
+            $uzumItems = DB::table('uzum_order_items')
+                ->join('uzum_orders', 'uzum_order_items.uzum_order_id', '=', 'uzum_orders.id')
+                ->leftJoin('marketplace_products', function ($join) {
+                    $join->on('uzum_orders.marketplace_account_id', '=', 'marketplace_products.marketplace_account_id')
+                        ->on('uzum_order_items.external_offer_id', '=', 'marketplace_products.external_offer_id');
+                })
+                ->whereIn('uzum_orders.marketplace_account_id', $accountIds)
+                ->whereBetween('uzum_orders.ordered_at', [$dateRange['from'], $dateRange['to']])
+                ->whereNotIn('uzum_orders.status_normalized', self::CANCELLED_STATUSES)
+                ->select(
+                    'uzum_order_items.external_offer_id as sku',
+                    'uzum_order_items.name',
+                    'uzum_order_items.quantity',
+                    'uzum_order_items.total_price as revenue',
+                    'marketplace_products.purchase_price as cost_price'
+                )
+                ->get();
+
+            foreach ($uzumItems->groupBy('sku') as $sku => $rows) {
+                $costPrice = $rows->first()->cost_price;
+                $totalQty = (int) $rows->sum('quantity');
+                $allItems->push([
+                    'sku' => $sku,
+                    'name' => $rows->first()->name ?? $sku,
+                    'quantity' => $totalQty,
+                    'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), 'UZS'),
+                    'cost' => $costPrice ? $this->convertToDisplay((float) $costPrice * $totalQty, 'UZS') : null,
+                    'has_cost' => $costPrice !== null,
+                ]);
+            }
+
+            // Ozon
+            $ozonItems = DB::table('ozon_orders')
+                ->whereIn('marketplace_account_id', $accountIds)
+                ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
+                ->whereNotIn('status', self::CANCELLED_STATUSES)
+                ->select(
+                    DB::raw('CAST(order_id AS CHAR) as sku'),
+                    DB::raw('COALESCE(posting_number, CAST(order_id AS CHAR)) as name'),
+                    DB::raw('1 as quantity'),
+                    DB::raw('total_price as revenue')
+                )
+                ->get();
+
+            foreach ($ozonItems->groupBy('sku') as $sku => $rows) {
+                $allItems->push([
+                    'sku' => $sku,
+                    'name' => 'Ozon #' . $rows->first()->name,
+                    'quantity' => $rows->count(),
+                    'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), 'RUB'),
+                    'cost' => null,
+                    'has_cost' => false,
+                ]);
+            }
+
+            // YM
+            $ymItems = DB::table('yandex_market_orders')
+                ->whereIn('marketplace_account_id', $accountIds)
+                ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
+                ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+                ->select(
+                    DB::raw('CAST(order_id AS CHAR) as sku'),
+                    DB::raw('CAST(order_id AS CHAR) as name'),
+                    DB::raw('COALESCE(items_count, 1) as quantity'),
+                    DB::raw('total_price as revenue')
+                )
+                ->get();
+
+            foreach ($ymItems->groupBy('sku') as $sku => $rows) {
+                $allItems->push([
+                    'sku' => $sku,
+                    'name' => 'YM #' . $rows->first()->name,
+                    'quantity' => (int) $rows->sum('quantity'),
+                    'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), 'RUB'),
+                    'cost' => null,
+                    'has_cost' => false,
+                ]);
+            }
+        }
+
+        // Ручные продажи — cost_price прямо в таблице
+        $manualItems = DB::table('sale_items')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->where('sales.company_id', $this->companyId)
+            ->whereBetween('sales.created_at', [$dateRange['from'], $dateRange['to']])
+            ->where('sales.status', '!=', 'cancelled')
+            ->whereNull('sales.deleted_at')
+            ->select(
+                DB::raw('COALESCE(sale_items.sku, sale_items.product_name) as sku'),
+                'sale_items.product_name as name',
+                'sale_items.quantity',
+                'sale_items.total as revenue',
+                'sale_items.cost_price'
+            )
+            ->get();
+
+        foreach ($manualItems->groupBy('sku') as $sku => $rows) {
+            $totalQty = (int) $rows->sum('quantity');
+            $totalRevenue = (float) $rows->sum('revenue');
+            $totalCost = 0;
+            $hasCost = false;
+            foreach ($rows as $row) {
+                if ($row->cost_price !== null) {
+                    $totalCost += (float) $row->cost_price * (float) $row->quantity;
+                    $hasCost = true;
+                }
+            }
+            $allItems->push([
+                'sku' => $sku,
+                'name' => $rows->first()->name ?? $sku,
+                'quantity' => $totalQty,
+                'revenue' => $totalRevenue,
+                'cost' => $hasCost ? $totalCost : null,
+                'has_cost' => $hasCost,
+            ]);
+        }
+
+        // Оффлайн продажи — unit_cost
+        $offlineItems = DB::table('offline_sale_items')
+            ->join('offline_sales', 'offline_sale_items.offline_sale_id', '=', 'offline_sales.id')
+            ->where('offline_sales.company_id', $this->companyId)
+            ->whereBetween('offline_sales.sale_date', [$dateRange['from'], $dateRange['to']])
+            ->whereIn('offline_sales.status', ['confirmed', 'delivered'])
+            ->whereNull('offline_sales.deleted_at')
+            ->select(
+                DB::raw('COALESCE(offline_sale_items.sku_code, offline_sale_items.product_name) as sku'),
+                'offline_sale_items.product_name as name',
+                'offline_sale_items.quantity',
+                'offline_sale_items.line_total as revenue',
+                'offline_sale_items.unit_cost'
+            )
+            ->get();
+
+        foreach ($offlineItems->groupBy('sku') as $sku => $rows) {
+            $totalQty = (int) $rows->sum('quantity');
+            $totalRevenue = (float) $rows->sum('revenue');
+            $totalCost = 0;
+            $hasCost = false;
+            foreach ($rows as $row) {
+                if ($row->unit_cost !== null && (float) $row->unit_cost > 0) {
+                    $totalCost += (float) $row->unit_cost * (float) $row->quantity;
+                    $hasCost = true;
+                }
+            }
+            $allItems->push([
+                'sku' => $sku,
+                'name' => $rows->first()->name ?? $sku,
+                'quantity' => $totalQty,
+                'revenue' => $totalRevenue,
+                'cost' => $hasCost ? $totalCost : null,
+                'has_cost' => $hasCost,
+            ]);
+        }
+
+        // Объединяем дубликаты по SKU
+        $merged = $allItems->groupBy('sku')->map(function ($group) {
+            $first = $group->first();
+            $totalRevenue = $group->sum('revenue');
+            $totalQty = $group->sum('quantity');
+            $hasCost = $group->contains('has_cost', true);
+            $totalCost = $hasCost ? $group->sum(fn ($i) => $i['cost'] ?? 0) : null;
+
+            return [
+                'sku' => $first['sku'],
+                'name' => $first['name'],
+                'quantity' => $totalQty,
+                'revenue' => $totalRevenue,
+                'cost' => $totalCost,
+                'has_cost' => $hasCost,
+            ];
+        })->values();
+
+        // Рассчитываем маржу и сортируем
+        $totalRevenue = $merged->sum('revenue');
+        $totalCost = $merged->where('has_cost', true)->sum('cost');
+        $totalProfit = $totalRevenue - $totalCost;
+        $withCost = $merged->where('has_cost', true)->count();
+
+        $products = $merged->map(function ($item) {
+            $profit = $item['has_cost'] ? $item['revenue'] - $item['cost'] : null;
+            $marginPercent = ($item['has_cost'] && $item['revenue'] > 0)
+                ? round(($profit / $item['revenue']) * 100, 2)
+                : null;
+
+            return array_merge($item, [
+                'profit' => $profit !== null ? round($profit, 2) : null,
+                'margin_percent' => $marginPercent,
+                'revenue' => round($item['revenue'], 2),
+                'cost' => $item['cost'] !== null ? round($item['cost'], 2) : null,
+            ]);
+        });
+
+        // Сначала товары с маржой (по убыванию), потом без маржи
+        $sorted = $products->sortByDesc(fn ($p) => $p['margin_percent'] ?? -999)->values();
+
+        $ranked = [];
+        foreach ($sorted as $index => $item) {
+            $ranked[] = array_merge($item, ['rank' => $index + 1]);
+        }
+
+        return [
+            'products' => $ranked,
+            'summary' => [
+                'total_products' => count($ranked),
+                'total_revenue' => round($totalRevenue, 2),
+                'total_cost' => round($totalCost, 2),
+                'total_profit' => round($totalProfit, 2),
+                'avg_margin' => $totalRevenue > 0 ? round(($totalProfit / $totalRevenue) * 100, 2) : 0,
+                'products_with_cost' => $withCost,
+                'products_without_cost' => count($ranked) - $withCost,
+            ],
+            'period' => $period,
+        ];
+    }
+
+    /**
      * Конвертировать сумму в валюту отображения
      */
     protected function convertToDisplay(float $amount, string $currency): float

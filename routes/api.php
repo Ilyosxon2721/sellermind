@@ -349,6 +349,8 @@ Route::middleware('auth.any')->group(function () {
         Route::get('abcxyz', [\App\Http\Controllers\Api\BusinessAnalyticsController::class, 'abcxyzAnalysis']);
         Route::get('swot', [\App\Http\Controllers\Api\BusinessAnalyticsController::class, 'swotAnalysis']);
         Route::post('swot', [\App\Http\Controllers\Api\BusinessAnalyticsController::class, 'saveSwotAnalysis']);
+        Route::get('rankings/sales', [\App\Http\Controllers\Api\BusinessAnalyticsController::class, 'salesRanking']);
+        Route::get('rankings/margin', [\App\Http\Controllers\Api\BusinessAnalyticsController::class, 'marginRanking']);
     });
 
     // Sales Analytics

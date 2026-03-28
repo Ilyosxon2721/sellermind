@@ -35,7 +35,34 @@
             </div>
         </div>
 
-        {{-- ABC распределение --}}
+        {{-- Графики --}}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {{-- Pie Chart: Распределение выручки --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Распределение выручки</h3>
+                <div class="relative" style="height: 280px;">
+                    <canvas id="abcPieChart"></canvas>
+                </div>
+            </div>
+
+            {{-- Bar Chart: Кол-во товаров и выручка --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Товары vs Выручка</h3>
+                <div class="relative" style="height: 280px;">
+                    <canvas id="abcBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        {{-- Топ-10 товаров — горизонтальный bar chart --}}
+        <div x-show="abcData.products.length > 0" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Топ-10 товаров по выручке</h3>
+            <div class="relative" style="height: 320px;">
+                <canvas id="abcTopProductsChart"></canvas>
+            </div>
+        </div>
+
+        {{-- ABC распределение таблица --}}
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100">
                 <h3 class="text-lg font-semibold text-gray-900">ABC Распределение</h3>
@@ -109,24 +136,31 @@
                         <span x-text="'C: ' + (abcData.summary.categories.C?.percentage || 0) + '%'"></span>
                     </div>
                 </div>
-                <div class="flex mt-1">
-                    <div class="text-xs text-gray-500 transition-all" :style="'width: ' + Math.max(abcData.summary.categories.A?.percentage || 0, 5) + '%'">
-                        <span x-text="(abcData.summary.categories.A?.assortment_percentage || 20) + '% товаров'"></span>
-                    </div>
-                    <div class="text-xs text-gray-500 transition-all" :style="'width: ' + Math.max(abcData.summary.categories.B?.percentage || 0, 5) + '%'">
-                        <span x-text="(abcData.summary.categories.B?.assortment_percentage || 30) + '% товаров'"></span>
-                    </div>
-                    <div class="text-xs text-gray-500 transition-all" :style="'width: ' + Math.max(abcData.summary.categories.C?.percentage || 0, 5) + '%'">
-                        <span x-text="(abcData.summary.categories.C?.assortment_percentage || 50) + '% товаров'"></span>
-                    </div>
-                </div>
             </div>
         </div>
 
-        {{-- Список товаров --}}
+        {{-- Список товаров с пагинацией --}}
         <div x-show="abcData.products.length > 0" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-100">
-                <h3 class="text-lg font-semibold text-gray-900">Товары по категориям</h3>
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">Товары по категориям</h3>
+                    <p class="text-sm text-gray-500" x-text="'Всего: ' + abcData.products.length + ' товаров'"></p>
+                </div>
+                {{-- Фильтр по категории --}}
+                <div class="flex items-center space-x-2">
+                    <button @click="abcFilter = 'all'"
+                            :class="abcFilter === 'all' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'"
+                            class="px-3 py-1.5 rounded-lg text-xs font-medium transition">Все</button>
+                    <button @click="abcFilter = 'A'"
+                            :class="abcFilter === 'A' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
+                            class="px-3 py-1.5 rounded-lg text-xs font-medium transition">A</button>
+                    <button @click="abcFilter = 'B'"
+                            :class="abcFilter === 'B' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'"
+                            class="px-3 py-1.5 rounded-lg text-xs font-medium transition">B</button>
+                    <button @click="abcFilter = 'C'"
+                            :class="abcFilter === 'C' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'"
+                            class="px-3 py-1.5 rounded-lg text-xs font-medium transition">C</button>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full">
@@ -142,9 +176,9 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
-                        <template x-for="(product, index) in abcData.products.slice(0, 50)" :key="index">
+                        <template x-for="(product, index) in getPagedProducts()" :key="index">
                             <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-3 text-sm text-gray-500" x-text="index + 1"></td>
+                                <td class="px-6 py-3 text-sm text-gray-500" x-text="(abcPage - 1) * abcPerPage + index + 1"></td>
                                 <td class="px-6 py-3 text-sm font-medium text-gray-900 max-w-xs truncate" x-text="product.product_name"></td>
                                 <td class="px-6 py-3 text-sm text-gray-500 font-mono" x-text="product.sku"></td>
                                 <td class="px-6 py-3 text-center">
@@ -160,8 +194,40 @@
                     </tbody>
                 </table>
             </div>
-            <div x-show="abcData.products.length > 50" class="px-6 py-3 text-center text-sm text-gray-500 border-t border-gray-100">
-                Показано 50 из <span x-text="abcData.products.length"></span> товаров
+
+            {{-- Пагинация --}}
+            <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                <div class="text-sm text-gray-500">
+                    Показано <span x-text="Math.min((abcPage - 1) * abcPerPage + 1, getFilteredProducts().length)"></span>–<span x-text="Math.min(abcPage * abcPerPage, getFilteredProducts().length)"></span>
+                    из <span x-text="getFilteredProducts().length"></span>
+                </div>
+                <div class="flex items-center space-x-1">
+                    <button @click="abcPage = 1" :disabled="abcPage === 1"
+                            class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                        &laquo;
+                    </button>
+                    <button @click="abcPage = Math.max(1, abcPage - 1)" :disabled="abcPage === 1"
+                            class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                        &lsaquo;
+                    </button>
+                    <span class="px-3 py-1.5 text-sm font-medium">
+                        <span x-text="abcPage"></span> / <span x-text="abcTotalPages()"></span>
+                    </span>
+                    <button @click="abcPage = Math.min(abcTotalPages(), abcPage + 1)" :disabled="abcPage >= abcTotalPages()"
+                            class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                        &rsaquo;
+                    </button>
+                    <button @click="abcPage = abcTotalPages()" :disabled="abcPage >= abcTotalPages()"
+                            class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                        &raquo;
+                    </button>
+                    <select x-model.number="abcPerPage" @change="abcPage = 1"
+                            class="ml-2 px-2 py-1.5 text-sm border border-gray-300 rounded-lg">
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
             </div>
         </div>
 

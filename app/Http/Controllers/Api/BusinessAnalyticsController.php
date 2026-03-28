@@ -84,6 +84,40 @@ class BusinessAnalyticsController extends Controller
     }
 
     /**
+     * Рейтинг товаров по продажам
+     */
+    public function salesRanking(Request $request): JsonResponse
+    {
+        $this->configureCurrencyService();
+        $companyId = $this->getCompanyId();
+        $period = $request->input('period', '30days');
+
+        $cacheKey = "business_sales_ranking_{$companyId}_{$period}";
+        $data = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period) {
+            return $this->service->getProductSalesRanking($companyId, $period);
+        });
+
+        return response()->json($data);
+    }
+
+    /**
+     * Рейтинг товаров по маржинальности
+     */
+    public function marginRanking(Request $request): JsonResponse
+    {
+        $this->configureCurrencyService();
+        $companyId = $this->getCompanyId();
+        $period = $request->input('period', '30days');
+
+        $cacheKey = "business_margin_ranking_{$companyId}_{$period}";
+        $data = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period) {
+            return $this->service->getProductMarginRanking($companyId, $period);
+        });
+
+        return response()->json($data);
+    }
+
+    /**
      * Сохранить SWOT-анализ
      */
     public function saveSwotAnalysis(Request $request): JsonResponse
