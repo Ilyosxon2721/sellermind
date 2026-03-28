@@ -315,6 +315,11 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/sales/{sale}/print/invoice', [\App\Http\Controllers\SalePrintController::class, 'invoice'])->name('sales.print.invoice');
     Route::get('/sales/{sale}/print/waybill', [\App\Http\Controllers\SalePrintController::class, 'waybill'])->name('sales.print.waybill');
 
+    // Order print routes (маркетплейсы + ручные продажи, составной ID: uzum_123, wb_456, ozon_789, ym_101, sale_55)
+    Route::get('/orders/{id}/print/receipt', [\App\Http\Controllers\OrderPrintController::class, 'receipt'])->name('orders.print.receipt');
+    Route::get('/orders/{id}/print/invoice', [\App\Http\Controllers\OrderPrintController::class, 'invoice'])->name('orders.print.invoice');
+    Route::get('/orders/{id}/print/waybill', [\App\Http\Controllers\OrderPrintController::class, 'waybill'])->name('orders.print.waybill');
+
     Route::get('/companies', function () {
         return view('companies.index');
     })->name('companies.index');
