@@ -85,11 +85,13 @@ final class BusinessAnalyticsService
             $cumulativeRevenue += $item['total_revenue'];
             $cumulativePercentage = $totalRevenue > 0 ? ($cumulativeRevenue / $totalRevenue) * 100 : 0;
 
-            // Определяем категорию по кумулятивному проценту выручки
-            $productPosition = ($index + 1) / $totalProducts * 100;
-            if ($productPosition <= 20) {
+            // Определяем категорию по кумулятивному проценту выручки (стандартный ABC)
+            // A = товары, дающие первые 80% выручки
+            // B = товары, дающие следующие 15% (80-95%)
+            // C = товары, дающие оставшиеся 5% (95-100%)
+            if ($cumulativePercentage <= 80) {
                 $category = 'A';
-            } elseif ($productPosition <= 50) {
+            } elseif ($cumulativePercentage <= 95) {
                 $category = 'B';
             } else {
                 $category = 'C';
@@ -342,46 +344,81 @@ final class BusinessAnalyticsService
                 $allItems = $allItems->merge($uzumItems);
             }
 
-            // Ozon
+            // Ozon — извлекаем товары из JSON поля products
             if ($this->shouldIncludeSource($source, 'ozon')) {
-                $ozonItems = DB::table('ozon_orders')
+                $ozonOrders = DB::table('ozon_orders')
                     ->whereIn('marketplace_account_id', $accountIds)
                     ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
                     ->whereNotIn('status', self::CANCELLED_STATUSES)
-                    ->select(
-                        DB::raw('CAST(order_id AS CHAR) as external_offer_id'),
-                        DB::raw('COALESCE(posting_number, CAST(order_id AS CHAR)) as name'),
-                        DB::raw('1 as quantity'),
-                        DB::raw('total_price')
-                    )
-                    ->get()
+                    ->select('products', 'order_data')
+                    ->get();
+
+                $ozonProductItems = collect();
+                foreach ($ozonOrders as $order) {
+                    $products = !empty($order->products) ? json_decode($order->products, true) : [];
+                    if (empty($products) && !empty($order->order_data)) {
+                        $orderData = json_decode($order->order_data, true);
+                        $products = $orderData['products'] ?? [];
+                    }
+                    foreach ($products as $product) {
+                        $sku = $product['sku'] ?? $product['offer_id'] ?? null;
+                        if (!$sku) {
+                            continue;
+                        }
+                        $ozonProductItems->push([
+                            'external_offer_id' => (string) $sku,
+                            'name' => $product['name'] ?? $sku,
+                            'quantity' => (int) ($product['quantity'] ?? 1),
+                            'total_price' => (float) ($product['total'] ?? (($product['price'] ?? 0) * ($product['quantity'] ?? 1))),
+                        ]);
+                    }
+                }
+
+                $ozonItems = $ozonProductItems
                     ->groupBy('external_offer_id')
                     ->map(fn ($rows) => [
-                        'external_offer_id' => $rows->first()->external_offer_id,
-                        'name' => 'Ozon #' . $rows->first()->name,
-                        'total_quantity' => $rows->count(),
+                        'external_offer_id' => $rows->first()['external_offer_id'],
+                        'name' => $rows->first()['name'],
+                        'total_quantity' => (int) $rows->sum('quantity'),
                         'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'RUB'),
                     ]);
                 $allItems = $allItems->merge($ozonItems);
             }
 
-            // Yandex Market
+            // Yandex Market — извлекаем товары из JSON поля order_data.items
             if ($this->shouldIncludeSource($source, 'ym')) {
-                $ymItems = DB::table('yandex_market_orders')
+                $ymOrders = DB::table('yandex_market_orders')
                     ->whereIn('marketplace_account_id', $accountIds)
                     ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
                     ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
-                    ->select(
-                        DB::raw('CAST(order_id AS CHAR) as external_offer_id'),
-                        DB::raw('CAST(order_id AS CHAR) as name'),
-                        DB::raw('COALESCE(items_count, 1) as quantity'),
-                        DB::raw('total_price')
-                    )
-                    ->get()
+                    ->select('order_data')
+                    ->get();
+
+                $ymProductItems = collect();
+                foreach ($ymOrders as $order) {
+                    $orderData = !empty($order->order_data) ? json_decode($order->order_data, true) : [];
+                    $items = $orderData['items'] ?? [];
+                    foreach ($items as $item) {
+                        $offerId = (string) ($item['offerId'] ?? $item['external_offer_id'] ?? '');
+                        if (empty($offerId)) {
+                            continue;
+                        }
+                        $price = (float) ($item['buyerPrice'] ?? $item['price'] ?? 0);
+                        $count = (int) ($item['count'] ?? $item['quantity'] ?? 1);
+                        $ymProductItems->push([
+                            'external_offer_id' => $offerId,
+                            'name' => $item['offerName'] ?? $item['name'] ?? $offerId,
+                            'quantity' => $count,
+                            'total_price' => $price * $count,
+                        ]);
+                    }
+                }
+
+                $ymItems = $ymProductItems
                     ->groupBy('external_offer_id')
                     ->map(fn ($rows) => [
-                        'external_offer_id' => $rows->first()->external_offer_id,
-                        'name' => 'YM #' . $rows->first()->name,
+                        'external_offer_id' => $rows->first()['external_offer_id'],
+                        'name' => $rows->first()['name'],
                         'total_quantity' => (int) $rows->sum('quantity'),
                         'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'RUB'),
                     ]);
@@ -670,25 +707,41 @@ final class BusinessAnalyticsService
                 }
             }
 
-            // Ozon
+            // Ozon — извлекаем товары из JSON поля products
             if ($this->shouldIncludeSource($source, 'ozon')) {
-                $ozonItems = DB::table('ozon_orders')
+                $ozonOrders = DB::table('ozon_orders')
                     ->whereIn('marketplace_account_id', $accountIds)
                     ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
                     ->whereNotIn('status', self::CANCELLED_STATUSES)
-                    ->select(
-                        DB::raw('CAST(order_id AS CHAR) as sku'),
-                        DB::raw('COALESCE(posting_number, CAST(order_id AS CHAR)) as name'),
-                        DB::raw('1 as quantity'),
-                        DB::raw('total_price as revenue')
-                    )
+                    ->select('products', 'order_data')
                     ->get();
 
-                foreach ($ozonItems->groupBy('sku') as $sku => $rows) {
+                $ozonProductItems = collect();
+                foreach ($ozonOrders as $order) {
+                    $products = !empty($order->products) ? json_decode($order->products, true) : [];
+                    if (empty($products) && !empty($order->order_data)) {
+                        $orderData = json_decode($order->order_data, true);
+                        $products = $orderData['products'] ?? [];
+                    }
+                    foreach ($products as $product) {
+                        $sku = $product['sku'] ?? $product['offer_id'] ?? null;
+                        if (!$sku) {
+                            continue;
+                        }
+                        $ozonProductItems->push([
+                            'sku' => (string) $sku,
+                            'name' => $product['name'] ?? $sku,
+                            'quantity' => (int) ($product['quantity'] ?? 1),
+                            'revenue' => (float) ($product['total'] ?? (($product['price'] ?? 0) * ($product['quantity'] ?? 1))),
+                        ]);
+                    }
+                }
+
+                foreach ($ozonProductItems->groupBy('sku') as $sku => $rows) {
                     $allItems->push([
                         'sku' => $sku,
-                        'name' => 'Ozon #' . $rows->first()->name,
-                        'quantity' => $rows->count(),
+                        'name' => $rows->first()['name'],
+                        'quantity' => (int) $rows->sum('quantity'),
                         'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), 'RUB'),
                         'cost' => null,
                         'has_cost' => false,
@@ -696,24 +749,39 @@ final class BusinessAnalyticsService
                 }
             }
 
-            // YM
+            // YM — извлекаем товары из JSON поля order_data.items
             if ($this->shouldIncludeSource($source, 'ym')) {
-                $ymItems = DB::table('yandex_market_orders')
+                $ymOrders = DB::table('yandex_market_orders')
                     ->whereIn('marketplace_account_id', $accountIds)
                     ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
                     ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
-                    ->select(
-                        DB::raw('CAST(order_id AS CHAR) as sku'),
-                        DB::raw('CAST(order_id AS CHAR) as name'),
-                        DB::raw('COALESCE(items_count, 1) as quantity'),
-                        DB::raw('total_price as revenue')
-                    )
+                    ->select('order_data')
                     ->get();
 
-                foreach ($ymItems->groupBy('sku') as $sku => $rows) {
+                $ymProductItems = collect();
+                foreach ($ymOrders as $order) {
+                    $orderData = !empty($order->order_data) ? json_decode($order->order_data, true) : [];
+                    $items = $orderData['items'] ?? [];
+                    foreach ($items as $item) {
+                        $offerId = (string) ($item['offerId'] ?? $item['external_offer_id'] ?? '');
+                        if (empty($offerId)) {
+                            continue;
+                        }
+                        $price = (float) ($item['buyerPrice'] ?? $item['price'] ?? 0);
+                        $count = (int) ($item['count'] ?? $item['quantity'] ?? 1);
+                        $ymProductItems->push([
+                            'sku' => $offerId,
+                            'name' => $item['offerName'] ?? $item['name'] ?? $offerId,
+                            'quantity' => $count,
+                            'revenue' => $price * $count,
+                        ]);
+                    }
+                }
+
+                foreach ($ymProductItems->groupBy('sku') as $sku => $rows) {
                     $allItems->push([
                         'sku' => $sku,
-                        'name' => 'YM #' . $rows->first()->name,
+                        'name' => $rows->first()['name'],
                         'quantity' => (int) $rows->sum('quantity'),
                         'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), 'RUB'),
                         'cost' => null,
