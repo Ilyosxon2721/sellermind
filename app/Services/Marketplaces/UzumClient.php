@@ -1251,10 +1251,8 @@ final class UzumClient implements MarketplaceClientInterface
             'delivered_at' => $orderData['dateDelivered'] ?? null,
             'items' => $items,
             'raw_payload' => $orderData,
-            // Тип доставки (FBS/FBO/DBS) — null если схема не известна из ответа API
-            'delivery_type' => $deliveryType ?? (isset($orderData['scheme'])
-                ? strtoupper($orderData['scheme'])
-                : (isset($orderData['deliveryType']) ? strtoupper($orderData['deliveryType']) : null)),
+            // Тип доставки (FBS/FBO/DBS) — определяем из нескольких полей API
+            'delivery_type' => $deliveryType ?? $this->detectDeliveryType($orderData),
             'delivery_address_full' => $address['fullAddress'] ?? null,
             'delivery_city' => $address['city'] ?? null,
             'delivery_street' => $address['street'] ?? null,
@@ -1264,6 +1262,39 @@ final class UzumClient implements MarketplaceClientInterface
             'delivery_latitude' => $address['latitude'] ?? null,
             'wb_status_group' => $this->mapStatusGroup($statusNormalized),
         ];
+    }
+
+    /**
+     * Определить тип доставки из данных заказа Uzum API
+     */
+    private function detectDeliveryType(array $orderData): ?string
+    {
+        foreach (['scheme', 'deliveryType', 'deliveryMode', 'shippingType', 'type'] as $field) {
+            if (! empty($orderData[$field])) {
+                $value = strtoupper($orderData[$field]);
+                if (in_array($value, ['FBS', 'DBS', 'EDBS', 'FBO'])) {
+                    return $value;
+                }
+            }
+        }
+
+        $deliveryInfo = $orderData['deliveryInfo'] ?? [];
+        foreach (['deliveryType', 'type'] as $field) {
+            if (! empty($deliveryInfo[$field])) {
+                $value = strtoupper($deliveryInfo[$field]);
+                if (in_array($value, ['FBS', 'DBS', 'EDBS', 'FBO'])) {
+                    return $value;
+                }
+            }
+        }
+
+        // Эвристика: наличие полного адреса (улица + дом) → DBS
+        $address = $deliveryInfo['address'] ?? [];
+        if (! empty($address['street']) && ! empty($address['house'])) {
+            return 'DBS';
+        }
+
+        return null;
     }
 
     protected function mapOrderStatus(?string $status): ?string
