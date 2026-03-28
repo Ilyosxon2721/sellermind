@@ -5,7 +5,7 @@ return [
     'nav_features' => 'Imkoniyatlar',
     'nav_how_it_works' => 'Qanday ishlaydi',
     'nav_integrations' => 'Integratsiyalar',
-    'nav_testimonials' => 'Sharxlar',
+    'nav_testimonials' => 'Sharhlar',
     'nav_pricing' => 'Tariflar',
     'nav_faq' => 'FAQ',
     'nav_login' => 'Kirish',
@@ -17,8 +17,8 @@ return [
     'hero_title_highlight' => 'bitta oynadan',
     'hero_title_end' => 'boshqaring',
     'hero_subtitle' => 'Qoldiqlarni sinxronlashtirish, aqlli narx belgilash, ombor hisoboti va biznesingizni o\'stirish uchun AI-yordamchi',
-    'hero_cta_primary' => 'Bepul boshlash →',
-    'hero_cta_secondary' => 'Demo ko\'rish',
+    'cta_primary' => 'Bepul boshlash',
+    'cta_secondary' => 'Tariflarni ko\'rish',
 
     // Stats
     'stat_companies' => 'Kompaniyalar',
@@ -41,107 +41,94 @@ return [
 
     'feature_sync_title' => 'Qoldiqlarni sinxronlashtirish',
     'feature_sync_desc' => 'Barcha marketpleyslar uchun qoldiqlarni real vaqtda avtomatik yangilash. Ortiqcha va bekor qilingan buyurtmalarsiz.',
-
     'feature_bulk_title' => 'Ommaviy operatsiyalar',
     'feature_bulk_desc' => '80% vaqt tejash. Narx, qoldiq, statuslarni ommaviy yangilash. Excel import/export.',
-
     'feature_catalog_title' => 'Katalogni boshqarish',
     'feature_catalog_desc' => 'Barcha marketpleyslar uchun yagona katalog. Mahsulot variantlari (SKU), rasmlarni boshqarish.',
-
     'feature_pricing_title' => 'Aqlli narx belgilash',
     'feature_pricing_desc' => 'Markazlashgan narxlarni boshqarish. Ommaviy o\'zgartirish va avtomatik hisoblash formulalari.',
-
     'feature_promo_title' => 'Avtomatik aksiyalar',
     'feature_promo_desc' => 'AI sekin sotilayotgan mahsulotlarni aniqlaydi. Aqlli chegirmalar 15-50%. Har dushanba avtomatik ishga tushadi.',
-
     'feature_wms_title' => 'WMS-tizim',
     'feature_wms_desc' => 'To\'liq mahsulot hisoboti: qabul qilish, yo\'qotish, ko\'chirish, inventarizatsiya.',
-
     'feature_movements_title' => 'Harakatlar jurnali',
     'feature_movements_desc' => 'To\'liq operatsiyalar tarixi. Mahsulot zahiralari. Hujjat aylanishi. Real vaqt nazorati.',
-
     'feature_orders_title' => 'Buyurtmalarni boshqarish',
     'feature_orders_desc' => 'Barcha marketpleyslardan kelgan buyurtmalar yagona interfeysda filtr va qidiruv bilan.',
-
     'feature_analytics_title' => 'Savdo tahlili',
     'feature_analytics_desc' => 'Vizualizatsiya bilan dashboardlar, eng yaxshi/eng yomon mahsulotlar, marketpleyslarni solishtirish. Chart.js grafiklar.',
-
     'feature_ai_title' => 'AI-yordamchi',
-    'feature_ai_desc' => 'Mahsulot tavsiflarini generatsiya qilish, sharxlarga javoblar, AI yordamida promo-rasmlar yaratish.',
-
-    'feature_ai_reviews_title' => 'AI sharxlarga javoblar',
+    'feature_ai_desc' => 'Mahsulot tavsiflarini generatsiya qilish, sharhlarga javoblar, AI yordamida promo-rasmlar yaratish.',
+    'feature_ai_reviews_title' => 'AI sharhlarga javoblar',
     'feature_ai_reviews_desc' => '70% vaqt tejash. 14 javob shablonlari. Kayfiyatni tahlil qilish. Ommaviy generatsiya.',
-
     'feature_telegram_title' => 'Telegram-botlar',
     'feature_telegram_desc' => 'Buyurtmalar, qoldiqlar va narxlar haqida real vaqtda bildirishnomalar.',
-
     'feature_finance_title' => 'Moliyaviy hisobot',
     'feature_finance_desc' => 'Daromadlar va xarajatlar. Hisoblar (AP). Foyda bo\'yicha hisobotlar.',
-
     'feature_forecast_title' => 'Bashorat qilish',
     'feature_forecast_desc' => 'Mahsulotlarga ehtiyojni hisoblash. Xaridlarni optimallashtirish.',
-
     'feature_team_title' => 'Jamoani boshqarish',
     'feature_team_desc' => 'Rollar va ruxsatlar. Xodimlarni taklif qilish.',
 
     // How It Works
     'how_it_works_title' => '5 daqiqada ishni boshlang',
     'how_it_works_subtitle' => 'Oddiy ulanish jarayoni',
-
     'step_1_title' => 'Ro\'yxatdan o\'tish',
     'step_1_desc' => '1 daqiqada akkaunt yarating. Bank kartasi kerak emas.',
-
     'step_2_title' => 'Ulanish',
     'step_2_desc' => 'API-kalitlar orqali marketpleyslarni ulang.',
-
     'step_3_title' => 'Sinxronizatsiya',
     'step_3_desc' => 'Ma\'lumotlar avtomatik yuklanadi.',
-
     'step_4_title' => 'Tayyor!',
     'step_4_desc' => 'Biznesingizni bitta oynadan boshqaring.',
+
+    // Benefits
+    'benefits_title' => 'Nima uchun SellerMind tanlashadi',
+    'benefit_time_title' => 'Vaqtni tejash',
+    'benefit_time_desc' => 'Kundalik vazifalarni avtomatlashtirish haftasiga 20 soatgacha tejaydi.',
+    'benefit_no_oversells_title' => 'Ortiqcha sotuvlarsiz',
+    'benefit_no_oversells_desc' => 'Qoldiqlarni sinxronlashtirish mavjud bo\'lmagan mahsulotlarni sotishni bartaraf etadi.',
+    'benefit_growth_title' => 'Savdo o\'sishi',
+    'benefit_growth_desc' => 'AI kartochkalarni optimallashtirish konversiyani 15-30% ga oshiradi.',
+    'benefit_control_title' => 'To\'liq nazorat',
+    'benefit_control_desc' => 'Barcha ma\'lumotlar, tahlil va boshqaruv bitta joyda.',
+    'benefit_card_title' => 'O\'rtacha mijoz o\'sishi',
+    'benefit_sales' => 'Savdo',
+    'benefit_routine' => 'Oddiy vaqt',
+    'benefit_oversells' => 'Ortiqcha',
+    'benefit_monitoring' => 'Monitoring',
 
     // Business Impact
     'impact_title' => 'Biznesingizning aniq natijalari',
     'impact_subtitle' => 'Raqamlar o\'zlari gapiradi',
-
     'impact_sales' => 'Savdo o\'sishi',
     'impact_sales_desc' => 'Platformani joriy etishdan keyin mijozlarimizda o\'rtacha',
-
     'impact_time' => 'Vaqt tejash',
     'impact_time_desc' => 'avtomatlashtirish tufayli oddiy vazifalar uchun',
-
     'impact_oversells' => 'Ortiqcha',
     'impact_oversells_desc' => 'real vaqtda qoldiqlarni sinxronlashtirish tufayli',
-
     'impact_dead_stock' => 'Sotilmaydigan mahsulot',
     'impact_dead_stock_desc' => 'aqlli aksiyalar bilan sekin harakatlanuvchi mahsulotlar qisqartirish',
-
     'impact_monitoring' => 'Monitoring',
     'impact_monitoring_desc' => 'avtomatik nazorat va doimiy bildirishnomalar',
-
     'impact_efficiency' => 'Samaradorlik',
     'impact_efficiency_desc' => 'mahsulotlar bilan ommaviy operatsiyalarda tejash',
 
     // Automation
     'automation_title' => 'Tizim siz uchun 24/7 ishlaydi',
     'automation_subtitle' => 'Bir marta sozlang — doimiy natijani oling',
-
-    'automation_10min' => 'Har 10 daqiqada',
+    'automation_10min' => 'Har 10<br>daqiqada',
     'automation_10min_title' => 'Buyurtmalar va qoldiqlarni sinxronlashtirish',
     'automation_10min_desc' => 'Barcha marketpleyslardan ma\'lumotlarni avtomatik yangilash',
-
-    'automation_hour' => 'Har soat',
+    'automation_hour' => 'Har<br>soat',
     'automation_hour_title' => 'Tahlilni keshlash',
     'automation_hour_desc' => 'Tez kirish uchun dashboardlar va grafiklarni yangilash',
-
-    'automation_daily' => 'Har kuni 10:00',
+    'automation_daily' => 'Har kuni<br>10:00',
     'automation_daily_title' => 'Tugaydigan aksiyalarni tekshirish',
     'automation_daily_desc' => 'Tez orada tugaydigan aksiyalar haqida bildirishnomalar',
-
-    'automation_weekly' => 'Dushanba 9:00',
+    'automation_weekly' => 'Dushanba<br>9:00',
     'automation_weekly_title' => 'Sotilmaydigan mahsulot uchun avtomatik aksiya yaratish',
     'automation_weekly_desc' => 'AI sekin sotilayotgan mahsulotlarni aniqlaydi va foydali aksiyalar yaratadi',
-
     'automation_tech' => 'To\'liq jarayonlarni avtomatlashtirish',
     'automation_tech_desc' => 'Tizim o\'zi ishlaydi — siz faqat natijalarni nazorat qilasiz',
 
@@ -151,63 +138,41 @@ return [
     'integration_active' => 'Aktiv',
 
     // Testimonials
-    'testimonials_title' => 'Mijozlarimiz nima deydi',
+    'testimonials_title' => 'Sharhlar',
+    'testimonials_subtitle' => 'Mijozlarimiz nima deydi',
+    'testimonial_1_text' => 'Olti oy oldin SellerMind\'ga o\'tdik. Qoldiqlarni boshqarish vaqti 5 barobar qisqardi. Bir nechta platformada ishlaydigan barchaga tavsiya qilaman.',
+    'testimonial_1_name' => 'Aleksey M.',
+    'testimonial_1_role' => 'Sotuvchi, 3000+ SKU',
+    'testimonial_2_text' => 'AI yordamchi — topilma! Tavsiflarni soniyalarda yaratadi, sharhlarga professional javob beradi. Kontent-menejerga sarflanadigan pulni tejadik.',
+    'testimonial_2_name' => 'Darya K.',
+    'testimonial_2_role' => 'Do\'kon egasi',
+    'testimonial_3_text' => 'Ombor hisobi — zo\'r! Oldin Excel\'da yuritar edik, endi hammasi avtomatik. Barcha omborlardagi qoldiqlarni real vaqtda bilamiz.',
+    'testimonial_3_name' => 'Sergey I.',
+    'testimonial_3_role' => 'Direktor, Retail Group',
 
     // Comparison
     'comparison_title' => 'Nima uchun SellerMind — eng yaxshi tanlov',
     'comparison_subtitle' => 'Boshqa yechimlarga nisbatan bizning imkoniyatlarni solishtiring',
+    'comparison_feature' => 'Xususiyat',
+    'comparison_sellermind' => 'SellerMind',
     'comparison_our_system' => 'Bizning tizim',
     'comparison_competitor' => 'Raqib',
     'comparison_total' => 'Jami funksiyalar',
-
     'comparison_sync' => 'Qoldiqlarni sinxronlashtirish',
     'comparison_ai' => 'AI-yordamchi',
     'comparison_wms' => 'Ombor hisoboti (WMS)',
     'comparison_promo' => 'Avtomatik aksiyalar',
     'comparison_pricing' => 'Aqlli narx belgilash',
+    'comparison_integration_4plus' => '4+ marketpleys bilan integratsiya',
+    'comparison_only_us' => 'FAQAT BIZDA',
     'comparison_analytics' => 'Tahlil va dashboardlar',
     'comparison_telegram' => 'Telegram bildirishnomalar',
     'comparison_bulk' => 'Ommaviy operatsiyalar',
-
     'comparison_cta' => 'Bepul sinab ko\'ring →',
 
     // Pricing
     'pricing_title' => 'Shaffof narxlar',
     'pricing_subtitle' => 'Yashirin to\'lovlar yo\'q. Istalgan vaqtda bekor qilish.',
-    'pricing_per_month' => '/oy',
-    'pricing_free' => 'Bepul',
-    'pricing_forever' => 'doim',
-    'pricing_sum' => 'so\'m',
-    'pricing_select' => 'Tanlash',
-    'pricing_cta' => 'Rejani tanlash',
-    'pricing_contact' => 'Bog\'lanish',
-
-    // FAQ
-    'faq_title' => 'Tez-tez so\'raladigan savollar',
-
-    // CTA
-    'cta_title' => 'Biznesingizni kengaytirishga tayyormisiz?',
-    'cta_subtitle' => 'SellerMind\'da 500+ kompaniyaga qo\'shiling',
-    'cta_primary' => 'Bepul boshlash',
-    'cta_secondary' => 'Demo so\'rash',
-
-    // Footer
-    'footer_product' => 'Mahsulot',
-    'footer_resources' => 'Resurslar',
-    'footer_documentation' => 'Hujjatlar',
-    'footer_blog' => 'Blog',
-    'footer_contacts' => 'Kontaktlar',
-    'footer_copyright' => '© 2025 SellerMind. Barcha huquqlar himoyalangan.',
-
-    // Missing translations
-    'nav_register' => 'Ro\'yxatdan o\'tish',
-
-    // Comparison
-    'comparison_feature' => 'Xususiyatlar',
-    'comparison_sellermind' => 'SellerMind',
-    'comparison_cta' => 'Bepul sinab ko\'ring →',
-
-    // Pricing section
     'pricing_free' => 'Bepul',
     'pricing_from' => 'dan',
     'pricing_month' => 'oy',
@@ -226,4 +191,32 @@ return [
     'pricing_popular' => 'Mashhur',
     'pricing_cta' => 'Rejani tanlash',
     'pricing_contact' => 'Bog\'lanish',
+
+    // FAQ
+    'faq_title' => 'Tez-tez so\'raladigan savollar',
+    'faq_1_question' => 'Qoldiqlar sinxronizatsiyasi qanday ishlaydi?',
+    'faq_1_answer' => 'Tizim sizning omboringiz va barcha ulangan marketpleyslar o\'rtasida qoldiqlarni har 5-15 daqiqada avtomatik sinxronlashtiradi. Har qanday platformada sotish bo\'lganda qoldiqlar darhol hamma joyda yangilanadi.',
+    'faq_2_question' => 'Qaysi marketpleyslar qo\'llab-quvvatlanadi?',
+    'faq_2_answer' => 'Hozirda Uzum Market va Wildberries to\'liq qo\'llab-quvvatlanadi. Ozon va Yandex Market ishlab chiqilmoqda va tez orada mavjud bo\'ladi.',
+    'faq_3_question' => 'Bepul sinab ko\'rish mumkinmi?',
+    'faq_3_answer' => 'Ha! "Start" tarifi doim bepul. 1 ta marketpleys va 100 tagacha mahsulotni vaqt chegarasisiz ulashingiz mumkin. Ko\'proq imkoniyatlar uchun pullik tarifga o\'ting.',
+    'faq_4_question' => 'AI yordamchi qanday ishlaydi?',
+    'faq_4_answer' => 'AI yordamchi mahsulot tavsiflarini yaratish, xaridorlar sharhlarga javob berish va reklama materiallarini yaratish uchun zamonaviy til modellaridan foydalanadi. Vazifani tasvirlab bering, AI uni soniyalarda bajaradi.',
+    'faq_5_question' => 'Ma\'lumotlarni saqlash xavfsizmi?',
+    'faq_5_answer' => 'Ha, xavfsizlik bizning ustuvorligimiz. Barcha ma\'lumotlar shifrlangan, serverlar himoyalangan ma\'lumotlar markazlarida joylashgan, muntazam zaxira nusxalari yaratiladi. Biz ma\'lumotlarni uchinchi tomonlarga bermaymiz.',
+
+    // CTA
+    'cta_title' => 'Biznesingizni kengaytirishga tayyormisiz?',
+    'cta_subtitle' => 'SellerMind\'da 500+ kompaniyaga qo\'shiling',
+    'cta_start_free' => 'Bepul boshlash',
+    'cta_request_demo' => 'Demo so\'rash',
+
+    // Footer
+    'footer_description' => 'Marketpleyslar uchun savdo boshqaruv platformasi',
+    'footer_product' => 'Mahsulot',
+    'footer_resources' => 'Resurslar',
+    'footer_documentation' => 'Hujjatlar',
+    'footer_blog' => 'Blog',
+    'footer_contacts' => 'Kontaktlar',
+    'footer_copyright' => '© :year SellerMind. Barcha huquqlar himoyalangan.',
 ];

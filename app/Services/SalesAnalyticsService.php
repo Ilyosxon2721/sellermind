@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\Company;
 use App\Models\MarketplaceAccount;
-use App\Models\OfflineSale;
 use App\Models\OzonOrder;
-use App\Models\Sale;
 use App\Models\WildberriesOrder;
 use App\Models\YandexMarketOrder;
 use Illuminate\Support\Collection;
@@ -55,12 +54,27 @@ final class SalesAnalyticsService
     ) {}
 
     /**
+     * Установить контекст компании для конвертации валют.
+     * Определяет валюту отображения и пользовательские курсы обмена.
+     */
+    public function forCompany(int $companyId): self
+    {
+        $company = Company::find($companyId);
+        if ($company && $this->currencyService !== null) {
+            $this->currencyService->forCompany($company);
+        }
+
+        return $this;
+    }
+
+    /**
      * Получить общую сводку продаж за период.
      * $accountIds запрашивается один раз и передаётся во все вспомогательные методы.
      */
     public function getOverview(int $companyId, string $period = '30days'): array
     {
         $this->companyId = $companyId;
+        $this->forCompany($companyId);
         $dateRange = $this->getDateRange($period);
 
         // Один запрос для получения ID аккаунтов (используется во всех helper-методах)
@@ -108,6 +122,7 @@ final class SalesAnalyticsService
     public function getSalesByDay(int $companyId, string $period = '30days'): array
     {
         $this->companyId = $companyId;
+        $this->forCompany($companyId);
         $dateRange = $this->getDateRange($period);
         $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
 
@@ -211,6 +226,7 @@ final class SalesAnalyticsService
             ->groupBy('date')
             ->get();
 
+        // Ручные и оффлайн продажи уже в валюте компании — конвертация не требуется
         $allData = $allData
             ->merge($manualStats)
             ->merge($offlineStats)
@@ -237,6 +253,7 @@ final class SalesAnalyticsService
     public function getTopProducts(int $companyId, string $period = '30days', int $limit = 10): Collection
     {
         $this->companyId = $companyId;
+        $this->forCompany($companyId);
         $dateRange = $this->getDateRange($period);
         $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
 
@@ -265,6 +282,7 @@ final class SalesAnalyticsService
     public function getFlopProducts(int $companyId, string $period = '30days', int $limit = 10): Collection
     {
         $this->companyId = $companyId;
+        $this->forCompany($companyId);
         $dateRange = $this->getDateRange($period);
         $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
 
@@ -295,15 +313,15 @@ final class SalesAnalyticsService
     public function getSalesByCategory(int $companyId, string $period = '30days'): Collection
     {
         $this->companyId = $companyId;
+        $this->forCompany($companyId);
         $dateRange = $this->getDateRange($period);
         $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
 
-        if ($accountIds->isEmpty()) {
-            return collect();
-        }
+        $result = [];
 
-        // WB Statistics API имеет поля category/subject
-        $wbCategories = DB::table('wildberries_orders')
+        if ($accountIds->isNotEmpty()) {
+            // WB Statistics API имеет поля category/subject
+            $wbCategories = DB::table('wildberries_orders')
             ->whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
             ->where('is_cancel', false)
@@ -370,6 +388,43 @@ final class SalesAnalyticsService
                 'total_revenue' => round($this->convertToDisplay((float) ($ymRow->total_revenue ?? 0), 'RUB'), 2),
             ];
         }
+        } // end if ($accountIds->isNotEmpty())
+
+        // Ручные продажи: агрегируем из sale_items
+        $manualRow = DB::table('sale_items')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->where('sales.company_id', $companyId)
+            ->whereBetween('sales.created_at', [$dateRange['from'], $dateRange['to']])
+            ->where('sales.status', '!=', 'cancelled')
+            ->whereNull('sales.deleted_at')
+            ->selectRaw('SUM(sale_items.quantity) as total_quantity, SUM(sale_items.total) as total_revenue')
+            ->first();
+
+        if (($manualRow->total_quantity ?? 0) > 0) {
+            $result[] = [
+                'category_name' => 'Ручные продажи',
+                'total_quantity' => (int) $manualRow->total_quantity,
+                'total_revenue' => round((float) ($manualRow->total_revenue ?? 0), 2),
+            ];
+        }
+
+        // Оффлайн продажи: агрегируем из offline_sale_items
+        $offlineRow = DB::table('offline_sale_items')
+            ->join('offline_sales', 'offline_sale_items.offline_sale_id', '=', 'offline_sales.id')
+            ->where('offline_sales.company_id', $companyId)
+            ->whereBetween('offline_sales.sale_date', [$dateRange['from'], $dateRange['to']])
+            ->whereNotIn('offline_sales.status', ['cancelled', 'returned'])
+            ->whereNull('offline_sales.deleted_at')
+            ->selectRaw('SUM(offline_sale_items.quantity) as total_quantity, SUM(offline_sale_items.line_total) as total_revenue')
+            ->first();
+
+        if (($offlineRow->total_quantity ?? 0) > 0) {
+            $result[] = [
+                'category_name' => 'Оффлайн продажи',
+                'total_quantity' => (int) $offlineRow->total_quantity,
+                'total_revenue' => round((float) ($offlineRow->total_revenue ?? 0), 2),
+            ];
+        }
 
         return collect($result)->sortByDesc('total_revenue')->values();
     }
@@ -381,12 +436,9 @@ final class SalesAnalyticsService
     public function getSalesByMarketplace(int $companyId, string $period = '30days'): Collection
     {
         $this->companyId = $companyId;
+        $this->forCompany($companyId);
         $dateRange = $this->getDateRange($period);
         $accounts = MarketplaceAccount::where('company_id', $companyId)->get();
-
-        if ($accounts->isEmpty()) {
-            return collect();
-        }
 
         $result = [];
 
@@ -406,6 +458,46 @@ final class SalesAnalyticsService
                     'order_count' => $stats['orders'],
                 ];
             }
+        }
+
+        // Ручные продажи (из таблицы sales, фильтр по company_id)
+        $manualRow = DB::table('sale_items')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->where('sales.company_id', $companyId)
+            ->whereBetween('sales.created_at', [$dateRange['from'], $dateRange['to']])
+            ->where('sales.status', '!=', 'cancelled')
+            ->whereNull('sales.deleted_at')
+            ->selectRaw('SUM(sale_items.quantity) as total_quantity, SUM(sale_items.total) as total_revenue, COUNT(DISTINCT sales.id) as order_count')
+            ->first();
+
+        if (($manualRow->order_count ?? 0) > 0) {
+            $result[] = [
+                'marketplace' => 'manual',
+                'account_name' => 'Ручные продажи',
+                'total_quantity' => (int) ($manualRow->total_quantity ?? 0),
+                'total_revenue' => round((float) ($manualRow->total_revenue ?? 0), 2),
+                'order_count' => (int) $manualRow->order_count,
+            ];
+        }
+
+        // Оффлайн продажи (из таблицы offline_sales, фильтр по company_id)
+        $offlineRow = DB::table('offline_sale_items')
+            ->join('offline_sales', 'offline_sale_items.offline_sale_id', '=', 'offline_sales.id')
+            ->where('offline_sales.company_id', $companyId)
+            ->whereBetween('offline_sales.sale_date', [$dateRange['from'], $dateRange['to']])
+            ->whereIn('offline_sales.status', ['confirmed', 'delivered'])
+            ->whereNull('offline_sales.deleted_at')
+            ->selectRaw('SUM(offline_sale_items.quantity) as total_quantity, SUM(offline_sale_items.line_total) as total_revenue, COUNT(DISTINCT offline_sales.id) as order_count')
+            ->first();
+
+        if (($offlineRow->order_count ?? 0) > 0) {
+            $result[] = [
+                'marketplace' => 'offline',
+                'account_name' => 'Оффлайн продажи',
+                'total_quantity' => (int) ($offlineRow->total_quantity ?? 0),
+                'total_revenue' => round((float) ($offlineRow->total_revenue ?? 0), 2),
+                'order_count' => (int) $offlineRow->order_count,
+            ];
         }
 
         return collect($result)->sortByDesc('total_revenue')->values();
@@ -922,18 +1014,21 @@ final class SalesAnalyticsService
             $marketplaceSales = (int) ($uzumSales + $wbSales + $ozonSales + $ymSales);
         }
 
-        // Ручные продажи: количество не отменённых
-        $manualSales = Sale::where('company_id', $this->companyId)
-            ->whereBetween('created_at', [$dateRange['from'], $dateRange['to']])
-            ->where('status', '!=', 'cancelled')
-            ->count();
+        // Ручные продажи: SUM(sale_items.quantity) через JOIN (количество товаров, не заказов)
+        $manualSales = (int) DB::table('sale_items')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->where('sales.company_id', $this->companyId)
+            ->whereBetween('sales.created_at', [$dateRange['from'], $dateRange['to']])
+            ->where('sales.status', '!=', 'cancelled')
+            ->whereNull('sales.deleted_at')
+            ->sum('sale_items.quantity');
 
-        // Оффлайн продажи: сумма количеств позиций для подтверждённых/доставленных
+        // Оффлайн продажи: SUM(offline_sale_items.quantity) через JOIN, исключая отменённые и возвращённые
         $offlineSales = (int) DB::table('offline_sale_items')
             ->join('offline_sales', 'offline_sale_items.offline_sale_id', '=', 'offline_sales.id')
             ->where('offline_sales.company_id', $this->companyId)
             ->whereBetween('offline_sales.sale_date', [$dateRange['from'], $dateRange['to']])
-            ->whereIn('offline_sales.status', ['confirmed', 'delivered'])
+            ->whereNotIn('offline_sales.status', ['cancelled', 'returned'])
             ->whereNull('offline_sales.deleted_at')
             ->sum('offline_sale_items.quantity');
 
@@ -995,17 +1090,21 @@ final class SalesAnalyticsService
             );
         }
 
-        // Ручные продажи: выручка и количество заказов (подтверждённые + завершённые)
-        $manualRow = Sale::where('company_id', $this->companyId)
+        // Ручные продажи: выручка и количество заказов (все кроме отменённых)
+        $manualRow = DB::table('sales')
+            ->where('company_id', $this->companyId)
             ->whereBetween('created_at', [$dateRange['from'], $dateRange['to']])
-            ->whereIn('status', ['confirmed', 'completed'])
+            ->where('status', '!=', 'cancelled')
+            ->whereNull('deleted_at')
             ->selectRaw('SUM(total_amount) as revenue, COUNT(*) as orders')
             ->first();
 
-        // Оффлайн продажи: выручка и количество заказов (подтверждённые + доставленные)
-        $offlineRow = OfflineSale::where('company_id', $this->companyId)
+        // Оффлайн продажи: выручка и количество заказов (исключая отменённые и возвращённые)
+        $offlineRow = DB::table('offline_sales')
+            ->where('company_id', $this->companyId)
             ->whereBetween('sale_date', [$dateRange['from'], $dateRange['to']])
-            ->whereIn('status', ['confirmed', 'delivered'])
+            ->whereNotIn('status', ['cancelled', 'returned'])
+            ->whereNull('deleted_at')
             ->selectRaw('SUM(total_amount) as revenue, COUNT(*) as orders')
             ->first();
 
@@ -1074,16 +1173,20 @@ final class SalesAnalyticsService
         }
 
         // Отменённые ручные продажи
-        $manualRow = Sale::where('company_id', $this->companyId)
+        $manualRow = DB::table('sales')
+            ->where('company_id', $this->companyId)
             ->whereBetween('created_at', [$dateRange['from'], $dateRange['to']])
             ->where('status', 'cancelled')
+            ->whereNull('deleted_at')
             ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
             ->first();
 
-        // Отменённые оффлайн продажи
-        $offlineRow = OfflineSale::where('company_id', $this->companyId)
+        // Отменённые и возвращённые оффлайн продажи
+        $offlineRow = DB::table('offline_sales')
+            ->where('company_id', $this->companyId)
             ->whereBetween('sale_date', [$dateRange['from'], $dateRange['to']])
-            ->where('status', 'cancelled')
+            ->whereIn('status', ['cancelled', 'returned'])
+            ->whereNull('deleted_at')
             ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
             ->first();
 

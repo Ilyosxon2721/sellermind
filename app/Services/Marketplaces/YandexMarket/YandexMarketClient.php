@@ -736,14 +736,18 @@ final class YandexMarketClient implements MarketplaceClientInterface
 
         foreach ($products as $marketplaceProduct) {
             $product = $marketplaceProduct->product;
-            if (! $product) {
-                $marketplaceProduct->markAsFailed('Product not found');
-
-                continue;
-            }
 
             try {
-                $offerData = $this->mapProductToYmFormat($marketplaceProduct, $product);
+                if ($product) {
+                    $offerData = $this->mapProductToYmFormat($marketplaceProduct, $product);
+                } elseif (! empty($marketplaceProduct->raw_payload)) {
+                    // Fallback: маппинг из raw_payload (при копировании из другого маркетплейса)
+                    $offerData = $this->mapRawPayloadToYmFormat($marketplaceProduct);
+                } else {
+                    $marketplaceProduct->markAsFailed('Product not found and no raw_payload');
+
+                    continue;
+                }
                 $offerMappings[] = $offerData;
                 $productMap[$offerData['offer']['offerId']] = $marketplaceProduct;
             } catch (\Exception $e) {
@@ -887,6 +891,56 @@ final class YandexMarketClient implements MarketplaceClientInterface
         // Страна производства
         if (! empty($product->country_of_origin)) {
             $offer['manufacturerCountries'] = [$product->country_of_origin];
+        }
+
+        return [
+            'offer' => $offer,
+        ];
+    }
+
+    /**
+     * Маппинг из raw_payload (при копировании карточек из WB/Ozon) в формат YM
+     */
+    protected function mapRawPayloadToYmFormat($marketplaceProduct): array
+    {
+        $payload = $marketplaceProduct->raw_payload;
+        $offerId = $marketplaceProduct->external_offer_id ?? 'MP-' . $marketplaceProduct->id;
+
+        $offer = [
+            'offerId' => $offerId,
+            'name' => $payload['name'] ?? $marketplaceProduct->title ?? 'Без названия',
+            'description' => strip_tags($payload['description'] ?? ''),
+        ];
+
+        // Бренд / вендор
+        if (! empty($payload['brand'])) {
+            $offer['vendor'] = $payload['brand'];
+        }
+
+        $offer['vendorCode'] = $payload['vendor_code'] ?? $offerId;
+
+        // Изображения (макс 10)
+        if (! empty($payload['pictures']) && is_array($payload['pictures'])) {
+            $offer['pictures'] = array_slice($payload['pictures'], 0, 10);
+        }
+
+        // Штрихкод
+        if (! empty($payload['barcode'])) {
+            $offer['barcodes'] = [$payload['barcode']];
+        }
+
+        // Вес и размеры (конвертация из граммов/мм в кг/см)
+        $weightDimensions = [];
+        if (! empty($payload['weight_g'])) {
+            $weightDimensions['weight'] = round($payload['weight_g'] / 1000, 3);
+        }
+        if (! empty($payload['depth_mm']) && ! empty($payload['width_mm']) && ! empty($payload['height_mm'])) {
+            $weightDimensions['length'] = round($payload['depth_mm'] / 10, 1);
+            $weightDimensions['width'] = round($payload['width_mm'] / 10, 1);
+            $weightDimensions['height'] = round($payload['height_mm'] / 10, 1);
+        }
+        if (! empty($weightDimensions)) {
+            $offer['weightDimensions'] = $weightDimensions;
         }
 
         return [

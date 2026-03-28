@@ -109,6 +109,15 @@ body {
     scrollbar-color: #d1d5db #f9fafb;
 }
 
+/* Hide scrollbar for horizontal scroll tabs */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
 /* ============================================
    TYPOGRAPHY
    ============================================ */

@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\PromotionController;
 use App\Http\Controllers\Api\PushSubscriptionController;
 use App\Http\Controllers\Api\ReviewResponseController;
 use App\Http\Controllers\Api\SalesAnalyticsController;
+use App\Http\Controllers\Api\SalesFunnelController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\TelegramController;
 use App\Http\Controllers\Api\UzumSettingsController;
@@ -342,6 +343,14 @@ Route::middleware('auth.any')->group(function () {
         Route::get('{promotion}/stats', [PromotionController::class, 'stats']);
     });
 
+    // Business Analytics (ABC, ABCXYZ, SWOT)
+    Route::prefix('business-analytics')->group(function () {
+        Route::get('abc', [\App\Http\Controllers\Api\BusinessAnalyticsController::class, 'abcAnalysis']);
+        Route::get('abcxyz', [\App\Http\Controllers\Api\BusinessAnalyticsController::class, 'abcxyzAnalysis']);
+        Route::get('swot', [\App\Http\Controllers\Api\BusinessAnalyticsController::class, 'swotAnalysis']);
+        Route::post('swot', [\App\Http\Controllers\Api\BusinessAnalyticsController::class, 'saveSwotAnalysis']);
+    });
+
     // Sales Analytics
     Route::prefix('analytics')->group(function () {
         Route::get('dashboard', [SalesAnalyticsController::class, 'dashboard']);
@@ -352,6 +361,19 @@ Route::middleware('auth.any')->group(function () {
         Route::get('sales-by-category', [SalesAnalyticsController::class, 'salesByCategory']);
         Route::get('sales-by-marketplace', [SalesAnalyticsController::class, 'salesByMarketplace']);
         Route::get('product/{productId}/performance', [SalesAnalyticsController::class, 'productPerformance']);
+    });
+
+    // Воронка продаж (Sales Funnel)
+    Route::prefix('sales-funnel')->group(function () {
+        Route::get('/', [SalesFunnelController::class, 'index']);
+        Route::post('/', [SalesFunnelController::class, 'store']);
+        Route::post('calculate', [SalesFunnelController::class, 'calculate']);
+        Route::get('auto', [SalesFunnelController::class, 'auto']);
+        Route::get('sources', [SalesFunnelController::class, 'sourceBreakdown']);
+        Route::get('{id}', [SalesFunnelController::class, 'show']);
+        Route::put('{id}', [SalesFunnelController::class, 'update']);
+        Route::delete('{id}', [SalesFunnelController::class, 'destroy']);
+        Route::post('{id}/refresh', [SalesFunnelController::class, 'refresh']);
     });
 
     // Review Response Generator
@@ -654,6 +676,7 @@ Route::middleware('auth.any')->group(function () {
             Route::get('accounts/{account}/campaigns', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'campaigns']);
             Route::put('accounts/{account}/settings', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'saveSettings']);
             Route::post('accounts/{account}/sync-catalog', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'syncCatalog']);
+            Route::post('accounts/{account}/copy-products', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'copyProducts']);
             Route::post('accounts/{account}/sync-orders', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'syncOrders']);
             Route::get('accounts/{account}/orders', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'orders']);
 
@@ -663,6 +686,11 @@ Route::middleware('auth.any')->group(function () {
             Route::put('accounts/{account}/orders/{orderId}/boxes', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'setBoxes']);
             Route::post('accounts/{account}/orders/{orderId}/cancel', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'cancelOrder']);
             Route::get('accounts/{account}/orders/{orderId}/details', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'getOrderDetails']);
+
+            // Print documents
+            Route::get('accounts/{account}/orders/{orderId}/print/receipt', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'printReceipt']);
+            Route::get('accounts/{account}/orders/{orderId}/print/invoice', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'printInvoice']);
+            Route::get('accounts/{account}/orders/{orderId}/print/waybill', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'printWaybill']);
         });
 
         // Ozon Integration
@@ -1098,6 +1126,15 @@ Route::prefix('v1/integration/tokens')->middleware('auth.any')->group(function (
     Route::get('/', [TokenController::class, 'index']);
     Route::post('/', [TokenController::class, 'store']);
     Route::delete('/{id}', [TokenController::class, 'destroy']);
+});
+
+// ── Модуль копирования карточек товаров ──
+Route::middleware(['web', 'auth.any'])->prefix('product-copy')->group(function () {
+    Route::get('sources', [\App\Http\Controllers\Api\ProductCopyController::class, 'sources']);
+    Route::get('sources/{sourceId}/products', [\App\Http\Controllers\Api\ProductCopyController::class, 'sourceProducts']);
+    Route::get('targets', [\App\Http\Controllers\Api\ProductCopyController::class, 'targets']);
+    Route::post('preview', [\App\Http\Controllers\Api\ProductCopyController::class, 'preview']);
+    Route::post('execute', [\App\Http\Controllers\Api\ProductCopyController::class, 'execute']);
 });
 
 // RISMENT Integration endpoints (requires RISMENT API token)

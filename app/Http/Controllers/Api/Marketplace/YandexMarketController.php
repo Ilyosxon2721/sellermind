@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Marketplace;
 use App\Http\Controllers\Controller;
 use App\Models\MarketplaceAccount;
 use App\Services\Marketplaces\YandexMarket\YandexMarketClient;
+use App\Services\Marketplaces\YandexMarket\YandexMarketProductCopyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -344,5 +345,132 @@ class YandexMarketController extends Controller
                 'message' => $e->getMessage(),
             ], 400);
         }
+    }
+
+    /**
+     * Копировать карточки товаров из другого маркетплейса в Yandex Market
+     *
+     * POST /api/marketplace/yandex-market/accounts/{account}/copy-products
+     * Body: { "source_account_id": 1, "product_ids": [1,2,3] }
+     */
+    public function copyProducts(Request $request, MarketplaceAccount $account): JsonResponse
+    {
+        $this->authorizeAccount($request, $account);
+
+        $request->validate([
+            'source_account_id' => ['required', 'exists:marketplace_accounts,id'],
+            'product_ids' => ['nullable', 'array'],
+            'product_ids.*' => ['integer'],
+        ]);
+
+        $sourceAccount = MarketplaceAccount::findOrFail($request->source_account_id);
+
+        // Проверяем доступ к исходному аккаунту
+        if ($sourceAccount->company_id !== $account->company_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Исходный и целевой аккаунты должны принадлежать одной компании',
+            ], 403);
+        }
+
+        if ($account->marketplace !== 'ym') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Целевой аккаунт должен быть Yandex Market',
+            ], 422);
+        }
+
+        if (! in_array($sourceAccount->marketplace, ['wb', 'ozon', 'uzum'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Копирование поддерживается из Wildberries, Ozon и Uzum',
+            ], 422);
+        }
+
+        try {
+            $copyService = app(YandexMarketProductCopyService::class);
+
+            $result = $copyService->copyFromAccount(
+                $account,
+                $sourceAccount,
+                $request->input('product_ids', [])
+            );
+
+            $sourceName = match ($sourceAccount->marketplace) {
+                'wb' => 'Wildberries',
+                'ozon' => 'Ozon',
+                'uzum' => 'Uzum',
+                default => $sourceAccount->marketplace,
+            };
+
+            return response()->json([
+                'success' => true,
+                'message' => "Копирование из {$sourceName} завершено: {$result['copied']} скопировано, {$result['skipped']} пропущено",
+                'copied' => $result['copied'],
+                'skipped' => $result['skipped'],
+                'errors' => $result['errors'],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Ошибка копирования карточек в YM', [
+                'ym_account_id' => $account->id,
+                'source_account_id' => $sourceAccount->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка копирования: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // ==================== PRINT DOCUMENTS ====================
+
+    /**
+     * Печать чека для заказа YM
+     */
+    public function printReceipt(Request $request, MarketplaceAccount $account, string $orderId)
+    {
+        $this->authorizeAccount($request, $account);
+
+        $order = \App\Models\YandexMarketOrder::where('marketplace_account_id', $account->id)
+            ->where('order_id', $orderId)
+            ->firstOrFail();
+
+        $company = $account->company;
+
+        return view('marketplace.ym-orders.print.receipt', compact('order', 'company'));
+    }
+
+    /**
+     * Печать счёт-фактуры для заказа YM
+     */
+    public function printInvoice(Request $request, MarketplaceAccount $account, string $orderId)
+    {
+        $this->authorizeAccount($request, $account);
+
+        $order = \App\Models\YandexMarketOrder::where('marketplace_account_id', $account->id)
+            ->where('order_id', $orderId)
+            ->firstOrFail();
+
+        $company = $account->company;
+
+        return view('marketplace.ym-orders.print.invoice', compact('order', 'company'));
+    }
+
+    /**
+     * Печать товарной накладной для заказа YM
+     */
+    public function printWaybill(Request $request, MarketplaceAccount $account, string $orderId)
+    {
+        $this->authorizeAccount($request, $account);
+
+        $order = \App\Models\YandexMarketOrder::where('marketplace_account_id', $account->id)
+            ->where('order_id', $orderId)
+            ->firstOrFail();
+
+        $company = $account->company;
+
+        return view('marketplace.ym-orders.print.waybill', compact('order', 'company'));
     }
 }
