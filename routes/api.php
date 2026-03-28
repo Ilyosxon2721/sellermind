@@ -664,6 +664,11 @@ Route::middleware('auth.any')->group(function () {
             Route::put('accounts/{account}/orders/{orderId}/boxes', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'setBoxes']);
             Route::post('accounts/{account}/orders/{orderId}/cancel', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'cancelOrder']);
             Route::get('accounts/{account}/orders/{orderId}/details', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'getOrderDetails']);
+
+            // Print documents
+            Route::get('accounts/{account}/orders/{orderId}/print/receipt', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'printReceipt']);
+            Route::get('accounts/{account}/orders/{orderId}/print/invoice', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'printInvoice']);
+            Route::get('accounts/{account}/orders/{orderId}/print/waybill', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'printWaybill']);
         });
 
         // Ozon Integration
