@@ -18,7 +18,7 @@
     .uzum-btn-outline { @apply border-2 border-[#3A007D] text-[#3A007D] hover:bg-[#3A007D] hover:text-white; }
 </style>
 
-<div x-data="uzumOrdersPage()" x-init="init()" x-cloak class="flex h-screen bg-gray-50 browser-only"
+<div x-data="uzumOrdersPage()" x-init="init()" x-cloak class="flex h-[calc(100vh-3.5rem)] lg:h-screen bg-gray-50 browser-only"
      :class="{
          'flex-row': $store.ui.navPosition === 'left',
          'flex-row-reverse': $store.ui.navPosition === 'right'
@@ -40,10 +40,10 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                             </svg>
                         </a>
-                        <div class="flex items-center space-x-3">
+                        <div class="flex items-center space-x-2 sm:space-x-3">
                             <!-- Uzum Logo -->
-                            <div class="w-10 h-10 uzum-gradient rounded-xl flex items-center justify-center shadow-md">
-                                <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 uzum-gradient rounded-xl flex items-center justify-center shadow-md">
+                                <svg class="w-5 h-5 sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
                                 </svg>
                             </div>
@@ -129,7 +129,7 @@
 
                         <button @click="triggerSync()"
                                 :disabled="syncInProgress"
-                                class="px-4 py-2 bg-white border-2 border-[#3A007D] text-[#3A007D] hover:bg-[#3A007D] hover:text-white rounded-xl font-medium transition flex items-center space-x-2 disabled:opacity-50">
+                                class="px-3 sm:px-4 py-2 bg-white border-2 border-[#3A007D] text-[#3A007D] hover:bg-[#3A007D] hover:text-white rounded-xl text-sm font-medium transition flex items-center space-x-1 sm:space-x-2 disabled:opacity-50">
                             <svg x-show="syncInProgress" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
@@ -147,7 +147,7 @@
             <div class="px-4 sm:px-6 flex items-center space-x-1 border-t border-gray-100 bg-gray-50/50 overflow-x-auto">
                 <template x-for="tab in statusTabs" :key="tab.value">
                     <button @click="switchTab(tab.value)"
-                            class="px-5 py-3.5 text-sm font-medium border-b-2 transition whitespace-nowrap"
+                            class="px-3 sm:px-5 py-2.5 sm:py-3.5 text-xs sm:text-sm font-medium border-b-2 transition whitespace-nowrap"
                             :class="activeTab === tab.value
                                 ? 'border-[#3A007D] text-[#3A007D] bg-white'
                                 : 'border-transparent text-gray-700 hover:text-gray-900 hover:bg-white/50'">
@@ -191,20 +191,23 @@
                             </svg>
                             <span>Статистика заказов</span>
                         </h3>
-                        <div class="flex items-center flex-wrap gap-2">
+
+<div class="flex items-center flex-wrap gap-2">
                             <!-- Quick Date Filters -->
                             <div class="flex items-center space-x-1 sm:mr-4">
                                 <button @click="setToday()" class="px-3 py-1.5 text-xs font-medium rounded-lg transition"
                                         :class="isToday ? 'bg-[#3A007D] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">Сегодня</button>
-                                <button @click="setYesterday()" class="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">Вчера</button>
-                                <button @click="setLastWeek()" class="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">7 дней</button>
-                                <button @click="setLastMonth()" class="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">30 дней</button>
+                                <button @click="setYesterday()" class="px-2 sm:px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">Вчера</button>
+                                <button @click="setLastWeek()" class="px-2 sm:px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">7 дн</button>
+                                <button @click="setLastMonth()" class="px-2 sm:px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">30 дн</button>
                             </div>
-                            <input type="date" x-model="dateFrom" @change="orderMode === 'fbo' ? loadFboOrders() : (loadOrders(), loadStats())"
-                                   class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#3A007D] focus:border-[#3A007D]">
-                            <span class="text-gray-400">—</span>
-                            <input type="date" x-model="dateTo" @change="orderMode === 'fbo' ? loadFboOrders() : (loadOrders(), loadStats())"
-                                   class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#3A007D] focus:border-[#3A007D]">
+                            <div class="flex items-center space-x-1">
+                                <input type="date" x-model="dateFrom" @change="orderMode === 'fbo' ? loadFboOrders() : (loadOrders(), loadStats())"
+                                       class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-[#3A007D] focus:border-[#3A007D] w-[120px] sm:w-auto">
+                                <span class="text-gray-400">—</span>
+                                <input type="date" x-model="dateTo" @change="orderMode === 'fbo' ? loadFboOrders() : (loadOrders(), loadStats())"
+                                       class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-[#3A007D] focus:border-[#3A007D] w-[120px] sm:w-auto">
+                            </div>
                         </div>
                     </div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
@@ -250,6 +253,8 @@
 
             <!-- Filters -->
             <div class="px-4 sm:px-6 pb-4">
+                <div class="bg-white rounded-2xl border border-gray-200 p-3 sm:p-4 shadow-sm">
+                    <div class="flex items-center space-x-2 sm:space-x-4">
                 <div class="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
                     <div class="flex items-center space-x-4">
                         <div class="flex-1 relative">
@@ -259,10 +264,10 @@
                             <input type="text"
                                    x-model="searchQuery"
                                    @input.debounce.300ms="filterOrders()"
-                                   placeholder="Поиск по номеру заказа, SKU или названию товара..."
-                                   class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3A007D] focus:border-[#3A007D]">
+                                   placeholder="Поиск по номеру, SKU..."
+                                   class="w-full pl-10 pr-4 py-2 sm:py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#3A007D] focus:border-[#3A007D]">
                         </div>
-                        <button @click="resetFilters()" class="px-4 py-2.5 text-blue-700 hover:bg-blue-50 rounded-xl transition text-sm font-medium">
+                        <button @click="resetFilters()" class="px-3 sm:px-4 py-2 sm:py-2.5 text-blue-700 hover:bg-blue-50 rounded-xl transition text-xs sm:text-sm font-medium whitespace-nowrap">
                             Сбросить
                         </button>
                     </div>
@@ -304,42 +309,42 @@
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Номер</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Создан</th>
-                                    <th x-show="activeTab === 'new'" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Подтвердить до</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Доставить до</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Состав</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сумма</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Магазин</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
+                                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Номер</th>
+                                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Создан</th>
+                                    <th x-show="activeTab === 'new'" class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Подтвердить до</th>
+                                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Доставить до</th>
+                                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Состав</th>
+                                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сумма</th>
+                                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Магазин</th>
+                                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-100">
                                 <template x-for="order in filteredOrders" :key="order.id">
                                     <tr class="hover:bg-gray-50 cursor-pointer transition" @click="openOrderModal(order)">
-                                        <td class="px-4 py-3 text-sm">
+                                        <td class="px-3 sm:px-4 py-3 text-sm">
                                             <div class="font-semibold text-gray-900" x-text="'#' + order.external_order_id"></div>
                                         </td>
-                                        <td class="px-4 py-3 text-sm">
+                                        <td class="px-3 sm:px-4 py-3 text-sm">
                                             <span class="px-2 py-1 rounded-full text-xs font-semibold"
                                                   :class="getStatusClass(order.status)"
                                                   x-text="getStatusLabel(order.status)"></span>
                                         </td>
-                                        <td class="px-4 py-3 text-sm text-gray-900">
+                                        <td class="px-3 sm:px-4 py-3 text-sm text-gray-900 hidden sm:table-cell">
                                             <div class="font-medium" x-text="formatUzumDate(order.raw_payload?.dateCreated || order.ordered_at)"></div>
                                             <div class="text-xs text-[#F4488D]" x-text="getTimeElapsed(order.ordered_at)"></div>
                                         </td>
-                                        <td x-show="activeTab === 'new'" class="px-4 py-3 text-sm text-gray-900">
+                                        <td x-show="activeTab === 'new'" class="px-3 sm:px-4 py-3 text-sm text-gray-900 hidden md:table-cell">
                                             <div class="font-medium" x-text="formatUzumDate(order.raw_payload?.acceptUntil)"></div>
                                             <div class="text-xs" :class="isUrgent(order.raw_payload?.acceptUntil) ? 'text-red-600 font-semibold' : 'text-gray-500'"
                                                  x-text="timeLeft(order.raw_payload?.acceptUntil)"></div>
                                         </td>
-                                        <td class="px-4 py-3 text-sm text-gray-900">
+                                        <td class="px-3 sm:px-4 py-3 text-sm text-gray-900 hidden lg:table-cell">
                                             <div class="font-medium" x-text="formatUzumDate(order.raw_payload?.deliverUntil || order.raw_payload?.deliveryDate)"></div>
                                             <div class="text-xs text-gray-500" x-text="timeLeft(order.raw_payload?.deliverUntil || order.raw_payload?.deliveryDate)"></div>
                                         </td>
-                                        <td class="px-4 py-3 text-sm">
+                                        <td class="px-3 sm:px-4 py-3 text-sm hidden md:table-cell">
                                             <div class="space-y-1 max-w-xs">
                                                 <template x-for="(item, idx) in getOrderItems(order).slice(0, 2)" :key="idx">
                                                     <div class="flex items-center space-x-2">
@@ -357,13 +362,13 @@
                                                 </template>
                                             </div>
                                         </td>
-                                        <td class="px-4 py-3 text-sm">
+                                        <td class="px-3 sm:px-4 py-3 text-sm">
                                             <div class="font-bold text-gray-900" x-text="formatPrice(order.total_amount)"></div>
                                         </td>
-                                        <td class="px-4 py-3 text-sm text-gray-600">
+                                        <td class="px-3 sm:px-4 py-3 text-sm text-gray-600 hidden lg:table-cell">
                                             <div class="font-medium" x-text="getShopName(order)"></div>
                                         </td>
-                                        <td class="px-4 py-3 text-sm" @click.stop>
+                                        <td class="px-3 sm:px-4 py-3 text-sm" @click.stop>
                                             <div class="flex items-center space-x-2">
                                                 <!-- FBS Actions (only show for FBS mode) -->
                                                 <template x-if="orderMode === 'fbs'">
