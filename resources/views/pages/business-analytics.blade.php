@@ -1025,6 +1025,11 @@ function businessAnalyticsPage() {
         formatMoney(value) {
             if (!value && value !== 0) return '0';
             return new Intl.NumberFormat('ru-RU').format(Math.round(value));
+        },
+
+        formatNumber(value) {
+            if (!value && value !== 0) return '0';
+            return Number(value).toLocaleString('ru-RU');
         }
     }
 }

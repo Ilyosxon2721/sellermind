@@ -39,7 +39,7 @@
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <p class="text-sm text-gray-500">Продано единиц</p>
-                <p class="text-3xl font-bold text-blue-600 mt-1" x-text="formatMoney(salesData.summary.total_quantity)"></p>
+                <p class="text-3xl font-bold text-blue-600 mt-1" x-text="formatNumber(salesData.summary.total_quantity)"></p>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <p class="text-sm text-gray-500">Общая выручка</p>
@@ -98,7 +98,7 @@
                                 </td>
                                 <td class="px-6 py-3 text-sm font-medium text-gray-900 max-w-xs truncate" x-text="product.product_name"></td>
                                 <td class="px-6 py-3 text-sm text-gray-500 font-mono" x-text="product.sku"></td>
-                                <td class="px-6 py-3 text-right text-sm font-semibold text-blue-600" x-text="formatMoney(product.quantity) + ' шт'"></td>
+                                <td class="px-6 py-3 text-right text-sm font-semibold text-blue-600" x-text="formatNumber(product.quantity) + ' шт'"></td>
                                 <td class="px-6 py-3 text-right text-sm font-medium text-gray-900" x-text="formatMoney(product.revenue)"></td>
                                 <td class="px-6 py-3 text-right text-sm text-gray-600" x-text="formatMoney(product.avg_price)"></td>
                                 <td class="px-6 py-3 text-right">
