@@ -317,7 +317,7 @@ function businessAnalyticsPage() {
 
         // Графики ABC
         renderAbcCharts() {
-            if (typeof Chart === 'undefined') return;
+            if (typeof Chart === 'undefined' || !this.$el.offsetParent) return;
 
             const cats = this.abcData.summary.categories;
             const fmt = v => new Intl.NumberFormat('ru-RU').format(Math.round(v));
@@ -554,7 +554,7 @@ function businessAnalyticsPage() {
                 if (response?.data) {
                     this.abcData = response.data;
                     this.abcPage = 1;
-                    this.$nextTick(() => this.renderAbcCharts());
+                    this.$nextTick(() => setTimeout(() => this.renderAbcCharts(), 100));
                 }
             } catch (e) {
                 console.error('ABC load error:', e);
@@ -668,7 +668,7 @@ function businessAnalyticsPage() {
                 if (response?.data) {
                     this.salesData = response.data;
                     this.salesPage = 1;
-                    this.$nextTick(() => this.renderSalesCharts());
+                    this.$nextTick(() => setTimeout(() => this.renderSalesCharts(), 100));
                 }
             } catch (e) {
                 console.error('Sales ranking error:', e);
@@ -689,7 +689,7 @@ function businessAnalyticsPage() {
                 if (response?.data) {
                     this.marginData = response.data;
                     this.marginPage = 1;
-                    this.$nextTick(() => this.renderMarginCharts());
+                    this.$nextTick(() => setTimeout(() => this.renderMarginCharts(), 100));
                 }
             } catch (e) {
                 console.error('Margin ranking error:', e);
@@ -700,7 +700,7 @@ function businessAnalyticsPage() {
 
         // Графики рейтинга по продажам
         renderSalesCharts() {
-            if (typeof Chart === 'undefined') return;
+            if (typeof Chart === 'undefined' || !this.$el.offsetParent) return;
             const fmt = v => new Intl.NumberFormat('ru-RU').format(Math.round(v));
             const fmtCompact = v => new Intl.NumberFormat('ru-RU', {notation:'compact'}).format(v);
 
@@ -855,7 +855,7 @@ function businessAnalyticsPage() {
 
         // Графики рейтинга по маржинальности
         renderMarginCharts() {
-            if (typeof Chart === 'undefined') return;
+            if (typeof Chart === 'undefined' || !this.$el.offsetParent) return;
             const fmt = v => new Intl.NumberFormat('ru-RU').format(Math.round(v));
             const fmtCompact = v => new Intl.NumberFormat('ru-RU', {notation:'compact'}).format(v);
 
