@@ -424,6 +424,33 @@
                                                     </span>
                                                 </template>
 
+                                                <!-- Documents Dropdown -->
+                                                <div class="relative" x-data="{ docMenu: false }">
+                                                    <button @click="docMenu = !docMenu"
+                                                            class="p-1.5 text-gray-400 hover:text-[#3A007D] hover:bg-purple-50 rounded-lg transition"
+                                                            title="Документы">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                        </svg>
+                                                    </button>
+                                                    <div x-show="docMenu" @click.outside="docMenu = false"
+                                                         x-transition
+                                                         class="absolute right-0 top-8 z-30 w-40 bg-white border border-gray-200 rounded-xl shadow-lg py-1">
+                                                        <button @click="openDocument(order, 'receipt'); docMenu = false"
+                                                                class="w-full px-3 py-2 text-left text-xs hover:bg-purple-50 transition flex items-center space-x-2">
+                                                            <span>Чек</span>
+                                                        </button>
+                                                        <button @click="openDocument(order, 'waybill'); docMenu = false"
+                                                                class="w-full px-3 py-2 text-left text-xs hover:bg-purple-50 transition flex items-center space-x-2">
+                                                            <span>Накладная</span>
+                                                        </button>
+                                                        <button @click="openDocument(order, 'invoice'); docMenu = false"
+                                                                class="w-full px-3 py-2 text-left text-xs hover:bg-purple-50 transition flex items-center space-x-2">
+                                                            <span>Счёт-фактура</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
                                                 <!-- View Details -->
                                                 <button @click="openOrderModal(order)"
                                                         class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition"
@@ -584,6 +611,42 @@
                                 Отменить
                             </button>
                         </template>
+                    </div>
+
+                    <!-- Documents Section -->
+                    <div class="border-t border-gray-200 pt-4 mt-4">
+                        <h4 class="font-semibold text-gray-900 mb-3 flex items-center space-x-2">
+                            <svg class="w-5 h-5 text-[#3A007D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            <span>Документы</span>
+                        </h4>
+                        <div class="grid grid-cols-3 gap-3">
+                            <!-- Чек -->
+                            <button @click="openDocument(selectedOrder, 'receipt')"
+                                    class="flex flex-col items-center p-3 bg-gray-50 hover:bg-purple-50 border border-gray-200 hover:border-[#3A007D] rounded-xl transition group">
+                                <svg class="w-8 h-8 text-gray-400 group-hover:text-[#3A007D] mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/>
+                                </svg>
+                                <span class="text-xs font-medium text-gray-700 group-hover:text-[#3A007D]">Чек</span>
+                            </button>
+                            <!-- Накладная -->
+                            <button @click="openDocument(selectedOrder, 'waybill')"
+                                    class="flex flex-col items-center p-3 bg-gray-50 hover:bg-purple-50 border border-gray-200 hover:border-[#3A007D] rounded-xl transition group">
+                                <svg class="w-8 h-8 text-gray-400 group-hover:text-[#3A007D] mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                <span class="text-xs font-medium text-gray-700 group-hover:text-[#3A007D]">Накладная</span>
+                            </button>
+                            <!-- Счёт-фактура -->
+                            <button @click="openDocument(selectedOrder, 'invoice')"
+                                    class="flex flex-col items-center p-3 bg-gray-50 hover:bg-purple-50 border border-gray-200 hover:border-[#3A007D] rounded-xl transition group">
+                                <svg class="w-8 h-8 text-gray-400 group-hover:text-[#3A007D] mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                </svg>
+                                <span class="text-xs font-medium text-gray-700 group-hover:text-[#3A007D]">Счёт-фактура</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Raw Payload Toggle -->
@@ -1118,6 +1181,12 @@ function uzumOrdersPage() {
                 this.showMessage('Ошибка сети', 'error');
             }
             order.processing = false;
+        },
+
+        openDocument(order, type) {
+            if (!order?.external_order_id) return;
+            const url = `/api/marketplace/uzum/accounts/${this.accountId}/orders/${order.external_order_id}/${type}`;
+            window.open(url, '_blank');
         },
 
         async printOrderSticker(order) {
