@@ -154,21 +154,27 @@ final class BusinessAnalyticsService
             $matrix[$seg] = ['count' => 0, 'revenue' => 0, 'customers' => []];
         }
 
-        $thresholds = [
-            'A' => 10000,
-            'B' => 5000,
-            'C' => 0,
-        ];
+        // ABC по кумулятивной выручке (как для товаров): A=80%, B=95%, C=100%
+        $sortedByAmount = $customers->sortByDesc('total_amount')->values();
+        $totalCustomerRevenue = $sortedByAmount->sum('total_amount');
+        $cumulativeMap = [];
+        $cumulative = 0;
+        foreach ($sortedByAmount as $c) {
+            $cumulative += (float) $c['total_amount'];
+            $pct = $totalCustomerRevenue > 0 ? ($cumulative / $totalCustomerRevenue) * 100 : 100;
+            $cumulativeMap[$c['customer_name']] = $pct;
+        }
 
         foreach ($customers as $customer) {
             $totalAmount = (float) $customer['total_amount'];
             $orderCount = (int) $customer['order_count'];
             $ordersPerWeek = $orderCount / $totalWeeks;
 
-            // ABC классификация по сумме
-            if ($totalAmount >= $thresholds['A']) {
+            // ABC классификация по кумулятивной выручке
+            $cumPct = $cumulativeMap[$customer['customer_name']] ?? 100;
+            if ($cumPct <= 80) {
                 $abc = 'A';
-            } elseif ($totalAmount >= $thresholds['B']) {
+            } elseif ($cumPct <= 95) {
                 $abc = 'B';
             } else {
                 $abc = 'C';
@@ -204,10 +210,14 @@ final class BusinessAnalyticsService
             'matrix' => $matrix,
             'summary' => [
                 'total_customers' => $customers->count(),
-                'total_revenue' => round($customers->sum('total_amount'), 2),
+                'total_revenue' => round($totalCustomerRevenue, 2),
                 'period_weeks' => $totalWeeks,
             ],
-            'thresholds' => $thresholds,
+            'thresholds' => [
+                'A' => '80% выручки',
+                'B' => '80-95% выручки',
+                'C' => '95-100% выручки',
+            ],
             'period' => $period,
         ];
     }
@@ -589,20 +599,20 @@ final class BusinessAnalyticsService
             }
         }
 
-        // Ручные продажи — через контрагентов
+        // Ручные продажи — через контрагентов + анонимные
         if ($this->shouldIncludeSource($source, 'manual')) {
             $manualCustomers = DB::table('sales')
-                ->join('counterparties', 'sales.counterparty_id', '=', 'counterparties.id')
+                ->leftJoin('counterparties', 'sales.counterparty_id', '=', 'counterparties.id')
                 ->where('sales.company_id', $this->companyId)
                 ->whereBetween('sales.created_at', [$dateRange['from'], $dateRange['to']])
                 ->where('sales.status', '!=', 'cancelled')
                 ->whereNull('sales.deleted_at')
                 ->select(
-                    'counterparties.name as customer_name',
+                    DB::raw('COALESCE(counterparties.name, "Розничный покупатель") as customer_name'),
                     DB::raw('SUM(sales.total_amount) as total_amount'),
                     DB::raw('COUNT(*) as order_count')
                 )
-                ->groupBy('counterparties.name')
+                ->groupBy(DB::raw('COALESCE(counterparties.name, "Розничный покупатель")'))
                 ->get()
                 ->map(fn ($row) => [
                     'customer_name' => $row->customer_name,
@@ -843,6 +853,29 @@ final class BusinessAnalyticsService
                         'has_cost' => false,
                     ]);
                 }
+
+                // Обогащаем себестоимостью из marketplace_products
+                $ozonSkus = $allItems->where('has_cost', false)->pluck('sku')->unique()->values();
+                if ($ozonSkus->isNotEmpty()) {
+                    $costMap = DB::table('marketplace_products')
+                        ->whereIn('marketplace_account_id', $accountIds)
+                        ->whereIn('external_offer_id', $ozonSkus)
+                        ->whereNotNull('purchase_price')
+                        ->where('purchase_price', '>', 0)
+                        ->select('external_offer_id', DB::raw('AVG(purchase_price) as avg_cost'))
+                        ->groupBy('external_offer_id')
+                        ->pluck('avg_cost', 'external_offer_id');
+
+                    $allItems = $allItems->map(function ($item) use ($costMap) {
+                        if (!$item['has_cost'] && isset($costMap[$item['sku']])) {
+                            $unitCost = (float) $costMap[$item['sku']];
+                            $totalCost = $this->convertToDisplay($unitCost * $item['quantity'], 'RUB');
+                            $item['cost'] = $totalCost;
+                            $item['has_cost'] = true;
+                        }
+                        return $item;
+                    });
+                }
             }
 
             // YM — извлекаем товары из JSON поля order_data.items
@@ -883,6 +916,29 @@ final class BusinessAnalyticsService
                         'cost' => null,
                         'has_cost' => false,
                     ]);
+                }
+
+                // Обогащаем себестоимостью из marketplace_products
+                $ymSkus = $allItems->where('has_cost', false)->pluck('sku')->unique()->values();
+                if ($ymSkus->isNotEmpty()) {
+                    $costMap = DB::table('marketplace_products')
+                        ->whereIn('marketplace_account_id', $accountIds)
+                        ->whereIn('external_offer_id', $ymSkus)
+                        ->whereNotNull('purchase_price')
+                        ->where('purchase_price', '>', 0)
+                        ->select('external_offer_id', DB::raw('AVG(purchase_price) as avg_cost'))
+                        ->groupBy('external_offer_id')
+                        ->pluck('avg_cost', 'external_offer_id');
+
+                    $allItems = $allItems->map(function ($item) use ($costMap) {
+                        if (!$item['has_cost'] && isset($costMap[$item['sku']])) {
+                            $unitCost = (float) $costMap[$item['sku']];
+                            $totalCost = $this->convertToDisplay($unitCost * $item['quantity'], 'RUB');
+                            $item['cost'] = $totalCost;
+                            $item['has_cost'] = true;
+                        }
+                        return $item;
+                    });
                 }
             }
         }
@@ -1047,15 +1103,15 @@ final class BusinessAnalyticsService
     {
         $to = now();
         $from = match ($period) {
-            'today' => now()->startOfDay(),
-            '7days' => now()->subDays(7),
-            '30days' => now()->subDays(30),
-            '90days' => now()->subDays(90),
-            '365days' => now()->subDays(365),
-            'month' => now()->startOfMonth(),
-            'year' => now()->startOfYear(),
-            'all' => now()->subYears(10),
-            default => now()->subDays(30),
+            'today' => $to->copy()->startOfDay(),
+            '7days' => $to->copy()->subDays(7)->startOfDay(),
+            '30days' => $to->copy()->subDays(30)->startOfDay(),
+            '90days' => $to->copy()->subDays(90)->startOfDay(),
+            '365days' => $to->copy()->subDays(365)->startOfDay(),
+            'month' => $to->copy()->startOfMonth(),
+            'year' => $to->copy()->startOfYear(),
+            'all' => $to->copy()->subYears(10)->startOfDay(),
+            default => $to->copy()->subDays(30)->startOfDay(),
         };
 
         return ['from' => $from, 'to' => $to];

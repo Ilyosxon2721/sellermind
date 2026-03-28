@@ -57,7 +57,7 @@ class BusinessAnalyticsController extends Controller
     {
         try {
             return Cache::remember($key, now()->addMinutes($minutes), $callback);
-        } catch (\Exception $e) {
+        } catch (\RedisException|\Predis\ClientException $e) {
             Log::warning('BusinessAnalytics: кэш недоступен, запрос без кэша', [
                 'key' => $key,
                 'error' => $e->getMessage(),
