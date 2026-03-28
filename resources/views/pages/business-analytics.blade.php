@@ -271,7 +271,7 @@ function businessAnalyticsPage() {
             const cats = this.abcData.summary.categories;
 
             // Pie Chart
-            const pieCtx = document.getElementById('abcPieChart');
+            const pieCtx = this.$el.querySelector('#abcPieChart');
             if (pieCtx) {
                 if (this.abcPieChart) this.abcPieChart.destroy();
                 this.abcPieChart = new Chart(pieCtx, {
@@ -305,7 +305,7 @@ function businessAnalyticsPage() {
             }
 
             // Bar Chart
-            const barCtx = document.getElementById('abcBarChart');
+            const barCtx = this.$el.querySelector('#abcBarChart');
             if (barCtx) {
                 if (this.abcBarChart) this.abcBarChart.destroy();
                 this.abcBarChart = new Chart(barCtx, {
@@ -344,7 +344,7 @@ function businessAnalyticsPage() {
             }
 
             // Top Products horizontal bar
-            const topCtx = document.getElementById('abcTopProductsChart');
+            const topCtx = this.$el.querySelector('#abcTopProductsChart');
             if (topCtx && this.abcData.products.length > 0) {
                 if (this.abcTopChart) this.abcTopChart.destroy();
                 const top10 = this.abcData.products.slice(0, 10);
@@ -546,7 +546,7 @@ function businessAnalyticsPage() {
             const fmtCompact = v => new Intl.NumberFormat('ru-RU', {notation:'compact'}).format(v);
 
             // Топ-10 горизонтальный bar
-            const topCtx = document.getElementById('salesTopChart');
+            const topCtx = this.$el.querySelector('#salesTopChart');
             if (topCtx && this.salesData.products.length > 0) {
                 if (this.salesTopChartObj) this.salesTopChartObj.destroy();
                 const top10 = this.salesData.products.slice(0, 10);
@@ -577,7 +577,7 @@ function businessAnalyticsPage() {
             }
 
             // Donut — доля топ-5 vs остальные
-            const shareCtx = document.getElementById('salesShareChart');
+            const shareCtx = this.$el.querySelector('#salesShareChart');
             if (shareCtx && this.salesData.products.length > 0) {
                 if (this.salesShareChartObj) this.salesShareChartObj.destroy();
                 const top5 = this.salesData.products.slice(0, 5);
@@ -606,7 +606,7 @@ function businessAnalyticsPage() {
             const fmt = v => new Intl.NumberFormat('ru-RU').format(Math.round(v));
 
             // Топ-10 по маржинальности (горизонтальный bar)
-            const barCtx = document.getElementById('marginBarChart');
+            const barCtx = this.$el.querySelector('#marginBarChart');
             if (barCtx) {
                 if (this.marginBarChartObj) this.marginBarChartObj.destroy();
                 const withCost = this.marginData.products.filter(p => p.has_cost);
@@ -640,7 +640,7 @@ function businessAnalyticsPage() {
             }
 
             // Donut — Выручка / Себестоимость / Прибыль
-            const profitCtx = document.getElementById('marginProfitChart');
+            const profitCtx = this.$el.querySelector('#marginProfitChart');
             if (profitCtx) {
                 if (this.marginProfitChartObj) this.marginProfitChartObj.destroy();
                 const s = this.marginData.summary;
