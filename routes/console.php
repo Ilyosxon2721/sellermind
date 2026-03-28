@@ -522,6 +522,45 @@ Schedule::call(function () {
 |
 */
 
+/*
+|--------------------------------------------------------------------------
+| Business Analytics Scheduled Tasks (ABC, ABCXYZ)
+|--------------------------------------------------------------------------
+|
+| Автоматический расчёт ABC/ABCXYZ-анализа и отправка отчётов
+|
+*/
+
+// Business Analytics: Пересчёт ABC и ABCXYZ каждые 6 часов
+Schedule::call(function () {
+    foreach (\App\Models\Company::where('is_active', true)->cursor() as $company) {
+        \App\Jobs\CalculateBusinessAnalyticsJob::dispatch($company->id, '30days');
+    }
+})->everySixHours()
+    ->name('calculate-business-analytics')
+    ->withoutOverlapping(60)
+    ->onSuccess(function () {
+        \Log::info('BusinessAnalytics: Расчёт ABC/ABCXYZ запущен для всех компаний');
+    })
+    ->onFailure(function () {
+        \Log::error('BusinessAnalytics: Ошибка запуска расчёта');
+    });
+
+// Business Analytics: Еженедельный отчёт ABC в Telegram (понедельник 10:00)
+Schedule::command('business-analytics:report --period=30days')
+    ->weekly()
+    ->mondays()
+    ->at('10:00')
+    ->name('business-analytics-weekly-report')
+    ->withoutOverlapping(15)
+    ->onSuccess(function () {
+        \Log::info('BusinessAnalytics: Еженедельный отчёт отправлен');
+    })
+    ->onFailure(function () {
+        \Log::error('BusinessAnalytics: Ошибка отправки еженедельного отчёта');
+    })
+    ->appendOutputTo(storage_path('logs/business-analytics.log'));
+
 // KPI: Ежедневный расчёт KPI планов в 06:00
 Schedule::command('kpi:calculate')
     ->dailyAt('06:00')

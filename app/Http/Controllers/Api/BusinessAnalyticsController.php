@@ -11,6 +11,7 @@ use App\Services\BusinessAnalyticsService;
 use App\Services\CurrencyConversionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class BusinessAnalyticsController extends Controller
 {
@@ -45,7 +46,10 @@ class BusinessAnalyticsController extends Controller
         $companyId = $this->getCompanyId();
         $period = $request->input('period', '30days');
 
-        $data = $this->service->getAbcAnalysis($companyId, $period);
+        $cacheKey = "business_abc_{$companyId}_{$period}";
+        $data = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period) {
+            return $this->service->getAbcAnalysis($companyId, $period);
+        });
 
         return response()->json($data);
     }
@@ -59,7 +63,10 @@ class BusinessAnalyticsController extends Controller
         $companyId = $this->getCompanyId();
         $period = $request->input('period', '90days');
 
-        $data = $this->service->getAbcxyzAnalysis($companyId, $period);
+        $cacheKey = "business_abcxyz_{$companyId}_{$period}";
+        $data = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period) {
+            return $this->service->getAbcxyzAnalysis($companyId, $period);
+        });
 
         return response()->json($data);
     }
