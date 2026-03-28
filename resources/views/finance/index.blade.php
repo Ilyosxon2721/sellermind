@@ -44,7 +44,7 @@
                 </button>
                 <button class="px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
                         :class="activeTab === 'debts' ? 'bg-red-100 text-red-700' : 'text-gray-600 hover:bg-gray-100'"
-                        @click="activeTab = 'debts'; loadDebts()">
+                        @click="activeTab = 'debts'; loadDebts(); loadEmployees()">
                     Долги
                 </button>
                 <button class="px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
@@ -1122,7 +1122,7 @@
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-lg font-semibold text-gray-900">Долги</h2>
                         <button class="px-4 py-2 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white rounded-xl transition-all shadow-lg shadow-red-500/25 flex items-center space-x-2"
-                                @click="showDebtForm = true; debtForm = { type: 'payable', original_amount: '', debt_date: new Date().toISOString().slice(0,10), description: '' }">
+                                @click="if (!employees.length) loadEmployees(); showDebtForm = true; debtForm = { type: 'payable', original_amount: '', debt_date: new Date().toISOString().slice(0,10), description: '', due_date: '', employee_id: '', purpose: 'debt', currency_code: 'UZS', notes: '' }">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             <span>Добавить долг</span>
                         </button>
@@ -1916,28 +1916,66 @@
                 <button class="text-gray-400 hover:text-gray-600" @click="showDebtForm = false"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
             <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Тип</label>
+                        <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="debtForm.type">
+                            <option value="receivable">Дебиторка (нам должны)</option>
+                            <option value="payable">Кредиторка (мы должны)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Назначение</label>
+                        <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="debtForm.purpose">
+                            <option value="debt">Долг</option>
+                            <option value="advance">Аванс</option>
+                            <option value="prepayment">Предоплата</option>
+                            <option value="loan">Займ</option>
+                            <option value="other">Прочее</option>
+                        </select>
+                    </div>
+                </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Тип</label>
-                    <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="debtForm.type">
-                        <option value="payable">Кредиторка (мы должны)</option>
-                        <option value="receivable">Дебиторка (нам должны)</option>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Сотрудник</label>
+                    <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="debtForm.employee_id">
+                        <option value="">— Не выбран —</option>
+                        <template x-for="emp in employees" :key="emp.id">
+                            <option :value="emp.id" x-text="emp.full_name + (emp.position ? ' (' + emp.position + ')' : '')"></option>
+                        </template>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Описание</label>
-                    <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="debtForm.description">
+                    <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="debtForm.description" placeholder="Например: Аванс за март">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Сумма</label>
+                        <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="debtForm.original_amount">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Валюта</label>
+                        <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="debtForm.currency_code">
+                            <option value="UZS">UZS</option>
+                            <option value="USD">USD</option>
+                            <option value="RUB">RUB</option>
+                            <option value="EUR">EUR</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Дата</label>
+                        <input type="date" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="debtForm.debt_date">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Срок оплаты</label>
+                        <input type="date" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="debtForm.due_date">
+                    </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Сумма</label>
-                    <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="debtForm.original_amount">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Дата</label>
-                    <input type="date" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="debtForm.debt_date">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Срок оплаты</label>
-                    <input type="date" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="debtForm.due_date">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Примечание</label>
+                    <textarea class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="debtForm.notes" rows="2" placeholder="Необязательно"></textarea>
                 </div>
             </div>
             <div class="flex justify-end space-x-3">
@@ -2939,7 +2977,7 @@ function financePage() {
 
         transactionForm: { type: 'expense', amount: '', transaction_date: '', description: '', category_id: '' },
         currencyForm: { usd_rate: 12700, rub_rate: 140, eur_rate: 13800 },
-        debtForm: { type: 'payable', original_amount: '', debt_date: '', description: '', due_date: '' },
+        debtForm: { type: 'payable', original_amount: '', debt_date: '', description: '', due_date: '', employee_id: '', purpose: 'debt', currency_code: 'UZS', notes: '' },
         debtPaymentForm: { amount: '', payment_date: new Date().toISOString().slice(0,10), payment_method: 'cash' },
         employeeForm: { first_name: '', last_name: '', middle_name: '', position: '', base_salary: '', hire_date: '', phone: '', email: '' },
         editEmployeeForm: { id: null, first_name: '', last_name: '', middle_name: '', position: '', base_salary: '', hire_date: '', phone: '', email: '', is_active: true },
