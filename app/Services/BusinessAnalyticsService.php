@@ -307,7 +307,7 @@ final class BusinessAnalyticsService
                         DB::raw('COALESCE(supplier_article, CAST(nm_id AS CHAR)) as external_offer_id'),
                         DB::raw('COALESCE(subject, supplier_article, CAST(nm_id AS CHAR)) as name'),
                         DB::raw('1 as quantity'),
-                        DB::raw('for_pay as total_price')
+                        DB::raw('COALESCE(for_pay, finished_price, total_price) as total_price')
                     )
                     ->get()
                     ->groupBy('external_offer_id')
@@ -654,7 +654,7 @@ final class BusinessAnalyticsService
                         DB::raw('COALESCE(wildberries_orders.supplier_article, CAST(wildberries_orders.nm_id AS CHAR)) as sku'),
                         DB::raw('COALESCE(wildberries_orders.subject, wildberries_orders.supplier_article, CAST(wildberries_orders.nm_id AS CHAR)) as name'),
                         DB::raw('1 as quantity'),
-                        DB::raw('wildberries_orders.for_pay as revenue'),
+                        DB::raw('COALESCE(wildberries_orders.for_pay, wildberries_orders.finished_price, wildberries_orders.total_price) as revenue'),
                         DB::raw('marketplace_products.purchase_price as cost_price'),
                         DB::raw("'RUB' as currency")
                     )
