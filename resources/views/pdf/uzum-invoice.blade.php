@@ -173,26 +173,22 @@
                         <span class="party-label">Маркетплейс:</span> Uzum Market
                     </div>
                     <div class="party-row">
-                        <span class="party-label">Тип доставки:</span> {{ strtoupper($order->delivery_type ?? 'FBS') }}
+                        <span class="party-label">Тип доставки:</span> {{ $deliveryType }}
                     </div>
                 </div>
             </td>
             <td>
                 <div class="party-block">
                     <h3>Покупатель</h3>
-                    <div class="party-row"><strong>{{ $order->customer_name ?? '---' }}</strong></div>
-                    @if($order->customer_phone)
+                    <div class="party-row"><strong>{{ $customerName ?? '---' }}</strong></div>
+                    @if($customerPhone)
                     <div class="party-row">
-                        <span class="party-label">Тел.:</span> {{ $order->customer_phone }}
+                        <span class="party-label">Тел.:</span> {{ $customerPhone }}
                     </div>
                     @endif
-                    @if($order->delivery_address_full)
+                    @if($deliveryAddress)
                     <div class="party-row">
-                        <span class="party-label">Адрес:</span> {{ $order->delivery_address_full }}
-                    </div>
-                    @elseif($order->delivery_city)
-                    <div class="party-row">
-                        <span class="party-label">Город:</span> {{ $order->delivery_city }}
+                        <span class="party-label">Адрес:</span> {{ $deliveryAddress }}
                     </div>
                     @endif
                 </div>
