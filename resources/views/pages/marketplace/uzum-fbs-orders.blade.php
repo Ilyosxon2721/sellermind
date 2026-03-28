@@ -33,7 +33,7 @@
         <!-- Uzum Header -->
         <header class="bg-white border-b border-gray-200 shadow-sm">
             <div class="px-4 sm:px-6 py-3 sm:py-4">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div class="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
                     <div class="flex items-center space-x-3 sm:space-x-4">
                         <a href="/marketplace/{{ $accountId }}" class="text-gray-400 hover:text-gray-600 transition">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -75,7 +75,7 @@
                     </div>
 
                     <!-- Action Buttons -->
-                    <div class="flex items-center flex-wrap gap-2 sm:gap-3
+                    <div class="flex items-center flex-wrap gap-2 sm:gap-3">
                         <!-- Sync Progress -->
                         <div x-show="syncInProgress" class="flex items-center space-x-2 px-3 py-1.5 bg-blue-50 rounded-full">
                             <svg class="w-4 h-4 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -255,8 +255,6 @@
             <div class="px-4 sm:px-6 pb-4">
                 <div class="bg-white rounded-2xl border border-gray-200 p-3 sm:p-4 shadow-sm">
                     <div class="flex items-center space-x-2 sm:space-x-4">
-                <div class="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
-                    <div class="flex items-center space-x-4">
                         <div class="flex-1 relative">
                             <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
