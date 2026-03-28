@@ -143,7 +143,7 @@ final class BusinessAnalyticsService
         $dateRange = $this->getDateRange($period);
         $accountIds = $this->getFilteredAccountIds($companyId, $source);
 
-        $customers = $this->getCustomerData($accountIds, $dateRange);
+        $customers = $this->getCustomerData($accountIds, $dateRange, $source);
 
         $totalWeeks = max(1, $dateRange['from']->diffInWeeks($dateRange['to']));
 
@@ -491,76 +491,172 @@ final class BusinessAnalyticsService
     /**
      * Получить данные о клиентах для ABCXYZ-анализа
      */
-    protected function getCustomerData(Collection $accountIds, array $dateRange): Collection
+    protected function getCustomerData(Collection $accountIds, array $dateRange, string $source = 'all'): Collection
     {
         $customers = collect();
 
-        // Ручные продажи — через контрагентов (counterparty_id → counterparties.name)
-        $manualCustomers = DB::table('sales')
-            ->join('counterparties', 'sales.counterparty_id', '=', 'counterparties.id')
-            ->where('sales.company_id', $this->companyId)
-            ->whereBetween('sales.created_at', [$dateRange['from'], $dateRange['to']])
-            ->where('sales.status', '!=', 'cancelled')
-            ->whereNull('sales.deleted_at')
-            ->select(
-                'counterparties.name as customer_name',
-                DB::raw('SUM(sales.total_amount) as total_amount'),
-                DB::raw('COUNT(*) as order_count')
-            )
-            ->groupBy('counterparties.name')
-            ->get()
-            ->map(fn ($row) => [
-                'customer_name' => $row->customer_name,
-                'total_amount' => (float) $row->total_amount,
-                'order_count' => (int) $row->order_count,
-            ]);
+        // Маркетплейсные клиенты
+        if ($accountIds->isNotEmpty()) {
+            // WB — по региону (API не отдаёт данные покупателей)
+            if ($this->shouldIncludeSource($source, 'wb')) {
+                $wbCustomers = DB::table('wildberries_orders')
+                    ->whereIn('marketplace_account_id', $accountIds)
+                    ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
+                    ->where('is_cancel', false)
+                    ->where('is_return', false)
+                    ->select(
+                        DB::raw('COALESCE(region_name, "WB Неизвестный регион") as customer_name'),
+                        DB::raw('SUM(COALESCE(for_pay, finished_price, total_price, 0)) as total_amount'),
+                        DB::raw('COUNT(*) as order_count')
+                    )
+                    ->groupBy(DB::raw('COALESCE(region_name, "WB Неизвестный регион")'))
+                    ->get()
+                    ->map(fn ($row) => [
+                        'customer_name' => $row->customer_name,
+                        'total_amount' => $this->convertToDisplay((float) $row->total_amount, 'RUB'),
+                        'order_count' => (int) $row->order_count,
+                    ]);
+                $customers = $customers->merge($wbCustomers);
+            }
 
-        $customers = $customers->merge($manualCustomers);
+            // Ozon — по customer_name
+            if ($this->shouldIncludeSource($source, 'ozon')) {
+                $ozonCustomers = DB::table('ozon_orders')
+                    ->whereIn('marketplace_account_id', $accountIds)
+                    ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
+                    ->whereNotIn('status', self::CANCELLED_STATUSES)
+                    ->whereNotNull('customer_name')
+                    ->where('customer_name', '!=', '')
+                    ->select(
+                        'customer_name',
+                        DB::raw('SUM(COALESCE(total_price, 0)) as total_amount'),
+                        DB::raw('COUNT(*) as order_count')
+                    )
+                    ->groupBy('customer_name')
+                    ->get()
+                    ->map(fn ($row) => [
+                        'customer_name' => $row->customer_name,
+                        'total_amount' => $this->convertToDisplay((float) $row->total_amount, 'RUB'),
+                        'order_count' => (int) $row->order_count,
+                    ]);
+                $customers = $customers->merge($ozonCustomers);
+            }
 
-        // Оффлайн продажи — через контрагентов или customer_name
-        $offlineByCounterparty = DB::table('offline_sales')
-            ->join('counterparties', 'offline_sales.counterparty_id', '=', 'counterparties.id')
-            ->where('offline_sales.company_id', $this->companyId)
-            ->whereBetween('offline_sales.sale_date', [$dateRange['from'], $dateRange['to']])
-            ->whereIn('offline_sales.status', ['confirmed', 'delivered'])
-            ->whereNull('offline_sales.deleted_at')
-            ->select(
-                'counterparties.name as customer_name',
-                DB::raw('SUM(offline_sales.total_amount) as total_amount'),
-                DB::raw('COUNT(*) as order_count')
-            )
-            ->groupBy('counterparties.name')
-            ->get()
-            ->map(fn ($row) => [
-                'customer_name' => $row->customer_name,
-                'total_amount' => (float) $row->total_amount,
-                'order_count' => (int) $row->order_count,
-            ]);
+            // Uzum — по customer_name
+            if ($this->shouldIncludeSource($source, 'uzum')) {
+                $uzumCustomers = DB::table('uzum_orders')
+                    ->whereIn('marketplace_account_id', $accountIds)
+                    ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
+                    ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+                    ->whereNotNull('customer_name')
+                    ->where('customer_name', '!=', '')
+                    ->select(
+                        'customer_name',
+                        DB::raw('SUM(COALESCE(total_amount, 0)) as total_amount'),
+                        DB::raw('COUNT(*) as order_count')
+                    )
+                    ->groupBy('customer_name')
+                    ->get()
+                    ->map(fn ($row) => [
+                        'customer_name' => $row->customer_name,
+                        'total_amount' => $this->convertToDisplay((float) $row->total_amount, 'UZS'),
+                        'order_count' => (int) $row->order_count,
+                    ]);
+                $customers = $customers->merge($uzumCustomers);
+            }
 
-        $customers = $customers->merge($offlineByCounterparty);
+            // YM — по customer_name
+            if ($this->shouldIncludeSource($source, 'ym')) {
+                $ymCustomers = DB::table('yandex_market_orders')
+                    ->whereIn('marketplace_account_id', $accountIds)
+                    ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
+                    ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+                    ->whereNotNull('customer_name')
+                    ->where('customer_name', '!=', '')
+                    ->select(
+                        'customer_name',
+                        DB::raw('SUM(COALESCE(total_price, 0)) as total_amount'),
+                        DB::raw('COUNT(*) as order_count')
+                    )
+                    ->groupBy('customer_name')
+                    ->get()
+                    ->map(fn ($row) => [
+                        'customer_name' => $row->customer_name,
+                        'total_amount' => $this->convertToDisplay((float) $row->total_amount, 'RUB'),
+                        'order_count' => (int) $row->order_count,
+                    ]);
+                $customers = $customers->merge($ymCustomers);
+            }
+        }
 
-        // Оффлайн продажи без контрагента — по customer_name
-        $offlineByName = DB::table('offline_sales')
-            ->where('company_id', $this->companyId)
-            ->whereBetween('sale_date', [$dateRange['from'], $dateRange['to']])
-            ->whereIn('status', ['confirmed', 'delivered'])
-            ->whereNull('deleted_at')
-            ->whereNull('counterparty_id')
-            ->whereNotNull('customer_name')
-            ->select(
-                DB::raw('COALESCE(customer_name, customer_phone, "Неизвестный") as customer_name'),
-                DB::raw('SUM(total_amount) as total_amount'),
-                DB::raw('COUNT(*) as order_count')
-            )
-            ->groupBy(DB::raw('COALESCE(customer_name, customer_phone, "Неизвестный")'))
-            ->get()
-            ->map(fn ($row) => [
-                'customer_name' => $row->customer_name,
-                'total_amount' => (float) $row->total_amount,
-                'order_count' => (int) $row->order_count,
-            ]);
+        // Ручные продажи — через контрагентов
+        if ($this->shouldIncludeSource($source, 'manual')) {
+            $manualCustomers = DB::table('sales')
+                ->join('counterparties', 'sales.counterparty_id', '=', 'counterparties.id')
+                ->where('sales.company_id', $this->companyId)
+                ->whereBetween('sales.created_at', [$dateRange['from'], $dateRange['to']])
+                ->where('sales.status', '!=', 'cancelled')
+                ->whereNull('sales.deleted_at')
+                ->select(
+                    'counterparties.name as customer_name',
+                    DB::raw('SUM(sales.total_amount) as total_amount'),
+                    DB::raw('COUNT(*) as order_count')
+                )
+                ->groupBy('counterparties.name')
+                ->get()
+                ->map(fn ($row) => [
+                    'customer_name' => $row->customer_name,
+                    'total_amount' => (float) $row->total_amount,
+                    'order_count' => (int) $row->order_count,
+                ]);
+            $customers = $customers->merge($manualCustomers);
+        }
 
-        $customers = $customers->merge($offlineByName);
+        // Оффлайн продажи
+        if ($this->shouldIncludeSource($source, 'offline')) {
+            // Через контрагентов
+            $offlineByCounterparty = DB::table('offline_sales')
+                ->join('counterparties', 'offline_sales.counterparty_id', '=', 'counterparties.id')
+                ->where('offline_sales.company_id', $this->companyId)
+                ->whereBetween('offline_sales.sale_date', [$dateRange['from'], $dateRange['to']])
+                ->whereIn('offline_sales.status', ['confirmed', 'delivered'])
+                ->whereNull('offline_sales.deleted_at')
+                ->select(
+                    'counterparties.name as customer_name',
+                    DB::raw('SUM(offline_sales.total_amount) as total_amount'),
+                    DB::raw('COUNT(*) as order_count')
+                )
+                ->groupBy('counterparties.name')
+                ->get()
+                ->map(fn ($row) => [
+                    'customer_name' => $row->customer_name,
+                    'total_amount' => (float) $row->total_amount,
+                    'order_count' => (int) $row->order_count,
+                ]);
+            $customers = $customers->merge($offlineByCounterparty);
+
+            // Без контрагента — по customer_name
+            $offlineByName = DB::table('offline_sales')
+                ->where('company_id', $this->companyId)
+                ->whereBetween('sale_date', [$dateRange['from'], $dateRange['to']])
+                ->whereIn('status', ['confirmed', 'delivered'])
+                ->whereNull('deleted_at')
+                ->whereNull('counterparty_id')
+                ->whereNotNull('customer_name')
+                ->select(
+                    DB::raw('COALESCE(customer_name, customer_phone, "Неизвестный") as customer_name'),
+                    DB::raw('SUM(total_amount) as total_amount'),
+                    DB::raw('COUNT(*) as order_count')
+                )
+                ->groupBy(DB::raw('COALESCE(customer_name, customer_phone, "Неизвестный")'))
+                ->get()
+                ->map(fn ($row) => [
+                    'customer_name' => $row->customer_name,
+                    'total_amount' => (float) $row->total_amount,
+                    'order_count' => (int) $row->order_count,
+                ]);
+            $customers = $customers->merge($offlineByName);
+        }
 
         // Объединяем одинаковых клиентов
         return $customers->groupBy('customer_name')->map(function ($group) {
@@ -793,80 +889,80 @@ final class BusinessAnalyticsService
 
         // Ручные продажи
         if ($this->shouldIncludeSource($source, 'manual')) {
-        $manualItems = DB::table('sale_items')
-            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
-            ->where('sales.company_id', $this->companyId)
-            ->whereBetween('sales.created_at', [$dateRange['from'], $dateRange['to']])
-            ->where('sales.status', '!=', 'cancelled')
-            ->whereNull('sales.deleted_at')
-            ->select(
-                DB::raw('COALESCE(sale_items.sku, sale_items.product_name) as sku'),
-                'sale_items.product_name as name',
-                'sale_items.quantity',
-                'sale_items.total as revenue',
-                'sale_items.cost_price'
-            )
-            ->get();
+            $manualItems = DB::table('sale_items')
+                ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                ->where('sales.company_id', $this->companyId)
+                ->whereBetween('sales.created_at', [$dateRange['from'], $dateRange['to']])
+                ->where('sales.status', '!=', 'cancelled')
+                ->whereNull('sales.deleted_at')
+                ->select(
+                    DB::raw('COALESCE(sale_items.sku, sale_items.product_name) as sku'),
+                    'sale_items.product_name as name',
+                    'sale_items.quantity',
+                    'sale_items.total as revenue',
+                    'sale_items.cost_price'
+                )
+                ->get();
 
-        foreach ($manualItems->groupBy('sku') as $sku => $rows) {
-            $totalQty = (int) $rows->sum('quantity');
-            $totalRevenue = (float) $rows->sum('revenue');
-            $totalCost = 0;
-            $hasCost = false;
-            foreach ($rows as $row) {
-                if ($row->cost_price !== null) {
-                    $totalCost += (float) $row->cost_price * (float) $row->quantity;
-                    $hasCost = true;
+            foreach ($manualItems->groupBy('sku') as $sku => $rows) {
+                $totalQty = (int) $rows->sum('quantity');
+                $totalRevenue = (float) $rows->sum('revenue');
+                $totalCost = 0;
+                $hasCost = false;
+                foreach ($rows as $row) {
+                    if ($row->cost_price !== null) {
+                        $totalCost += (float) $row->cost_price * (float) $row->quantity;
+                        $hasCost = true;
+                    }
                 }
+                $allItems->push([
+                    'sku' => $sku,
+                    'name' => $rows->first()->name ?? $sku,
+                    'quantity' => $totalQty,
+                    'revenue' => $totalRevenue,
+                    'cost' => $hasCost ? $totalCost : null,
+                    'has_cost' => $hasCost,
+                ]);
             }
-            $allItems->push([
-                'sku' => $sku,
-                'name' => $rows->first()->name ?? $sku,
-                'quantity' => $totalQty,
-                'revenue' => $totalRevenue,
-                'cost' => $hasCost ? $totalCost : null,
-                'has_cost' => $hasCost,
-            ]);
-        }
         }
 
         // Оффлайн продажи — unit_cost
         if ($this->shouldIncludeSource($source, 'offline')) {
-        $offlineItems = DB::table('offline_sale_items')
-            ->join('offline_sales', 'offline_sale_items.offline_sale_id', '=', 'offline_sales.id')
-            ->where('offline_sales.company_id', $this->companyId)
-            ->whereBetween('offline_sales.sale_date', [$dateRange['from'], $dateRange['to']])
-            ->whereIn('offline_sales.status', ['confirmed', 'delivered'])
-            ->whereNull('offline_sales.deleted_at')
-            ->select(
-                DB::raw('COALESCE(offline_sale_items.sku_code, offline_sale_items.product_name) as sku'),
-                'offline_sale_items.product_name as name',
-                'offline_sale_items.quantity',
-                'offline_sale_items.line_total as revenue',
-                'offline_sale_items.unit_cost'
-            )
-            ->get();
+            $offlineItems = DB::table('offline_sale_items')
+                ->join('offline_sales', 'offline_sale_items.offline_sale_id', '=', 'offline_sales.id')
+                ->where('offline_sales.company_id', $this->companyId)
+                ->whereBetween('offline_sales.sale_date', [$dateRange['from'], $dateRange['to']])
+                ->whereIn('offline_sales.status', ['confirmed', 'delivered'])
+                ->whereNull('offline_sales.deleted_at')
+                ->select(
+                    DB::raw('COALESCE(offline_sale_items.sku_code, offline_sale_items.product_name) as sku'),
+                    'offline_sale_items.product_name as name',
+                    'offline_sale_items.quantity',
+                    'offline_sale_items.line_total as revenue',
+                    'offline_sale_items.unit_cost'
+                )
+                ->get();
 
-        foreach ($offlineItems->groupBy('sku') as $sku => $rows) {
-            $totalQty = (int) $rows->sum('quantity');
-            $totalRevenue = (float) $rows->sum('revenue');
-            $totalCost = 0;
-            $hasCost = false;
-            foreach ($rows as $row) {
-                if ($row->unit_cost !== null && (float) $row->unit_cost > 0) {
-                    $totalCost += (float) $row->unit_cost * (float) $row->quantity;
-                    $hasCost = true;
+            foreach ($offlineItems->groupBy('sku') as $sku => $rows) {
+                $totalQty = (int) $rows->sum('quantity');
+                $totalRevenue = (float) $rows->sum('revenue');
+                $totalCost = 0;
+                $hasCost = false;
+                foreach ($rows as $row) {
+                    if ($row->unit_cost !== null && (float) $row->unit_cost > 0) {
+                        $totalCost += (float) $row->unit_cost * (float) $row->quantity;
+                        $hasCost = true;
+                    }
                 }
+                $allItems->push([
+                    'sku' => $sku,
+                    'name' => $rows->first()->name ?? $sku,
+                    'quantity' => $totalQty,
+                    'revenue' => $totalRevenue,
+                    'cost' => $hasCost ? $totalCost : null,
+                    'has_cost' => $hasCost,
+                ]);
             }
-            $allItems->push([
-                'sku' => $sku,
-                'name' => $rows->first()->name ?? $sku,
-                'quantity' => $totalQty,
-                'revenue' => $totalRevenue,
-                'cost' => $hasCost ? $totalCost : null,
-                'has_cost' => $hasCost,
-            ]);
-        }
         }
 
         // Объединяем дубликаты по SKU
@@ -887,11 +983,13 @@ final class BusinessAnalyticsService
             ];
         })->values();
 
-        // Рассчитываем маржу и сортируем
+        // Рассчитываем маржу и сортируем (только по товарам с известной себестоимостью)
         $totalRevenue = $merged->sum('revenue');
-        $totalCost = $merged->where('has_cost', true)->sum('cost');
-        $totalProfit = $totalRevenue - $totalCost;
-        $withCost = $merged->where('has_cost', true)->count();
+        $withCostItems = $merged->where('has_cost', true);
+        $withCost = $withCostItems->count();
+        $totalCost = $withCostItems->sum('cost');
+        $revenueWithCost = $withCostItems->sum('revenue');
+        $totalProfit = $revenueWithCost - $totalCost;
 
         $products = $merged->map(function ($item) {
             $profit = $item['has_cost'] ? $item['revenue'] - $item['cost'] : null;
@@ -922,7 +1020,7 @@ final class BusinessAnalyticsService
                 'total_revenue' => round($totalRevenue, 2),
                 'total_cost' => round($totalCost, 2),
                 'total_profit' => round($totalProfit, 2),
-                'avg_margin' => $totalRevenue > 0 ? round(($totalProfit / $totalRevenue) * 100, 2) : 0,
+                'avg_margin' => $revenueWithCost > 0 ? round(($totalProfit / $revenueWithCost) * 100, 2) : 0,
                 'products_with_cost' => $withCost,
                 'products_without_cost' => count($ranked) - $withCost,
             ],

@@ -12,6 +12,7 @@ use App\Services\CurrencyConversionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class BusinessAnalyticsController extends Controller
 {
@@ -57,6 +58,11 @@ class BusinessAnalyticsController extends Controller
         try {
             return Cache::remember($key, now()->addMinutes($minutes), $callback);
         } catch (\Exception $e) {
+            Log::warning('BusinessAnalytics: кэш недоступен, запрос без кэша', [
+                'key' => $key,
+                'error' => $e->getMessage(),
+            ]);
+
             return $callback();
         }
     }
