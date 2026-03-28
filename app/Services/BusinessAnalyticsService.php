@@ -229,7 +229,12 @@ final class BusinessAnalyticsService
     {
         $cacheKey = "swot_analysis_{$companyId}";
 
-        $data = Cache::get($cacheKey);
+        $data = null;
+        try {
+            $data = Cache::get($cacheKey);
+        } catch (\RedisException|\Predis\ClientException $e) {
+            // Redis недоступен — попробуем файл
+        }
 
         if (!$data) {
             // Попробовать загрузить из файла
@@ -270,7 +275,11 @@ final class BusinessAnalyticsService
         ];
 
         $cacheKey = "swot_analysis_{$companyId}";
-        Cache::put($cacheKey, $swot, now()->addDays(30));
+        try {
+            Cache::put($cacheKey, $swot, now()->addDays(30));
+        } catch (\RedisException|\Predis\ClientException $e) {
+            // Redis недоступен — сохраним только в файл
+        }
 
         // Сохранить в файл для надёжности
         $filePath = "swot/company_{$companyId}.json";
@@ -282,7 +291,7 @@ final class BusinessAnalyticsService
     /**
      * Получить отфильтрованные аккаунты маркетплейсов
      */
-    protected function getFilteredAccountIds(int $companyId, string $source): Collection
+    private function getFilteredAccountIds(int $companyId, string $source): Collection
     {
         $query = MarketplaceAccount::where('company_id', $companyId);
 
@@ -297,7 +306,7 @@ final class BusinessAnalyticsService
     /**
      * Проверить нужно ли включать данный источник
      */
-    protected function shouldIncludeSource(string $source, string $type): bool
+    private function shouldIncludeSource(string $source, string $type): bool
     {
         if ($source === 'all') {
             return true;
@@ -309,7 +318,7 @@ final class BusinessAnalyticsService
     /**
      * Получить агрегированные данные по выручке товаров из всех источников
      */
-    protected function getAggregatedProductRevenue(Collection $accountIds, array $dateRange, string $source = 'all'): Collection
+    private function getAggregatedProductRevenue(Collection $accountIds, array $dateRange, string $source = 'all'): Collection
     {
         $allItems = collect();
 
@@ -556,12 +565,13 @@ final class BusinessAnalyticsService
             $allItems = $allItems->merge($offlineItems);
         }
 
-        // Объединяем дубликаты по external_offer_id
+        // Объединяем дубликаты по external_offer_id (берём самое длинное имя)
         return $allItems->groupBy('external_offer_id')->map(function ($group) {
             $first = $group->first();
+            $bestName = $group->sortByDesc(fn ($item) => mb_strlen($item['name'] ?? ''))->first()['name'] ?? $first['name'];
             return [
                 'external_offer_id' => $first['external_offer_id'],
-                'name' => $first['name'],
+                'name' => $bestName,
                 'total_quantity' => $group->sum('total_quantity'),
                 'total_revenue' => $group->sum('total_revenue'),
             ];
@@ -571,7 +581,7 @@ final class BusinessAnalyticsService
     /**
      * Получить данные о клиентах для ABCXYZ-анализа
      */
-    protected function getCustomerData(Collection $accountIds, array $dateRange, string $source = 'all'): Collection
+    private function getCustomerData(Collection $accountIds, array $dateRange, string $source = 'all'): Collection
     {
         $customers = collect();
 
@@ -1209,7 +1219,7 @@ final class BusinessAnalyticsService
     /**
      * Конвертировать сумму в валюту отображения
      */
-    protected function convertToDisplay(float $amount, string $currency): float
+    private function convertToDisplay(float $amount, string $currency): float
     {
         if ($this->currencyService === null || $amount == 0.0) {
             return $amount;
@@ -1226,7 +1236,7 @@ final class BusinessAnalyticsService
     /**
      * Получить диапазон дат по периоду
      */
-    protected function getDateRange(string $period): array
+    private function getDateRange(string $period): array
     {
         $to = now();
         $from = match ($period) {
