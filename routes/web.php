@@ -1198,6 +1198,11 @@ Route::middleware('auth.any')->group(function () {
         ]);
     })->name('marketplace.uzum-invoices');
 
+    // Uzum Order Documents (PDF: чек, накладная, счёт-фактура)
+    Route::get('/marketplace/{account}/uzum-orders/{orderId}/receipt', [\App\Http\Controllers\Api\UzumOrderDocumentController::class, 'receipt'])->name('marketplace.uzum-receipt');
+    Route::get('/marketplace/{account}/uzum-orders/{orderId}/waybill', [\App\Http\Controllers\Api\UzumOrderDocumentController::class, 'waybill'])->name('marketplace.uzum-waybill');
+    Route::get('/marketplace/{account}/uzum-orders/{orderId}/invoice', [\App\Http\Controllers\Api\UzumOrderDocumentController::class, 'invoice'])->name('marketplace.uzum-invoice');
+
     // Ozon Settings
     Route::get('/marketplace/{accountId}/ozon-settings', function ($accountId) {
         return view('pages.marketplace.ozon-settings', ['accountId' => $accountId]);

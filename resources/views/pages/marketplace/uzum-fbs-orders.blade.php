@@ -1188,7 +1188,7 @@ function uzumOrdersPage() {
 
         openDocument(order, type) {
             if (!order?.external_order_id) return;
-            const url = `/api/marketplace/uzum/accounts/${this.accountId}/orders/${order.external_order_id}/${type}`;
+            const url = `/marketplace/${this.accountId}/uzum-orders/${order.external_order_id}/${type}`;
             window.open(url, '_blank');
         },
 
