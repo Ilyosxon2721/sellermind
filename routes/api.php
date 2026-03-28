@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\PromotionController;
 use App\Http\Controllers\Api\PushSubscriptionController;
 use App\Http\Controllers\Api\ReviewResponseController;
 use App\Http\Controllers\Api\SalesAnalyticsController;
+use App\Http\Controllers\Api\SalesFunnelController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\TelegramController;
 use App\Http\Controllers\Api\UzumSettingsController;
@@ -360,6 +361,19 @@ Route::middleware('auth.any')->group(function () {
         Route::get('sales-by-category', [SalesAnalyticsController::class, 'salesByCategory']);
         Route::get('sales-by-marketplace', [SalesAnalyticsController::class, 'salesByMarketplace']);
         Route::get('product/{productId}/performance', [SalesAnalyticsController::class, 'productPerformance']);
+    });
+
+    // Воронка продаж (Sales Funnel)
+    Route::prefix('sales-funnel')->group(function () {
+        Route::get('/', [SalesFunnelController::class, 'index']);
+        Route::post('/', [SalesFunnelController::class, 'store']);
+        Route::post('calculate', [SalesFunnelController::class, 'calculate']);
+        Route::get('auto', [SalesFunnelController::class, 'auto']);
+        Route::get('sources', [SalesFunnelController::class, 'sourceBreakdown']);
+        Route::get('{id}', [SalesFunnelController::class, 'show']);
+        Route::put('{id}', [SalesFunnelController::class, 'update']);
+        Route::delete('{id}', [SalesFunnelController::class, 'destroy']);
+        Route::post('{id}/refresh', [SalesFunnelController::class, 'refresh']);
     });
 
     // Review Response Generator
