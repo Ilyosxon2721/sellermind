@@ -138,8 +138,7 @@
 
 @endsection
 
-@push('scripts')
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function businessAnalyticsPage() {
     return {
         loading: false,
@@ -160,7 +159,6 @@ function businessAnalyticsPage() {
             },
             products: []
         },
-        abcLoaded: false,
 
         // ABCXYZ данные
         abcxyzData: {
@@ -168,7 +166,6 @@ function businessAnalyticsPage() {
             summary: { total_customers: 0, total_revenue: 0, period_weeks: 0 },
             thresholds: { A: 10000, B: 5000, C: 0 }
         },
-        abcxyzLoaded: false,
 
         // SWOT данные
         swot: {
@@ -179,17 +176,18 @@ function businessAnalyticsPage() {
         },
         newItem: { strengths: '', weaknesses: '', opportunities: '', threats: '' },
         swotSaving: false,
-        swotLoaded: false,
 
         async init() {
+            // Ждём загрузку auth store
+            if (this.$store && this.$store.auth) {
+                await this.$nextTick();
+            }
             await this.loadAbcData();
         },
 
         switchTab(tab) {
             this.activeTab = tab;
-            if (tab === 'abc' && !this.abcLoaded) this.loadAbcData();
-            if (tab === 'abcxyz' && !this.abcxyzLoaded) this.loadAbcxyzData();
-            if (tab === 'swot' && !this.swotLoaded) this.loadSwotData();
+            this.loadCurrentTab();
         },
 
         loadCurrentTab() {
@@ -198,49 +196,65 @@ function businessAnalyticsPage() {
             else if (this.activeTab === 'swot') this.loadSwotData();
         },
 
+        getCompanyId() {
+            try {
+                return this.$store?.auth?.currentCompany?.id || null;
+            } catch(e) {
+                return null;
+            }
+        },
+
         async loadAbcData() {
             this.loading = true;
             try {
+                const params = { period: this.period };
+                const companyId = this.getCompanyId();
+                if (companyId) params.company_id = companyId;
+
                 const response = await window.api.get('/business-analytics/abc', {
-                    params: {
-                        period: this.period,
-                        company_id: this.$store.auth?.currentCompany?.id
-                    },
+                    params: params,
                     silent: true
                 });
                 if (response?.data) {
                     this.abcData = response.data;
-                    this.abcLoaded = true;
                 }
-            } catch (e) { console.error('ABC load error:', e); }
-            this.loading = false;
+            } catch (e) {
+                console.error('ABC load error:', e);
+            } finally {
+                this.loading = false;
+            }
         },
 
         async loadAbcxyzData() {
             this.loading = true;
             try {
+                const params = { period: this.period };
+                const companyId = this.getCompanyId();
+                if (companyId) params.company_id = companyId;
+
                 const response = await window.api.get('/business-analytics/abcxyz', {
-                    params: {
-                        period: this.period,
-                        company_id: this.$store.auth?.currentCompany?.id
-                    },
+                    params: params,
                     silent: true
                 });
                 if (response?.data) {
                     this.abcxyzData = response.data;
-                    this.abcxyzLoaded = true;
                 }
-            } catch (e) { console.error('ABCXYZ load error:', e); }
-            this.loading = false;
+            } catch (e) {
+                console.error('ABCXYZ load error:', e);
+            } finally {
+                this.loading = false;
+            }
         },
 
         async loadSwotData() {
             this.loading = true;
             try {
+                const params = {};
+                const companyId = this.getCompanyId();
+                if (companyId) params.company_id = companyId;
+
                 const response = await window.api.get('/business-analytics/swot', {
-                    params: {
-                        company_id: this.$store.auth?.currentCompany?.id
-                    },
+                    params: params,
                     silent: true
                 });
                 if (response?.data) {
@@ -250,25 +264,29 @@ function businessAnalyticsPage() {
                         opportunities: response.data.opportunities || [],
                         threats: response.data.threats || []
                     };
-                    this.swotLoaded = true;
                 }
-            } catch (e) { console.error('SWOT load error:', e); }
-            this.loading = false;
+            } catch (e) {
+                console.error('SWOT load error:', e);
+            } finally {
+                this.loading = false;
+            }
         },
 
         async saveSwot() {
             this.swotSaving = true;
             try {
-                await window.api.post('/business-analytics/swot', {
-                    ...this.swot,
-                    company_id: this.$store.auth?.currentCompany?.id
-                });
+                const payload = { ...this.swot };
+                const companyId = this.getCompanyId();
+                if (companyId) payload.company_id = companyId;
+
+                await window.api.post('/business-analytics/swot', payload);
                 if (window.$toast) window.$toast.success('SWOT-анализ сохранён');
             } catch (e) {
                 console.error('SWOT save error:', e);
                 if (window.$toast) window.$toast.error('Ошибка сохранения');
+            } finally {
+                this.swotSaving = false;
             }
-            this.swotSaving = false;
         },
 
         addSwotItem(type) {
@@ -283,44 +301,9 @@ function businessAnalyticsPage() {
         },
 
         formatMoney(value) {
-            if (!value) return '0';
+            if (!value && value !== 0) return '0';
             return new Intl.NumberFormat('ru-RU').format(Math.round(value));
-        },
-
-        getCategoryColor(cat) {
-            return { A: 'green', B: 'yellow', C: 'red' }[cat] || 'gray';
-        },
-
-        getSegmentColor(segment) {
-            const colors = {
-                AX: 'bg-green-600 text-white',
-                AY: 'bg-green-500 text-white',
-                AZ: 'bg-green-400 text-white',
-                BX: 'bg-yellow-500 text-white',
-                BY: 'bg-yellow-400 text-gray-900',
-                BZ: 'bg-yellow-300 text-gray-900',
-                CX: 'bg-red-400 text-white',
-                CY: 'bg-red-300 text-gray-900',
-                CZ: 'bg-red-200 text-gray-900',
-            };
-            return colors[segment] || 'bg-gray-100 text-gray-700';
-        },
-
-        getSegmentLabel(segment) {
-            const labels = {
-                AX: 'VIP ежедневные',
-                AY: 'VIP еженедельные',
-                AZ: 'VIP редкие',
-                BX: 'Средние ежедневные',
-                BY: 'Средние еженедельные',
-                BZ: 'Средние редкие',
-                CX: 'Малые ежедневные',
-                CY: 'Малые еженедельные',
-                CZ: 'Малые редкие',
-            };
-            return labels[segment] || segment;
         }
     }
 }
 </script>
-@endpush
