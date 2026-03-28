@@ -439,8 +439,6 @@ final class BusinessAnalyticsService
             $allItems = $allItems->merge($offlineItems);
         }
 
-        $allItems = $allItems->merge($manualItems)->merge($offlineItems);
-
         // Объединяем дубликаты по external_offer_id
         return $allItems->groupBy('external_offer_id')->map(function ($group) {
             $first = $group->first();
