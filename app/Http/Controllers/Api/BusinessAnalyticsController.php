@@ -50,6 +50,18 @@ class BusinessAnalyticsController extends Controller
     }
 
     /**
+     * Кэшировать с fallback при недоступности Redis
+     */
+    private function cacheOrDirect(string $key, int $minutes, \Closure $callback): mixed
+    {
+        try {
+            return Cache::remember($key, now()->addMinutes($minutes), $callback);
+        } catch (\Exception $e) {
+            return $callback();
+        }
+    }
+
+    /**
      * ABC-анализ товаров
      */
     public function abcAnalysis(Request $request): JsonResponse
@@ -59,8 +71,7 @@ class BusinessAnalyticsController extends Controller
         $period = $request->input('period', '30days');
         $source = $this->getSource($request);
 
-        $cacheKey = "business_abc_{$companyId}_{$period}_{$source}";
-        $data = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period, $source) {
+        $data = $this->cacheOrDirect("business_abc_{$companyId}_{$period}_{$source}", 30, function () use ($companyId, $period, $source) {
             return $this->service->getAbcAnalysis($companyId, $period, $source);
         });
 
@@ -77,8 +88,7 @@ class BusinessAnalyticsController extends Controller
         $period = $request->input('period', '90days');
         $source = $this->getSource($request);
 
-        $cacheKey = "business_abcxyz_{$companyId}_{$period}_{$source}";
-        $data = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period, $source) {
+        $data = $this->cacheOrDirect("business_abcxyz_{$companyId}_{$period}_{$source}", 30, function () use ($companyId, $period, $source) {
             return $this->service->getAbcxyzAnalysis($companyId, $period, $source);
         });
 
@@ -107,8 +117,7 @@ class BusinessAnalyticsController extends Controller
         $period = $request->input('period', '30days');
         $source = $this->getSource($request);
 
-        $cacheKey = "business_sales_ranking_{$companyId}_{$period}_{$source}";
-        $data = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period, $source) {
+        $data = $this->cacheOrDirect("business_sales_ranking_{$companyId}_{$period}_{$source}", 30, function () use ($companyId, $period, $source) {
             return $this->service->getProductSalesRanking($companyId, $period, $source);
         });
 
@@ -125,8 +134,7 @@ class BusinessAnalyticsController extends Controller
         $period = $request->input('period', '30days');
         $source = $this->getSource($request);
 
-        $cacheKey = "business_margin_ranking_{$companyId}_{$period}_{$source}";
-        $data = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period, $source) {
+        $data = $this->cacheOrDirect("business_margin_ranking_{$companyId}_{$period}_{$source}", 30, function () use ($companyId, $period, $source) {
             return $this->service->getProductMarginRanking($companyId, $period, $source);
         });
 
