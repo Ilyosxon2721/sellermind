@@ -1097,6 +1097,16 @@ Route::middleware('auth.any')->group(function () {
         ]);
     })->name('marketplace.wb-orders');
 
+    // WB Order Document Printing (receipt, waybill, invoice)
+    Route::get('/marketplace/{accountId}/wb-orders/{orderId}/print/receipt', [\App\Http\Controllers\Web\WbOrderDocumentController::class, 'receipt'])
+        ->name('marketplace.wb-orders.print.receipt');
+    Route::get('/marketplace/{accountId}/wb-orders/{orderId}/print/waybill', [\App\Http\Controllers\Web\WbOrderDocumentController::class, 'waybill'])
+        ->name('marketplace.wb-orders.print.waybill');
+    Route::get('/marketplace/{accountId}/wb-orders/{orderId}/print/invoice', [\App\Http\Controllers\Web\WbOrderDocumentController::class, 'invoice'])
+        ->name('marketplace.wb-orders.print.invoice');
+    Route::get('/marketplace/{accountId}/wb-orders/print-bulk/{type}', [\App\Http\Controllers\Web\WbOrderDocumentController::class, 'bulk'])
+        ->name('marketplace.wb-orders.print.bulk');
+
     // Uzum Settings
     Route::get('/marketplace/{accountId}/uzum-settings', function ($accountId) {
         return view('pages.marketplace.uzum-settings', ['accountId' => $accountId]);
