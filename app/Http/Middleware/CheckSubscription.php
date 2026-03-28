@@ -49,6 +49,21 @@ class CheckSubscription
             return $this->handleNoSubscription($request);
         }
 
+        // Проверка trial-подписки
+        if ($subscription->status === 'trial') {
+            if ($subscription->trial_ends_at && $subscription->trial_ends_at->isPast()) {
+                return $this->handleTrialExpired($request, $subscription);
+            }
+
+            // Trial активен — пропускаем
+            $request->attributes->set('subscription', $subscription);
+            $request->attributes->set('plan', $subscription->plan);
+            $request->attributes->set('is_trial', true);
+            $request->attributes->set('trial_days_remaining', max(0, (int) now()->diffInDays($subscription->trial_ends_at, false)));
+
+            return $next($request);
+        }
+
         // Check if subscription is expired
         if ($subscription->isExpired()) {
             return $this->handleExpiredSubscription($request, $subscription);
@@ -57,6 +72,7 @@ class CheckSubscription
         // Attach subscription to request for easy access in controllers
         $request->attributes->set('subscription', $subscription);
         $request->attributes->set('plan', $subscription->plan);
+        $request->attributes->set('is_trial', false);
 
         return $next($request);
     }
@@ -77,6 +93,25 @@ class CheckSubscription
         return redirect()
             ->route('pricing.index')
             ->with('error', 'У вашей компании нет активной подписки. Пожалуйста, выберите тарифный план.');
+    }
+
+    /**
+     * Handle case when trial has expired
+     */
+    protected function handleTrialExpired(Request $request, $subscription): Response
+    {
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json([
+                'message' => 'Ваш пробный период завершён. Выберите тарифный план для продолжения работы.',
+                'error' => 'trial_expired',
+                'trial_ended_at' => $subscription->trial_ends_at?->toIso8601String(),
+                'redirect' => route('plans.index'),
+            ], 402);
+        }
+
+        return redirect()
+            ->route('plans.index')
+            ->with('error', 'Ваш пробный период завершён. Выберите тарифный план для продолжения работы.');
     }
 
     /**

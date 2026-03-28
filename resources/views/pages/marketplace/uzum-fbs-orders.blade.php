@@ -18,7 +18,7 @@
     .uzum-btn-outline { @apply border-2 border-[#3A007D] text-[#3A007D] hover:bg-[#3A007D] hover:text-white; }
 </style>
 
-<div x-data="uzumOrdersPage()" x-init="init()" x-cloak class="flex h-screen bg-gray-50 browser-only"
+<div x-data="uzumOrdersPage()" x-init="init()" x-cloak class="flex min-h-[calc(100vh-3.5rem)] lg:h-screen bg-gray-50 browser-only"
      :class="{
          'flex-row': $store.ui.navPosition === 'left',
          'flex-row-reverse': $store.ui.navPosition === 'right'
@@ -28,28 +28,28 @@
         <x-sidebar />
     </template>
 
-    <div class="flex-1 flex flex-col overflow-hidden font-sans"
+    <div class="flex-1 flex flex-col overflow-x-hidden lg:overflow-hidden font-sans"
          :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <!-- Uzum Header -->
         <header class="bg-white border-b border-gray-200 shadow-sm">
-            <div class="px-6 py-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
+            <div class="px-4 sm:px-6 py-3 sm:py-4">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="flex items-center space-x-3 sm:space-x-4">
                         <a href="/marketplace/{{ $accountId }}" class="text-gray-400 hover:text-gray-600 transition">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                             </svg>
                         </a>
-                        <div class="flex items-center space-x-3">
+                        <div class="flex items-center space-x-2 sm:space-x-3">
                             <!-- Uzum Logo -->
-                            <div class="w-10 h-10 uzum-gradient rounded-xl flex items-center justify-center shadow-md">
-                                <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 uzum-gradient rounded-xl flex items-center justify-center shadow-md">
+                                <svg class="w-5 h-5 sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
                                 </svg>
                             </div>
                             <div>
                                 <div class="flex items-center space-x-2">
-                                    <h1 class="text-xl font-bold text-gray-900" x-text="orderMode === 'fbs' ? 'FBS Заказы' : (orderMode === 'dbs' ? 'DBS Заказы' : 'FBO Заказы')"></h1>
+                                    <h1 class="text-lg sm:text-xl font-bold text-gray-900" x-text="orderMode === 'fbs' ? 'FBS Заказы' : (orderMode === 'dbs' ? 'DBS Заказы' : 'FBO Заказы')"></h1>
                                     <!-- FBS/DBS/FBO Toggle -->
                                     <div class="flex items-center bg-gray-100 rounded-lg p-0.5">
                                         <button @click="switchMode('fbs')"
@@ -75,7 +75,7 @@
                     </div>
 
                     <!-- Action Buttons -->
-                    <div class="flex items-center space-x-3">
+                    <div class="flex items-center flex-wrap gap-2 sm:gap-3
                         <!-- Sync Progress -->
                         <div x-show="syncInProgress" class="flex items-center space-x-2 px-3 py-1.5 bg-blue-50 rounded-full">
                             <svg class="w-4 h-4 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -86,7 +86,7 @@
                         </div>
 
                         <!-- Shop Filter -->
-                        <div x-show="shopOptions.length > 1" class="relative" x-data="{ open: false }">
+                        <div x-show="shopOptions.length > 1" class="relative hidden sm:block" x-data="{ open: false }">
                             <button @click="open = !open"
                                     class="px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-medium flex items-center space-x-2 hover:border-[#3A007D] transition">
                                 <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,7 +118,7 @@
                         </div>
 
                         <!-- WebSocket Indicator -->
-                        <div class="flex items-center space-x-1 px-2 py-1 rounded-full"
+                        <div class="hidden sm:flex items-center space-x-1 px-2 py-1 rounded-full"
                              :class="wsConnected ? 'bg-green-100' : 'bg-gray-100'"
                              :title="wsConnected ? 'WebSocket подключён' : 'WebSocket отключён'">
                             <div class="w-2 h-2 rounded-full"
@@ -129,7 +129,7 @@
 
                         <button @click="triggerSync()"
                                 :disabled="syncInProgress"
-                                class="px-4 py-2 bg-white border-2 border-[#3A007D] text-[#3A007D] hover:bg-[#3A007D] hover:text-white rounded-xl font-medium transition flex items-center space-x-2 disabled:opacity-50">
+                                class="px-3 sm:px-4 py-2 bg-white border-2 border-[#3A007D] text-[#3A007D] hover:bg-[#3A007D] hover:text-white rounded-xl text-sm font-medium transition flex items-center space-x-1 sm:space-x-2 disabled:opacity-50">
                             <svg x-show="syncInProgress" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
@@ -137,17 +137,17 @@
                             <svg x-show="!syncInProgress" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                             </svg>
-                            <span x-text="syncInProgress ? 'Синхронизация...' : 'Синхронизировать'"></span>
+                            <span class="hidden sm:inline" x-text="syncInProgress ? 'Синхронизация...' : 'Синхронизировать'"></span>
                         </button>
                     </div>
                 </div>
             </div>
 
             <!-- Status Tabs -->
-            <div class="px-6 flex items-center space-x-1 border-t border-gray-100 bg-gray-50/50 overflow-x-auto">
+            <div class="px-4 sm:px-6 flex items-center space-x-1 border-t border-gray-100 bg-gray-50/50 overflow-x-auto">
                 <template x-for="tab in statusTabs" :key="tab.value">
                     <button @click="switchTab(tab.value)"
-                            class="px-5 py-3.5 text-sm font-medium border-b-2 transition whitespace-nowrap"
+                            class="px-3 sm:px-5 py-2.5 sm:py-3.5 text-xs sm:text-sm font-medium border-b-2 transition whitespace-nowrap"
                             :class="activeTab === tab.value
                                 ? 'border-[#3A007D] text-[#3A007D] bg-white'
                                 : 'border-transparent text-gray-700 hover:text-gray-900 hover:bg-white/50'">
@@ -161,9 +161,9 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto">
+        <main class="flex-1 lg:overflow-y-auto">
             <!-- Messages -->
-            <div x-show="message" x-transition class="px-6 pt-4">
+            <div x-show="message" x-transition class="px-4 sm:px-6 pt-4">
                 <div class="px-4 py-3 rounded-xl flex items-center space-x-3"
                      :class="messageType === 'success' ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'">
                     <svg x-show="messageType === 'success'" class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -182,74 +182,79 @@
             </div>
 
             <!-- Statistics Panel -->
-            <div class="px-6 py-4">
+            <div class="px-4 sm:px-6 py-4">
                 <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-                    <div class="flex items-center justify-between mb-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                         <h3 class="font-semibold text-gray-900 flex items-center space-x-2">
                             <svg class="w-5 h-5 text-[#3A007D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                             </svg>
                             <span>Статистика заказов</span>
                         </h3>
-                        <div class="flex items-center space-x-2">
+
+<div class="flex items-center flex-wrap gap-2">
                             <!-- Quick Date Filters -->
-                            <div class="flex items-center space-x-1 mr-4">
+                            <div class="flex items-center space-x-1 sm:mr-4">
                                 <button @click="setToday()" class="px-3 py-1.5 text-xs font-medium rounded-lg transition"
                                         :class="isToday ? 'bg-[#3A007D] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">Сегодня</button>
-                                <button @click="setYesterday()" class="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">Вчера</button>
-                                <button @click="setLastWeek()" class="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">7 дней</button>
-                                <button @click="setLastMonth()" class="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">30 дней</button>
+                                <button @click="setYesterday()" class="px-2 sm:px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">Вчера</button>
+                                <button @click="setLastWeek()" class="px-2 sm:px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">7 дн</button>
+                                <button @click="setLastMonth()" class="px-2 sm:px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">30 дн</button>
                             </div>
-                            <input type="date" x-model="dateFrom" @change="orderMode === 'fbo' ? loadFboOrders() : (loadOrders(), loadStats())"
-                                   class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#3A007D] focus:border-[#3A007D]">
-                            <span class="text-gray-400">—</span>
-                            <input type="date" x-model="dateTo" @change="orderMode === 'fbo' ? loadFboOrders() : (loadOrders(), loadStats())"
-                                   class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#3A007D] focus:border-[#3A007D]">
+                            <div class="flex items-center space-x-1">
+                                <input type="date" x-model="dateFrom" @change="orderMode === 'fbo' ? loadFboOrders() : (loadOrders(), loadStats())"
+                                       class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-[#3A007D] focus:border-[#3A007D] w-[120px] sm:w-auto">
+                                <span class="text-gray-400">—</span>
+                                <input type="date" x-model="dateTo" @change="orderMode === 'fbo' ? loadFboOrders() : (loadOrders(), loadStats())"
+                                       class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-[#3A007D] focus:border-[#3A007D] w-[120px] sm:w-auto">
+                            </div>
                         </div>
                     </div>
-                    <div class="grid grid-cols-5 gap-4">
-                        <div class="text-center p-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
-                            <div class="text-3xl font-bold text-gray-900" x-text="orderMode === 'fbs' ? (schemeStats.fbs_count || 0) : (orderMode === 'dbs' ? (schemeStats.dbs_count || 0) : (fboStats.fbo_count || 0))"></div>
-                            <div class="text-sm text-gray-600 mt-1">Всего</div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
+                            <div class="text-2xl sm:text-3xl font-bold text-gray-900" x-text="orderMode === 'fbs' ? (schemeStats.fbs_count || 0) : (orderMode === 'dbs' ? (schemeStats.dbs_count || 0) : (fboStats.fbo_count || 0))"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">Всего</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                            <div class="text-2xl font-bold text-gray-900" x-text="formatPrice(orderMode === 'fbs' ? (schemeStats.fbs_amount || 0) : (orderMode === 'dbs' ? (schemeStats.dbs_amount || 0) : (fboStats.fbo_amount || 0)))"></div>
-                            <div class="text-sm text-gray-600 mt-1">Сумма</div>
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100">
+                            <div class="text-lg sm:text-2xl font-bold text-gray-900" x-text="formatPrice(orderMode === 'fbs' ? (schemeStats.fbs_amount || 0) : (orderMode === 'dbs' ? (schemeStats.dbs_amount || 0) : (fboStats.fbo_amount || 0)))"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">Сумма</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl border border-pink-100" x-show="orderMode === 'fbs'">
-                            <div class="text-3xl font-bold text-[#F4488D]" x-text="stats.by_status?.new || 0"></div>
-                            <div class="text-sm text-gray-600 mt-1">Новых</div>
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl border border-pink-100" x-show="orderMode === 'fbs'">
+                            <div class="text-2xl sm:text-3xl font-bold text-[#F4488D]" x-text="stats.by_status?.new || 0"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">Новых</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100" x-show="orderMode === 'fbo'">
-                            <div class="text-3xl font-bold text-blue-600" x-text="fboStats.fbs_count || 0"></div>
-                            <div class="text-sm text-gray-600 mt-1">FBS</div>
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100" x-show="orderMode === 'fbo'">
+                            <div class="text-2xl sm:text-3xl font-bold text-blue-600" x-text="fboStats.fbs_count || 0"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">FBS</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100" x-show="orderMode === 'dbs'">
-                            <div class="text-3xl font-bold text-green-600" x-text="schemeStats.edbs_count || 0"></div>
-                            <div class="text-sm text-gray-600 mt-1">EDBS</div>
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100" x-show="orderMode === 'dbs'">
+                            <div class="text-2xl sm:text-3xl font-bold text-green-600" x-text="schemeStats.edbs_count || 0"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">EDBS</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100" x-show="orderMode === 'fbs'">
-                            <div class="text-3xl font-bold text-amber-600" x-text="stats.by_status?.in_assembly || 0"></div>
-                            <div class="text-sm text-gray-600 mt-1">В сборке</div>
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100" x-show="orderMode === 'fbs'">
+                            <div class="text-2xl sm:text-3xl font-bold text-amber-600" x-text="stats.by_status?.in_assembly || 0"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">В сборке</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-100" x-show="orderMode === 'fbo'">
-                            <div class="text-3xl font-bold text-purple-600" x-text="fboStats.fbo_count || 0"></div>
-                            <div class="text-sm text-gray-600 mt-1">FBO</div>
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-100" x-show="orderMode === 'fbo'">
+                            <div class="text-2xl sm:text-3xl font-bold text-purple-600" x-text="fboStats.fbo_count || 0"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">FBO</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border border-orange-100" x-show="orderMode === 'dbs'">
-                            <div class="text-3xl font-bold text-orange-600" x-text="schemeStats.dbs_only_count || 0"></div>
-                            <div class="text-sm text-gray-600 mt-1">DBS</div>
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border border-orange-100" x-show="orderMode === 'dbs'">
+                            <div class="text-2xl sm:text-3xl font-bold text-orange-600" x-text="schemeStats.dbs_only_count || 0"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">DBS</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                            <div class="text-3xl font-bold text-blue-600" x-text="filteredOrders.length"></div>
-                            <div class="text-sm text-gray-600 mt-1">Показано</div>
+                        <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                            <div class="text-2xl sm:text-3xl font-bold text-blue-600" x-text="filteredOrders.length"></div>
+                            <div class="text-xs sm:text-sm text-gray-600 mt-1">Показано</div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Filters -->
-            <div class="px-6 pb-4">
+            <div class="px-4 sm:px-6 pb-4">
+                <div class="bg-white rounded-2xl border border-gray-200 p-3 sm:p-4 shadow-sm">
+                    <div class="flex items-center space-x-2 sm:space-x-4">
                 <div class="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
                     <div class="flex items-center space-x-4">
                         <div class="flex-1 relative">
@@ -259,10 +264,10 @@
                             <input type="text"
                                    x-model="searchQuery"
                                    @input.debounce.300ms="filterOrders()"
-                                   placeholder="Поиск по номеру заказа, SKU или названию товара..."
-                                   class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3A007D] focus:border-[#3A007D]">
+                                   placeholder="Поиск по номеру, SKU..."
+                                   class="w-full pl-10 pr-4 py-2 sm:py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#3A007D] focus:border-[#3A007D]">
                         </div>
-                        <button @click="resetFilters()" class="px-4 py-2.5 text-blue-700 hover:bg-blue-50 rounded-xl transition text-sm font-medium">
+                        <button @click="resetFilters()" class="px-3 sm:px-4 py-2 sm:py-2.5 text-blue-700 hover:bg-blue-50 rounded-xl transition text-xs sm:text-sm font-medium whitespace-nowrap">
                             Сбросить
                         </button>
                     </div>
@@ -270,7 +275,7 @@
             </div>
 
             <!-- Loading Skeleton -->
-            <div x-show="loading" class="px-6 space-y-4">
+            <div x-show="loading" class="px-4 sm:px-6 space-y-4">
                 <template x-for="i in 5" :key="i">
                     <div class="bg-white rounded-2xl border border-gray-200 p-4 animate-pulse">
                         <div class="flex items-start space-x-4">
@@ -298,48 +303,48 @@
             </div>
 
             <!-- Orders Table View -->
-            <div x-show="!loading && filteredOrders.length > 0" class="px-6 pb-6">
+            <div x-show="!loading && filteredOrders.length > 0" class="px-4 sm:px-6 pb-6">
                 <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Номер</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Создан</th>
-                                    <th x-show="activeTab === 'new'" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Подтвердить до</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Доставить до</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Состав</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сумма</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Магазин</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
+                                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Номер</th>
+                                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Создан</th>
+                                    <th x-show="activeTab === 'new'" class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Подтвердить до</th>
+                                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Доставить до</th>
+                                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Состав</th>
+                                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сумма</th>
+                                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Магазин</th>
+                                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-100">
                                 <template x-for="order in filteredOrders" :key="order.id">
                                     <tr class="hover:bg-gray-50 cursor-pointer transition" @click="openOrderModal(order)">
-                                        <td class="px-4 py-3 text-sm">
+                                        <td class="px-3 sm:px-4 py-3 text-sm">
                                             <div class="font-semibold text-gray-900" x-text="'#' + order.external_order_id"></div>
                                         </td>
-                                        <td class="px-4 py-3 text-sm">
+                                        <td class="px-3 sm:px-4 py-3 text-sm">
                                             <span class="px-2 py-1 rounded-full text-xs font-semibold"
                                                   :class="getStatusClass(order.status)"
                                                   x-text="getStatusLabel(order.status)"></span>
                                         </td>
-                                        <td class="px-4 py-3 text-sm text-gray-900">
+                                        <td class="px-3 sm:px-4 py-3 text-sm text-gray-900 hidden sm:table-cell">
                                             <div class="font-medium" x-text="formatUzumDate(order.raw_payload?.dateCreated || order.ordered_at)"></div>
                                             <div class="text-xs text-[#F4488D]" x-text="getTimeElapsed(order.ordered_at)"></div>
                                         </td>
-                                        <td x-show="activeTab === 'new'" class="px-4 py-3 text-sm text-gray-900">
+                                        <td x-show="activeTab === 'new'" class="px-3 sm:px-4 py-3 text-sm text-gray-900 hidden md:table-cell">
                                             <div class="font-medium" x-text="formatUzumDate(order.raw_payload?.acceptUntil)"></div>
                                             <div class="text-xs" :class="isUrgent(order.raw_payload?.acceptUntil) ? 'text-red-600 font-semibold' : 'text-gray-500'"
                                                  x-text="timeLeft(order.raw_payload?.acceptUntil)"></div>
                                         </td>
-                                        <td class="px-4 py-3 text-sm text-gray-900">
+                                        <td class="px-3 sm:px-4 py-3 text-sm text-gray-900 hidden lg:table-cell">
                                             <div class="font-medium" x-text="formatUzumDate(order.raw_payload?.deliverUntil || order.raw_payload?.deliveryDate)"></div>
                                             <div class="text-xs text-gray-500" x-text="timeLeft(order.raw_payload?.deliverUntil || order.raw_payload?.deliveryDate)"></div>
                                         </td>
-                                        <td class="px-4 py-3 text-sm">
+                                        <td class="px-3 sm:px-4 py-3 text-sm hidden md:table-cell">
                                             <div class="space-y-1 max-w-xs">
                                                 <template x-for="(item, idx) in getOrderItems(order).slice(0, 2)" :key="idx">
                                                     <div class="flex items-center space-x-2">
@@ -357,13 +362,13 @@
                                                 </template>
                                             </div>
                                         </td>
-                                        <td class="px-4 py-3 text-sm">
+                                        <td class="px-3 sm:px-4 py-3 text-sm">
                                             <div class="font-bold text-gray-900" x-text="formatPrice(order.total_amount)"></div>
                                         </td>
-                                        <td class="px-4 py-3 text-sm text-gray-600">
+                                        <td class="px-3 sm:px-4 py-3 text-sm text-gray-600 hidden lg:table-cell">
                                             <div class="font-medium" x-text="getShopName(order)"></div>
                                         </td>
-                                        <td class="px-4 py-3 text-sm" @click.stop>
+                                        <td class="px-3 sm:px-4 py-3 text-sm" @click.stop>
                                             <div class="flex items-center space-x-2">
                                                 <!-- FBS Actions (only show for FBS mode) -->
                                                 <template x-if="orderMode === 'fbs'">
@@ -423,6 +428,33 @@
                                                           x-text="order.deliveryType || 'FBO'">
                                                     </span>
                                                 </template>
+
+                                                <!-- Documents Dropdown -->
+                                                <div class="relative" x-data="{ docMenu: false }">
+                                                    <button @click="docMenu = !docMenu"
+                                                            class="p-1.5 text-gray-400 hover:text-[#3A007D] hover:bg-purple-50 rounded-lg transition"
+                                                            title="Документы">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                        </svg>
+                                                    </button>
+                                                    <div x-show="docMenu" @click.outside="docMenu = false"
+                                                         x-transition
+                                                         class="absolute right-0 top-8 z-30 w-40 bg-white border border-gray-200 rounded-xl shadow-lg py-1">
+                                                        <button @click="openDocument(order, 'receipt'); docMenu = false"
+                                                                class="w-full px-3 py-2 text-left text-xs hover:bg-purple-50 transition flex items-center space-x-2">
+                                                            <span>Чек</span>
+                                                        </button>
+                                                        <button @click="openDocument(order, 'waybill'); docMenu = false"
+                                                                class="w-full px-3 py-2 text-left text-xs hover:bg-purple-50 transition flex items-center space-x-2">
+                                                            <span>Накладная</span>
+                                                        </button>
+                                                        <button @click="openDocument(order, 'invoice'); docMenu = false"
+                                                                class="w-full px-3 py-2 text-left text-xs hover:bg-purple-50 transition flex items-center space-x-2">
+                                                            <span>Счёт-фактура</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
 
                                                 <!-- View Details -->
                                                 <button @click="openOrderModal(order)"
@@ -584,6 +616,42 @@
                                 Отменить
                             </button>
                         </template>
+                    </div>
+
+                    <!-- Documents Section -->
+                    <div class="border-t border-gray-200 pt-4 mt-4">
+                        <h4 class="font-semibold text-gray-900 mb-3 flex items-center space-x-2">
+                            <svg class="w-5 h-5 text-[#3A007D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            <span>Документы</span>
+                        </h4>
+                        <div class="grid grid-cols-3 gap-3">
+                            <!-- Чек -->
+                            <button @click="openDocument(selectedOrder, 'receipt')"
+                                    class="flex flex-col items-center p-3 bg-gray-50 hover:bg-purple-50 border border-gray-200 hover:border-[#3A007D] rounded-xl transition group">
+                                <svg class="w-8 h-8 text-gray-400 group-hover:text-[#3A007D] mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/>
+                                </svg>
+                                <span class="text-xs font-medium text-gray-700 group-hover:text-[#3A007D]">Чек</span>
+                            </button>
+                            <!-- Накладная -->
+                            <button @click="openDocument(selectedOrder, 'waybill')"
+                                    class="flex flex-col items-center p-3 bg-gray-50 hover:bg-purple-50 border border-gray-200 hover:border-[#3A007D] rounded-xl transition group">
+                                <svg class="w-8 h-8 text-gray-400 group-hover:text-[#3A007D] mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                <span class="text-xs font-medium text-gray-700 group-hover:text-[#3A007D]">Накладная</span>
+                            </button>
+                            <!-- Счёт-фактура -->
+                            <button @click="openDocument(selectedOrder, 'invoice')"
+                                    class="flex flex-col items-center p-3 bg-gray-50 hover:bg-purple-50 border border-gray-200 hover:border-[#3A007D] rounded-xl transition group">
+                                <svg class="w-8 h-8 text-gray-400 group-hover:text-[#3A007D] mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                </svg>
+                                <span class="text-xs font-medium text-gray-700 group-hover:text-[#3A007D]">Счёт-фактура</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Raw Payload Toggle -->
@@ -1118,6 +1186,12 @@ function uzumOrdersPage() {
                 this.showMessage('Ошибка сети', 'error');
             }
             order.processing = false;
+        },
+
+        openDocument(order, type) {
+            if (!order?.external_order_id) return;
+            const url = `/api/marketplace/uzum/accounts/${this.accountId}/orders/${order.external_order_id}/${type}`;
+            window.open(url, '_blank');
         },
 
         async printOrderSticker(order) {

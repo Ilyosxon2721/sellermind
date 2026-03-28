@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Services\TrialService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -46,6 +47,9 @@ class SubscriptionController extends Controller
 
         $plan = $subscription->plan;
 
+        $trialService = app(TrialService::class);
+        $isTrial = $subscription->isTrial();
+
         return response()->json([
             'has_subscription' => true,
             'subscription' => [
@@ -55,8 +59,9 @@ class SubscriptionController extends Controller
                 'ends_at' => $subscription->ends_at?->toIso8601String(),
                 'trial_ends_at' => $subscription->trial_ends_at?->toIso8601String(),
                 'days_remaining' => $subscription->daysRemaining(),
-                'is_trial' => $subscription->isTrial(),
+                'is_trial' => $isTrial,
                 'is_expired' => $subscription->isExpired(),
+                'trial_days_remaining' => $isTrial ? $trialService->getTrialDaysRemaining($subscription) : null,
             ],
             'plan' => [
                 'id' => $plan->id,

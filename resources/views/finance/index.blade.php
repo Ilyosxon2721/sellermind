@@ -16,7 +16,7 @@
 
     <div class="flex-1 flex flex-col overflow-hidden"
          :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
-        <header class="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 px-6 py-4">
+        <header class="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 px-4 sm:px-6 py-3 sm:py-4">
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-700 bg-clip-text text-transparent">Финансы</h1>
@@ -29,40 +29,40 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+        <main class="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6">
             <!-- Tabs -->
-            <div class="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 inline-flex flex-wrap gap-1">
-                <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+            <div class="bg-white rounded-2xl p-1.5 sm:p-2 shadow-sm border border-gray-100 flex overflow-x-auto sm:inline-flex sm:flex-wrap gap-1 scrollbar-hide">
+                <button class="px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
                         :class="activeTab === 'overview' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'overview'; loadOverview()">
                     Обзор
                 </button>
-                <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                <button class="px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
                         :class="activeTab === 'transactions' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'transactions'; loadTransactions()">
                     Транзакции
                 </button>
-                <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                <button class="px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
                         :class="activeTab === 'debts' ? 'bg-red-100 text-red-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'debts'; loadDebts()">
                     Долги
                 </button>
-                <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                <button class="px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
                         :class="activeTab === 'salary' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'salary'; loadEmployees(); loadSalaryCalculations()">
                     Зарплата
                 </button>
-                <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                <button class="px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
                         :class="activeTab === 'taxes' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'taxes'; loadTaxes()">
                     Налоги
                 </button>
-                <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                <button class="px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
                         :class="activeTab === 'accounts' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'accounts'; loadCashAccounts()">
                     Счета
                 </button>
-                <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                <button class="px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
                         :class="activeTab === 'reports' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'reports'">
                     Отчёты
@@ -74,11 +74,11 @@
                 <!-- Period Filter & Currency Rates -->
                 <div class="flex flex-wrap gap-4">
                     <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex-1">
-                        <div class="flex items-center space-x-4">
-                            <input type="date" class="border border-gray-300 rounded-xl px-4 py-2" x-model="periodFrom">
+                        <div class="flex items-center flex-wrap gap-2 sm:gap-4">
+                            <input type="date" class="border border-gray-300 rounded-xl px-3 sm:px-4 py-2 text-sm" x-model="periodFrom">
                             <span class="text-gray-500">—</span>
-                            <input type="date" class="border border-gray-300 rounded-xl px-4 py-2" x-model="periodTo">
-                            <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl" @click="loadOverview()">Применить</button>
+                            <input type="date" class="border border-gray-300 rounded-xl px-3 sm:px-4 py-2 text-sm" x-model="periodTo">
+                            <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm sm:text-base" @click="loadOverview()">Применить</button>
                         </div>
                     </div>
 
@@ -124,9 +124,9 @@
                                   x-text="overview.balance?.health?.message || 'Загрузка...'"></span>
                         </div>
                     </div>
-                    <div class="text-4xl font-bold mb-6" :class="(overview.balance?.net_balance || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'"
+                    <div class="text-2xl sm:text-4xl font-bold mb-4 sm:mb-6 break-all" :class="(overview.balance?.net_balance || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'"
                          x-text="formatWithCurrency(overview.balance?.net_balance || 0)"></div>
-                    <div class="grid grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                         <div>
                             <div class="text-sm text-slate-400 mb-2">Активы</div>
                             <div class="space-y-2 text-sm">
@@ -173,7 +173,7 @@
                     <!-- Транзакции за период (Приход / Расход / Себестоимость) -->
                     <div class="mt-4 pt-4 border-t border-slate-700">
                         <div class="text-sm text-slate-400 mb-2">Финансы за период</div>
-                        <div class="grid grid-cols-3 gap-3 text-sm">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 text-sm">
                             <div class="bg-emerald-500/10 rounded-xl p-3">
                                 <div class="flex items-center space-x-2 mb-1">
                                     <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -200,7 +200,7 @@
                     <!-- Чистая прибыль за период -->
                     <div class="mt-4 pt-4 border-t border-slate-700">
                         <div class="text-sm text-slate-400 mb-2">Чистая прибыль за период</div>
-                        <div class="text-2xl font-bold" :class="(overview.summary?.net_profit || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'"
+                        <div class="text-xl sm:text-2xl font-bold" :class="(overview.summary?.net_profit || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'"
                              x-text="formatMoney(overview.summary?.net_profit || 0)"></div>
                         <div class="text-xs text-slate-500 mt-1">Приход − Расход − Себестоимость = Чистая прибыль</div>
                     </div>
@@ -311,7 +311,7 @@
                 </div>
 
                 <!-- Summary Cards (Доходы/Расходы/Себестоимость/Прибыль за период) -->
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
                     <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white">
                         <div class="text-sm opacity-80">Доходы</div>
                         <div class="text-xl font-bold mt-1" x-text="formatMoney(overview.summary?.total_income || 0)"></div>
@@ -363,7 +363,7 @@
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
                                         </div>
                                     </div>
-                                    <div class="text-3xl font-bold" x-text="(marketplaceIncome.totals?.orders?.count || 0) + ' шт'"></div>
+                                    <div class="text-2xl sm:text-3xl font-bold" x-text="(marketplaceIncome.totals?.orders?.count || 0) + ' шт'"></div>
                                     <div class="text-sm opacity-80 mt-1" x-text="formatWithCurrency(marketplaceIncome.totals?.orders?.amount || 0)"></div>
                                 </div>
 
@@ -375,7 +375,7 @@
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                         </div>
                                     </div>
-                                    <div class="text-3xl font-bold" x-text="(marketplaceIncome.totals?.sold?.count || 0) + ' шт'"></div>
+                                    <div class="text-2xl sm:text-3xl font-bold" x-text="(marketplaceIncome.totals?.sold?.count || 0) + ' шт'"></div>
                                     <div class="text-sm opacity-80 mt-1" x-text="formatWithCurrency(marketplaceIncome.totals?.sold?.amount || 0)"></div>
                                 </div>
 
@@ -387,7 +387,7 @@
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
                                         </div>
                                     </div>
-                                    <div class="text-3xl font-bold" x-text="(marketplaceIncome.totals?.returns?.count || 0) + ' шт'"></div>
+                                    <div class="text-2xl sm:text-3xl font-bold" x-text="(marketplaceIncome.totals?.returns?.count || 0) + ' шт'"></div>
                                     <div class="text-sm opacity-80 mt-1" x-text="formatWithCurrency(marketplaceIncome.totals?.returns?.amount || 0)"></div>
                                 </div>
 
@@ -399,7 +399,7 @@
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                         </div>
                                     </div>
-                                    <div class="text-3xl font-bold" x-text="(marketplaceIncome.totals?.cancelled?.count || 0) + ' шт'"></div>
+                                    <div class="text-2xl sm:text-3xl font-bold" x-text="(marketplaceIncome.totals?.cancelled?.count || 0) + ' шт'"></div>
                                     <div class="text-sm opacity-80 mt-1" x-text="formatWithCurrency(marketplaceIncome.totals?.cancelled?.amount || 0)"></div>
                                 </div>
                             </div>
@@ -1598,7 +1598,7 @@
 
                     <!-- P&L Report -->
                     <div x-show="reportType === 'pnl'" class="space-y-6">
-                        <div class="grid grid-cols-3 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                             <div class="p-4 bg-green-50 rounded-xl">
                                 <div class="text-sm text-green-600">Доходы</div>
                                 <div class="text-xl font-bold text-green-700" x-text="formatWithCurrency(reportData?.data?.income?.total || 0)"></div>
@@ -1762,7 +1762,7 @@
                         </div>
 
                         <!-- Aging Summary Cards -->
-                        <div class="grid grid-cols-5 gap-4">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                             <div class="p-3 bg-green-100 rounded-xl text-center">
                                 <div class="text-xs text-green-600">Текущие</div>
                                 <div class="font-bold text-green-700" x-text="formatMoney(reportData?.data?.summary?.current?.amount || 0)"></div>
@@ -2247,7 +2247,7 @@
                 <div class="font-semibold text-blue-900" x-text="selectedEmployeeForAction?.full_name || selectedEmployeeForAction?.name"></div>
             </div>
             <!-- Summary -->
-            <div class="grid grid-cols-3 gap-4" x-show="employeeHistory.summary">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4" x-show="employeeHistory.summary">
                 <div class="bg-green-50 rounded-xl p-3 text-center">
                     <div class="text-xs text-green-600">Выплачено зарплат</div>
                     <div class="text-lg font-bold text-green-700" x-text="formatMoney(employeeHistory.summary?.total_salary_paid || 0)"></div>

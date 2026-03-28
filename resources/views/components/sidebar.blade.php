@@ -173,6 +173,10 @@
                             <span class="text-xs">•</span>
                             <span class="text-sm">Остатки МП</span>
                         </a>
+                        <a href="/product-copy" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('product-copy*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                            <span class="text-xs">•</span>
+                            <span class="text-sm">Копирование карточек</span>
+                        </a>
                     </div>
                 </div>
             </template>
@@ -295,6 +299,17 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
             </svg>
             <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">Аналитика Uzum</span>
+        </a>
+
+        {{-- Business Analytics (ABC, ABCXYZ, SWOT) --}}
+        <a href="/business-analytics"
+           class="flex items-center rounded-lg transition {{ request()->is('business-analytics*') ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           :class="$store.ui.sidebarCollapsed ? 'justify-center p-2.5' : 'space-x-3 px-3 py-2.5'"
+           :title="$store.ui.sidebarCollapsed ? 'Бизнес-аналитика' : ''">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+            </svg>
+            <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">Бизнес-аналитика</span>
         </a>
 
         {{-- Debts --}}

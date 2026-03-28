@@ -103,8 +103,8 @@
                     </button>
                 </div>
 
-                {{-- Print buttons for manual sales --}}
-                <div x-show="order.marketplace === 'manual' && order.id?.startsWith('sale_')" class="flex items-center space-x-2 ml-4">
+                {{-- Print buttons for all orders --}}
+                <div x-show="order.id" class="flex items-center space-x-2 ml-4">
                     <div class="relative" x-data="{ open: false }">
                         <button @click="open = !open" class="flex items-center space-x-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,21 +117,21 @@
                         </button>
                         <div x-show="open" @click.away="open = false" x-transition
                              class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                            <a :href="'/sales/' + getSaleId() + '/print/receipt'" target="_blank"
+                            <a :href="getPrintUrl('receipt')" target="_blank"
                                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                 </svg>
                                 Чек
                             </a>
-                            <a :href="'/sales/' + getSaleId() + '/print/waybill'" target="_blank"
+                            <a :href="getPrintUrl('waybill')" target="_blank"
                                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
                                 </svg>
                                 Накладная
                             </a>
-                            <a :href="'/sales/' + getSaleId() + '/print/invoice'" target="_blank"
+                            <a :href="getPrintUrl('invoice')" target="_blank"
                                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/>
@@ -457,6 +457,34 @@
                     </a>
                 </div>
             </div>
+
+            {{-- Print buttons for marketplace orders (mobile) --}}
+            <div class="native-card" x-show="order.id && !order.id?.startsWith('sale_') && !order.id?.startsWith('manual_')">
+                <h3 class="font-semibold text-gray-900 mb-3">Печать документов</h3>
+                <div class="grid grid-cols-3 gap-2">
+                    <a :href="getPrintUrl('receipt')" target="_blank"
+                       class="flex flex-col items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                        <svg class="w-6 h-6 text-indigo-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <span class="text-xs text-gray-700">Чек</span>
+                    </a>
+                    <a :href="getPrintUrl('waybill')" target="_blank"
+                       class="flex flex-col items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                        <svg class="w-6 h-6 text-indigo-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                        </svg>
+                        <span class="text-xs text-gray-700">Накладная</span>
+                    </a>
+                    <a :href="getPrintUrl('invoice')" target="_blank"
+                       class="flex flex-col items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                        <svg class="w-6 h-6 text-indigo-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/>
+                        </svg>
+                        <span class="text-xs text-gray-700">Счёт-фактура</span>
+                    </a>
+                </div>
+            </div>
         </div>
     </main>
 </div>
@@ -482,6 +510,7 @@ function orderDetails() {
 
             try {
                 const res = await fetch(`/api/sales/${this.orderId}`, {
+                    credentials: 'same-origin',
                     headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
@@ -543,6 +572,7 @@ function orderDetails() {
                 const id = this.getSaleId();
                 const res = await fetch(`/api/sales-management/${id}/confirm`, {
                     method: "POST",
+                    credentials: "same-origin",
                     headers: {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": document.querySelector("meta[name=csrf-token]")?.content}
                 });
                 const data = await res.json();
@@ -563,6 +593,7 @@ function orderDetails() {
                 const id = this.getSaleId();
                 const res = await fetch(`/api/sales-management/${id}/complete`, {
                     method: "POST",
+                    credentials: "same-origin",
                     headers: {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": document.querySelector("meta[name=csrf-token]")?.content}
                 });
                 const data = await res.json();
@@ -583,6 +614,7 @@ function orderDetails() {
                 const id = this.getSaleId();
                 const res = await fetch(`/api/sales-management/${id}/cancel`, {
                     method: "POST",
+                    credentials: "same-origin",
                     headers: {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": document.querySelector("meta[name=csrf-token]")?.content}
                 });
                 const data = await res.json();
@@ -599,6 +631,14 @@ function orderDetails() {
         getSaleId() {
             const id = this.order.id || this.orderId;
             return id?.replace('sale_', '') || id;
+        },
+
+        getPrintUrl(type) {
+            const id = this.order.id || this.orderId;
+            if (id?.startsWith('sale_')) {
+                return '/sales/' + id.replace('sale_', '') + '/print/' + type;
+            }
+            return '/orders/' + id + '/print/' + type;
         },
 
         get editTotal() {
@@ -636,6 +676,7 @@ function orderDetails() {
                 for (const edit of this.editItems) {
                     await fetch(`/api/sales-management/${id}/items/${edit.id}`, {
                         method: "PUT",
+                        credentials: "same-origin",
                         headers,
                         body: JSON.stringify({
                             quantity: edit.quantity,
@@ -661,6 +702,7 @@ function orderDetails() {
                 const id = this.getSaleId();
                 const res = await fetch(`/api/sales-management/${id}/revert-draft`, {
                     method: "POST",
+                    credentials: "same-origin",
                     headers: {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": document.querySelector("meta[name=csrf-token]")?.content}
                 });
                 const data = await res.json();

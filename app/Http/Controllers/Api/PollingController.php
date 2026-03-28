@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MarketplaceAccount;
-use App\Models\MarketplaceOrder;
 use App\Models\MarketplaceSyncLog;
 use App\Models\Supply;
 use Illuminate\Http\JsonResponse;
@@ -42,25 +41,43 @@ class PollingController extends Controller
         // Cache key unique per user and account
         $cacheKey = "polling:orders:{$accountId}:".auth()->id().':'.$lastCheck;
 
-        $data = Cache::remember($cacheKey, config('polling.cache_ttl', 5), function () use ($accountId, $lastCheck) {
-            // Count new orders
-            $newOrders = MarketplaceOrder::where('marketplace_account_id', $accountId)
+        $data = Cache::remember($cacheKey, config('polling.cache_ttl', 5), function () use ($account, $accountId, $lastCheck) {
+            $orderModel = $this->getOrderModelForAccount($account);
+            if (! $orderModel) {
+                return [
+                    'has_new' => false,
+                    'has_updates' => false,
+                    'new_count' => 0,
+                    'updated_count' => 0,
+                    'total_pending' => 0,
+                    'timestamp' => now()->toIso8601String(),
+                ];
+            }
+
+            $newOrders = $orderModel::where('marketplace_account_id', $accountId)
                 ->where('created_at', '>', $lastCheck)
                 ->count();
 
-            // Count updated orders (where updated_at != created_at)
-            $updatedOrders = MarketplaceOrder::where('marketplace_account_id', $accountId)
+            $updatedOrders = $orderModel::where('marketplace_account_id', $accountId)
                 ->where('updated_at', '>', $lastCheck)
                 ->whereColumn('updated_at', '!=', 'created_at')
                 ->count();
+
+            $pendingStatuses = match ($account->marketplace) {
+                'wb' => ['new'],
+                'uzum' => ['new', 'awaiting_packaging', 'awaiting_deliver'],
+                'ozon' => ['awaiting_packaging', 'awaiting_deliver'],
+                'ym' => ['new', 'pending'],
+                default => ['new'],
+            };
 
             return [
                 'has_new' => $newOrders > 0,
                 'has_updates' => $updatedOrders > 0,
                 'new_count' => $newOrders,
                 'updated_count' => $updatedOrders,
-                'total_pending' => MarketplaceOrder::where('marketplace_account_id', $accountId)
-                    ->whereIn('status', ['new', 'awaiting_packaging', 'awaiting_deliver'])
+                'total_pending' => $orderModel::where('marketplace_account_id', $accountId)
+                    ->whereIn($account->marketplace === 'ym' ? 'status_normalized' : 'status', $pendingStatuses)
                     ->count(),
                 'timestamp' => now()->toIso8601String(),
             ];
@@ -160,36 +177,48 @@ class PollingController extends Controller
         $cacheKey = "polling:dashboard:{$companyId}:".auth()->id();
 
         $data = Cache::remember($cacheKey, config('polling.cache_ttl', 5), function () use ($companyId) {
-            // Today's sales
-            $todaySales = MarketplaceOrder::whereHas('account', function ($q) use ($companyId) {
-                $q->where('company_id', $companyId);
-            })
-                ->whereDate('created_at', today())
-                ->count();
+            $accountIds = MarketplaceAccount::where('company_id', $companyId)
+                ->where('is_active', true)
+                ->pluck('id', 'marketplace');
 
-            // Total orders
-            $totalOrders = MarketplaceOrder::whereHas('account', function ($q) use ($companyId) {
-                $q->where('company_id', $companyId);
-            })->count();
+            $todaySales = 0;
+            $totalOrders = 0;
+            $todayRevenue = 0.0;
+            $pendingOrders = 0;
 
-            // Today's revenue
-            $todayRevenue = MarketplaceOrder::whereHas('account', function ($q) use ($companyId) {
-                $q->where('company_id', $companyId);
-            })
-                ->whereDate('created_at', today())
-                ->sum('total_price');
+            $models = [
+                'wb' => [\App\Models\WbOrder::class, 'total_amount', 'status', ['new']],
+                'uzum' => [\App\Models\UzumOrder::class, 'total_amount', 'status', ['new', 'awaiting_packaging', 'awaiting_deliver']],
+                'ozon' => [\App\Models\OzonOrder::class, 'total_price', 'status', ['awaiting_packaging', 'awaiting_deliver']],
+                'ym' => [\App\Models\YandexMarketOrder::class, 'total_price', 'status_normalized', ['new', 'pending']],
+            ];
 
-            // Pending orders
-            $pendingOrders = MarketplaceOrder::whereHas('account', function ($q) use ($companyId) {
-                $q->where('company_id', $companyId);
-            })
-                ->whereIn('status', ['new', 'awaiting_packaging', 'awaiting_deliver'])
-                ->count();
+            foreach ($accountIds as $marketplace => $id) {
+                $config = $models[$marketplace] ?? null;
+                if (! $config) {
+                    continue;
+                }
+                [$modelClass, $amountField, $statusField, $pendingStatuses] = $config;
+
+                $todaySales += $modelClass::where('marketplace_account_id', $id)
+                    ->whereDate('created_at', today())
+                    ->count();
+
+                $totalOrders += $modelClass::where('marketplace_account_id', $id)->count();
+
+                $todayRevenue += (float) $modelClass::where('marketplace_account_id', $id)
+                    ->whereDate('created_at', today())
+                    ->sum($amountField);
+
+                $pendingOrders += $modelClass::where('marketplace_account_id', $id)
+                    ->whereIn($statusField, $pendingStatuses)
+                    ->count();
+            }
 
             return [
                 'today_sales' => $todaySales,
                 'total_orders' => $totalOrders,
-                'today_revenue' => (float) $todayRevenue,
+                'today_revenue' => $todayRevenue,
                 'pending_orders' => $pendingOrders,
                 'timestamp' => now()->toIso8601String(),
             ];
@@ -248,5 +277,19 @@ class PollingController extends Controller
         });
 
         return response()->json($data);
+    }
+
+    /**
+     * Получить класс модели заказов для аккаунта маркетплейса
+     */
+    private function getOrderModelForAccount(MarketplaceAccount $account): ?string
+    {
+        return match ($account->marketplace) {
+            'wb' => \App\Models\WbOrder::class,
+            'uzum' => \App\Models\UzumOrder::class,
+            'ozon' => \App\Models\OzonOrder::class,
+            'ym' => \App\Models\YandexMarketOrder::class,
+            default => null,
+        };
     }
 }

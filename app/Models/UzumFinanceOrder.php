@@ -197,39 +197,9 @@ class UzumFinanceOrder extends Model
         return $query->where('marketplace_account_id', $accountId);
     }
 
-    public function scopeNotCancelled($query)
-    {
-        return $query->where('status', '!=', 'CANCELED');
-    }
-
     public function scopeCancelled($query)
     {
         return $query->where('status', 'CANCELED');
-    }
-
-    public function scopeCompleted($query)
-    {
-        return $query->whereIn('status', ['COMPLETED', 'TO_WITHDRAW']);
-    }
-
-    public function scopeProcessing($query)
-    {
-        return $query->where('status', 'PROCESSING');
-    }
-
-    public function scopeInPeriod($query, $from, $to)
-    {
-        return $query->whereBetween('order_date', [$from, $to]);
-    }
-
-    public function scopeByStatus($query, string $status)
-    {
-        return $query->where('status', $status);
-    }
-
-    public function scopeByShop($query, int $shopId)
-    {
-        return $query->where('shop_id', $shopId);
     }
 
     /**

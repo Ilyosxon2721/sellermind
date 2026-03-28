@@ -132,6 +132,7 @@ class ReservationController extends Controller
             'uzum' => UzumOrder::find($sourceId),
             'wb', 'wildberries' => WbOrder::find($sourceId),
             'ozon' => OzonOrder::find($sourceId),
+            'ym', 'yandex_market' => \App\Models\YandexMarketOrder::find($sourceId),
             default => null,
         };
     }

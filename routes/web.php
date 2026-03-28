@@ -128,6 +128,10 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.analytics');
     })->name('analytics');
 
+    Route::get('/business-analytics', function () {
+        return view('pages.business-analytics');
+    })->name('business-analytics');
+
     // Analytics sub-pages
     Route::prefix('analytics')->name('analytics.')->group(function () {
         Route::get('/revenue', function () {
@@ -151,7 +155,7 @@ Route::middleware('auth.any')->group(function () {
         })->name('stock');
 
         Route::get('/funnel', function () {
-            return view('pages.analytics');
+            return view('pages.analytics.funnel');
         })->name('funnel');
 
         Route::get('/uzum', function () {
@@ -315,6 +319,11 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/sales/{sale}/print/invoice', [\App\Http\Controllers\SalePrintController::class, 'invoice'])->name('sales.print.invoice');
     Route::get('/sales/{sale}/print/waybill', [\App\Http\Controllers\SalePrintController::class, 'waybill'])->name('sales.print.waybill');
 
+    // Order print routes (маркетплейсы + ручные продажи, составной ID: uzum_123, wb_456, ozon_789, ym_101, sale_55)
+    Route::get('/orders/{id}/print/receipt', [\App\Http\Controllers\OrderPrintController::class, 'receipt'])->name('orders.print.receipt');
+    Route::get('/orders/{id}/print/invoice', [\App\Http\Controllers\OrderPrintController::class, 'invoice'])->name('orders.print.invoice');
+    Route::get('/orders/{id}/print/waybill', [\App\Http\Controllers\OrderPrintController::class, 'waybill'])->name('orders.print.waybill');
+
     Route::get('/companies', function () {
         return view('companies.index');
     })->name('companies.index');
@@ -383,6 +392,11 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/plans', function () {
         return view('plans.index');
     })->withoutMiddleware('auth')->name('plans.index');
+
+    // Модуль копирования карточек товаров
+    Route::get('/product-copy', function () {
+        return view('pages.product-copy.index');
+    })->name('product-copy.index');
 
     // Marketplace Module
     Route::get('/marketplace', function () {
@@ -1169,6 +1183,20 @@ Route::middleware('auth.any')->group(function () {
             'accountName' => $account->name,
         ]);
     })->name('marketplace.uzum-reviews');
+
+    // Uzum Invoices & Returns
+    Route::get('/marketplace/{accountId}/uzum-invoices', function ($accountId) {
+        $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
+        $uzumShops = \App\Models\MarketplaceShop::where('marketplace_account_id', $accountId)
+            ->orderBy('name')
+            ->get(['id', 'external_id', 'name']);
+
+        return view('pages.marketplace.uzum-invoices', [
+            'accountId' => $accountId,
+            'accountName' => $account->name,
+            'uzumShops' => $uzumShops,
+        ]);
+    })->name('marketplace.uzum-invoices');
 
     // Ozon Settings
     Route::get('/marketplace/{accountId}/ozon-settings', function ($accountId) {

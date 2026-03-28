@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="{{ app()->getLocale() }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -204,7 +204,7 @@
                 </nav>
                 
                 
-                <button @click="mobileMenuOpen = !mobileMenuOpen" class="lg:hidden p-2 text-gray-600">
+                <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden p-2 text-gray-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                     </svg>
@@ -213,14 +213,14 @@
         </div>
         
         <!-- Mobile Menu -->
-        <div x-show="mobileMenuOpen" x-cloak class="lg:hidden bg-white border-t border-gray-100">
+        <div x-show="mobileMenuOpen" x-cloak class="md:hidden bg-white border-t border-gray-100">
             <div class="px-4 py-4 space-y-2">
-                <a href="#features" class="block py-2 text-gray-600">Возможности</a>
-                <a href="#how-it-works" class="block py-2 text-gray-600">Как работает</a>
-                <a href="#integrations" class="block py-2 text-gray-600">Интеграции</a>
-                <a href="#testimonials" class="block py-2 text-gray-600">Отзывы</a>
-                <a href="#pricing" class="block py-2 text-gray-600">Тарифы</a>
-                <a href="#faq" class="block py-2 text-gray-600">FAQ</a>
+                <a href="#features" class="block py-2 text-gray-600">{{ __('landing.nav_features') }}</a>
+                <a href="#how-it-works" class="block py-2 text-gray-600">{{ __('landing.nav_how_it_works') }}</a>
+                <a href="#integrations" class="block py-2 text-gray-600">{{ __('landing.nav_integrations') }}</a>
+                <a href="#testimonials" class="block py-2 text-gray-600">{{ __('landing.nav_testimonials') }}</a>
+                <a href="#pricing" class="block py-2 text-gray-600">{{ __('landing.nav_pricing') }}</a>
+                <a href="#faq" class="block py-2 text-gray-600">{{ __('landing.nav_faq') }}</a>
                 <div class="flex gap-2 mt-4">
                     <a href="/{{ app()->getLocale() }}/login" class="flex-1 py-2 text-center border border-gray-200 rounded-lg font-medium text-gray-700">{{ __('landing.nav_login') }}</a>
                     <a href="/{{ app()->getLocale() }}/register" class="flex-1 py-2 text-center bg-blue-600 text-white rounded-lg font-medium">{{ __('landing.nav_register') }}</a>
@@ -244,8 +244,8 @@
                     {{ __('landing.hero_subtitle') }}
                 </p>
                 <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="/register" class="px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition text-lg shadow-lg shadow-blue-600/30">
-                    {{ __('landing.cta_primary') }}
+                <a href="/{{ app()->getLocale() }}/register" class="px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition text-lg shadow-lg shadow-blue-600/30">
+                    {{ __('landing.cta_primary') }} →
                 </a>
                 <a href="#pricing" class="px-8 py-4 bg-white text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition text-lg border-2 border-gray-200">
                     {{ __('landing.cta_secondary') }}
@@ -428,34 +428,34 @@
     <section id="how-it-works" class="py-20 bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
-                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Как это работает</div>
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Начните работу за 5 минут</h2>
-                <p class="text-lg text-gray-600">Простой процесс подключения</p>
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">{{ __('landing.nav_how_it_works') }}</div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.how_it_works_title') }}</h2>
+                <p class="text-lg text-gray-600">{{ __('landing.how_it_works_subtitle') }}</p>
             </div>
-            
+
             <div class="grid md:grid-cols-4 gap-8">
                 <div class="text-center relative">
                     <div class="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-4 shadow-lg">1</div>
-                    <h3 class="font-bold text-gray-900 mb-2">Регистрация</h3>
-                    <p class="text-gray-600 text-sm">Создайте аккаунт за минуту. Без банковской карты.</p>
+                    <h3 class="font-bold text-gray-900 mb-2">{{ __('landing.step_1_title') }}</h3>
+                    <p class="text-gray-600 text-sm">{{ __('landing.step_1_desc') }}</p>
                     <div class="hidden md:block absolute top-8 left-full w-full h-0.5 bg-gray-200 -translate-x-1/2"></div>
                 </div>
                 <div class="text-center relative">
                     <div class="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-4 shadow-lg">2</div>
-                    <h3 class="font-bold text-gray-900 mb-2">Подключение</h3>
-                    <p class="text-gray-600 text-sm">Подключите маркетплейсы через API-ключи.</p>
+                    <h3 class="font-bold text-gray-900 mb-2">{{ __('landing.step_2_title') }}</h3>
+                    <p class="text-gray-600 text-sm">{{ __('landing.step_2_desc') }}</p>
                     <div class="hidden md:block absolute top-8 left-full w-full h-0.5 bg-gray-200 -translate-x-1/2"></div>
                 </div>
                 <div class="text-center relative">
                     <div class="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-4 shadow-lg">3</div>
-                    <h3 class="font-bold text-gray-900 mb-2">Синхронизация</h3>
-                    <p class="text-gray-600 text-sm">Данные загрузятся автоматически.</p>
+                    <h3 class="font-bold text-gray-900 mb-2">{{ __('landing.step_3_title') }}</h3>
+                    <p class="text-gray-600 text-sm">{{ __('landing.step_3_desc') }}</p>
                     <div class="hidden md:block absolute top-8 left-full w-full h-0.5 bg-gray-200 -translate-x-1/2"></div>
                 </div>
                 <div class="text-center">
                     <div class="w-16 h-16 bg-green-500 text-white rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-4 shadow-lg">✓</div>
-                    <h3 class="font-bold text-gray-900 mb-2">Готово!</h3>
-                    <p class="text-gray-600 text-sm">Управляйте бизнесом из одного окна.</p>
+                    <h3 class="font-bold text-gray-900 mb-2">{{ __('landing.step_4_title') }}</h3>
+                    <p class="text-gray-600 text-sm">{{ __('landing.step_4_desc') }}</p>
                 </div>
             </div>
         </div>
@@ -466,41 +466,41 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid lg:grid-cols-2 gap-16 items-center">
                 <div>
-                    <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Преимущества</div>
-                    <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">Почему выбирают SellerMind</h2>
-                    
+                    <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">{{ __('landing.nav_features') }}</div>
+                    <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">{{ __('landing.benefits_title') }}</h2>
+
                     <div class="space-y-6">
                         <div class="flex gap-4">
                             <div class="w-12 h-12 bg-green-100 text-green-600 rounded-xl flex items-center justify-center flex-shrink-0">✓</div>
                             <div>
-                                <h3 class="font-bold text-gray-900 mb-1">Экономия времени</h3>
-                                <p class="text-gray-600">Автоматизация рутинных задач экономит до 20 часов в неделю.</p>
+                                <h3 class="font-bold text-gray-900 mb-1">{{ __('landing.benefit_time_title') }}</h3>
+                                <p class="text-gray-600">{{ __('landing.benefit_time_desc') }}</p>
                             </div>
                         </div>
                         <div class="flex gap-4">
                             <div class="w-12 h-12 bg-green-100 text-green-600 rounded-xl flex items-center justify-center flex-shrink-0">✓</div>
                             <div>
-                                <h3 class="font-bold text-gray-900 mb-1">Без пересортов</h3>
-                                <p class="text-gray-600">Синхронизация остатков исключает продажу несуществующих товаров.</p>
+                                <h3 class="font-bold text-gray-900 mb-1">{{ __('landing.benefit_no_oversells_title') }}</h3>
+                                <p class="text-gray-600">{{ __('landing.benefit_no_oversells_desc') }}</p>
                             </div>
                         </div>
                         <div class="flex gap-4">
                             <div class="w-12 h-12 bg-green-100 text-green-600 rounded-xl flex items-center justify-center flex-shrink-0">✓</div>
                             <div>
-                                <h3 class="font-bold text-gray-900 mb-1">Рост продаж</h3>
-                                <p class="text-gray-600">AI-оптимизация карточек увеличивает конверсию на 15-30%.</p>
+                                <h3 class="font-bold text-gray-900 mb-1">{{ __('landing.benefit_growth_title') }}</h3>
+                                <p class="text-gray-600">{{ __('landing.benefit_growth_desc') }}</p>
                             </div>
                         </div>
                         <div class="flex gap-4">
                             <div class="w-12 h-12 bg-green-100 text-green-600 rounded-xl flex items-center justify-center flex-shrink-0">✓</div>
                             <div>
-                                <h3 class="font-bold text-gray-900 mb-1">Полный контроль</h3>
-                                <p class="text-gray-600">Все данные, аналитика и управление в одном месте.</p>
+                                <h3 class="font-bold text-gray-900 mb-1">{{ __('landing.benefit_control_title') }}</h3>
+                                <p class="text-gray-600">{{ __('landing.benefit_control_desc') }}</p>
                             </div>
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-3xl p-8">
                     <div class="bg-white rounded-2xl p-6 shadow-xl">
                         <div class="flex items-center gap-3 mb-6">
@@ -509,24 +509,24 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
                                 </svg>
                             </div>
-                            <span class="font-bold text-gray-900">Рост среднего клиента</span>
+                            <span class="font-bold text-gray-900">{{ __('landing.benefit_card_title') }}</span>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div class="bg-gray-50 rounded-xl p-4 text-center">
                                 <div class="text-3xl font-bold text-blue-600">+40%</div>
-                                <div class="text-sm text-gray-600">Продажи</div>
+                                <div class="text-sm text-gray-600">{{ __('landing.benefit_sales') }}</div>
                             </div>
                             <div class="bg-gray-50 rounded-xl p-4 text-center">
                                 <div class="text-3xl font-bold text-green-600">-70%</div>
-                                <div class="text-sm text-gray-600">Время на рутину</div>
+                                <div class="text-sm text-gray-600">{{ __('landing.benefit_routine') }}</div>
                             </div>
                             <div class="bg-gray-50 rounded-xl p-4 text-center">
                                 <div class="text-3xl font-bold text-purple-600">0</div>
-                                <div class="text-sm text-gray-600">Пересортов</div>
+                                <div class="text-sm text-gray-600">{{ __('landing.benefit_oversells') }}</div>
                             </div>
                             <div class="bg-gray-50 rounded-xl p-4 text-center">
                                 <div class="text-3xl font-bold text-orange-600">24/7</div>
-                                <div class="text-sm text-gray-600">Мониторинг</div>
+                                <div class="text-sm text-gray-600">{{ __('landing.benefit_monitoring') }}</div>
                             </div>
                         </div>
                     </div>
@@ -678,31 +678,31 @@
     <section id="integrations" class="py-20 bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
-                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Интеграции</div>
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Подключённые маркетплейсы</h2>
-                <p class="text-lg text-gray-600">Работаем с ведущими площадками</p>
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">{{ __('landing.nav_integrations') }}</div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.integrations_title') }}</h2>
+                <p class="text-lg text-gray-600">{{ __('landing.integrations_subtitle') }}</p>
             </div>
-            
+
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <div class="bg-white rounded-2xl p-8 text-center border border-gray-100 hover:shadow-xl transition">
                     <div class="w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold shadow-lg">U</div>
                     <div class="font-bold text-gray-900 text-lg">Uzum Market</div>
-                    <div class="text-sm text-green-600 font-medium mt-2">● Активно</div>
+                    <div class="text-sm text-green-600 font-medium mt-2">● {{ __('landing.integration_active') }}</div>
                 </div>
                 <div class="bg-white rounded-2xl p-8 text-center border border-gray-100 hover:shadow-xl transition">
                     <div class="w-20 h-20 bg-gradient-to-br from-purple-500 to-purple-700 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold shadow-lg">WB</div>
                     <div class="font-bold text-gray-900 text-lg">Wildberries</div>
-                    <div class="text-sm text-green-600 font-medium mt-2">● Активно</div>
+                    <div class="text-sm text-green-600 font-medium mt-2">● {{ __('landing.integration_active') }}</div>
                 </div>
                 <div class="bg-white rounded-2xl p-8 text-center border border-gray-100 hover:shadow-xl transition">
                     <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold shadow-lg">O</div>
                     <div class="font-bold text-gray-900 text-lg">Ozon</div>
-                    <div class="text-sm text-green-600 font-medium mt-2">● Активно</div>
+                    <div class="text-sm text-green-600 font-medium mt-2">● {{ __('landing.integration_active') }}</div>
                 </div>
                 <div class="bg-white rounded-2xl p-8 text-center border border-gray-100 hover:shadow-xl transition">
                     <div class="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold shadow-lg">Я</div>
-                    <div class="font-bold text-gray-900 text-lg">Яндекс Маркет</div>
-                    <div class="text-sm text-green-600 font-medium mt-2">● Активно</div>
+                    <div class="font-bold text-gray-900 text-lg">Yandex Market</div>
+                    <div class="text-sm text-green-600 font-medium mt-2">● {{ __('landing.integration_active') }}</div>
                 </div>
             </div>
         </div>
@@ -712,49 +712,49 @@
     <section id="testimonials" class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
-                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Отзывы</div>
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Что говорят наши клиенты</h2>
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">{{ __('landing.testimonials_title') }}</div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.testimonials_subtitle') }}</h2>
             </div>
-            
+
             <div class="grid md:grid-cols-3 gap-8">
                 <div class="bg-gray-50 rounded-2xl p-8">
                     <div class="flex gap-1 mb-4">
                         <span class="text-yellow-400 text-xl">★★★★★</span>
                     </div>
-                    <p class="text-gray-700 mb-6">"Перешли на SellerMind полгода назад. Время на управление остатками сократилось в 5 раз. Рекомендую всем, кто работает с несколькими площадками."</p>
+                    <p class="text-gray-700 mb-6">"{{ __('landing.testimonial_1_text') }}"</p>
                     <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center font-bold text-blue-600">АМ</div>
+                        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center font-bold text-blue-600">AM</div>
                         <div>
-                            <div class="font-bold text-gray-900">Алексей М.</div>
-                            <div class="text-sm text-gray-600">Селлер, 3000+ SKU</div>
+                            <div class="font-bold text-gray-900">{{ __('landing.testimonial_1_name') }}</div>
+                            <div class="text-sm text-gray-600">{{ __('landing.testimonial_1_role') }}</div>
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="bg-gray-50 rounded-2xl p-8">
                     <div class="flex gap-1 mb-4">
                         <span class="text-yellow-400 text-xl">★★★★★</span>
                     </div>
-                    <p class="text-gray-700 mb-6">"AI-помощник — это находка! Генерирует описания за секунды, отвечает на отзывы профессионально. Сэкономили на контент-менеджере."</p>
+                    <p class="text-gray-700 mb-6">"{{ __('landing.testimonial_2_text') }}"</p>
                     <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center font-bold text-green-600">ДК</div>
+                        <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center font-bold text-green-600">DK</div>
                         <div>
-                            <div class="font-bold text-gray-900">Дарья К.</div>
-                            <div class="text-sm text-gray-600">Владелец магазина</div>
+                            <div class="font-bold text-gray-900">{{ __('landing.testimonial_2_name') }}</div>
+                            <div class="text-sm text-gray-600">{{ __('landing.testimonial_2_role') }}</div>
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="bg-gray-50 rounded-2xl p-8">
                     <div class="flex gap-1 mb-4">
                         <span class="text-yellow-400 text-xl">★★★★★</span>
                     </div>
-                    <p class="text-gray-700 mb-6">"Складской учёт — супер! Раньше вели в Excel, теперь всё автоматически. Знаем остатки в реальном времени на всех складах."</p>
+                    <p class="text-gray-700 mb-6">"{{ __('landing.testimonial_3_text') }}"</p>
                     <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center font-bold text-purple-600">СИ</div>
+                        <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center font-bold text-purple-600">SI</div>
                         <div>
-                            <div class="font-bold text-gray-900">Сергей И.</div>
-                            <div class="text-sm text-gray-600">Директор, Retail Group</div>
+                            <div class="font-bold text-gray-900">{{ __('landing.testimonial_3_name') }}</div>
+                            <div class="text-sm text-gray-600">{{ __('landing.testimonial_3_role') }}</div>
                         </div>
                     </div>
                 </div>
@@ -766,9 +766,9 @@
     <section id="pricing" class="py-20 bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
-                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Тарифы</div>
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Прозрачное ценообразование</h2>
-                <p class="text-lg text-gray-600">Без скрытых платежей. Отмена в любой момент.</p>
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">{{ __('landing.nav_pricing') }}</div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.pricing_title') }}</h2>
+                <p class="text-lg text-gray-600">{{ __('landing.pricing_subtitle') }}</p>
             </div>
             
             <div class="grid md:grid-cols-4 gap-8 max-w-6xl mx-auto">
@@ -859,137 +859,88 @@
     <section id="faq" class="py-20 bg-white">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
-                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">FAQ</div>
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Частые вопросы</h2>
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">{{ __('landing.nav_faq') }}</div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.faq_title') }}</h2>
             </div>
-            
+
             <div class="space-y-4">
+                @for($i = 1; $i <= 5; $i++)
                 <div class="border border-gray-200 rounded-xl">
-                    <button @click="faqOpen = faqOpen === 1 ? null : 1" class="w-full px-6 py-4 text-left flex items-center justify-between">
-                        <span class="font-medium text-gray-900">Как происходит синхронизация остатков?</span>
-                        <svg class="w-5 h-5 text-gray-500 transition-transform" :class="faqOpen === 1 ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button @click="faqOpen = faqOpen === {{ $i }} ? null : {{ $i }}" class="w-full px-6 py-4 text-left flex items-center justify-between">
+                        <span class="font-medium text-gray-900">{{ __("landing.faq_{$i}_question") }}</span>
+                        <svg class="w-5 h-5 text-gray-500 transition-transform" :class="faqOpen === {{ $i }} ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                         </svg>
                     </button>
-                    <div x-show="faqOpen === 1" x-cloak class="px-6 pb-4 text-gray-600">
-                        Система автоматически синхронизирует остатки между вашим складом и всеми подключёнными маркетплейсами каждые 5-15 минут. При продаже на любой площадке остатки мгновенно обновляются везде.
+                    <div x-show="faqOpen === {{ $i }}" x-cloak class="px-6 pb-4 text-gray-600">
+                        {{ __("landing.faq_{$i}_answer") }}
                     </div>
                 </div>
-                
-                <div class="border border-gray-200 rounded-xl">
-                    <button @click="faqOpen = faqOpen === 2 ? null : 2" class="w-full px-6 py-4 text-left flex items-center justify-between">
-                        <span class="font-medium text-gray-900">Какие маркетплейсы поддерживаются?</span>
-                        <svg class="w-5 h-5 text-gray-500 transition-transform" :class="faqOpen === 2 ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    </button>
-                    <div x-show="faqOpen === 2" x-cloak class="px-6 pb-4 text-gray-600">
-                        Сейчас полностью поддерживаются Uzum Market и Wildberries. Ozon и Яндекс Маркет находятся в разработке и будут доступны в ближайшее время.
-                    </div>
-                </div>
-                
-                <div class="border border-gray-200 rounded-xl">
-                    <button @click="faqOpen = faqOpen === 3 ? null : 3" class="w-full px-6 py-4 text-left flex items-center justify-between">
-                        <span class="font-medium text-gray-900">Можно ли попробовать бесплатно?</span>
-                        <svg class="w-5 h-5 text-gray-500 transition-transform" :class="faqOpen === 3 ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    </button>
-                    <div x-show="faqOpen === 3" x-cloak class="px-6 pb-4 text-gray-600">
-                        Да! Тариф "Старт" бесплатен навсегда. Вы можете подключить 1 маркетплейс и до 100 товаров без ограничения по времени. Для расширения возможностей переходите на платный тариф.
-                    </div>
-                </div>
-                
-                <div class="border border-gray-200 rounded-xl">
-                    <button @click="faqOpen = faqOpen === 4 ? null : 4" class="w-full px-6 py-4 text-left flex items-center justify-between">
-                        <span class="font-medium text-gray-900">Как работает AI-помощник?</span>
-                        <svg class="w-5 h-5 text-gray-500 transition-transform" :class="faqOpen === 4 ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    </button>
-                    <div x-show="faqOpen === 4" x-cloak class="px-6 pb-4 text-gray-600">
-                        AI-помощник использует современные языковые модели для генерации описаний товаров, ответов на отзывы покупателей и создания промо-материалов. Просто опишите задачу, и ИИ выполнит её за секунды.
-                    </div>
-                </div>
-                
-                <div class="border border-gray-200 rounded-xl">
-                    <button @click="faqOpen = faqOpen === 5 ? null : 5" class="w-full px-6 py-4 text-left flex items-center justify-between">
-                        <span class="font-medium text-gray-900">Безопасно ли хранение данных?</span>
-                        <svg class="w-5 h-5 text-gray-500 transition-transform" :class="faqOpen === 5 ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    </button>
-                    <div x-show="faqOpen === 5" x-cloak class="px-6 pb-4 text-gray-600">
-                        Да, безопасность — наш приоритет. Все данные шифруются, сервера находятся в защищённых дата-центрах, регулярно создаются резервные копии. Мы не передаём данные третьим лицам.
-                    </div>
-                </div>
+                @endfor
             </div>
         </div>
     </section>
 
-    <!-- Comparison Section - NEW -->
+    <!-- Comparison Section -->
     <section class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16 scroll-reveal">
-                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Сравнение</div>
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">{{ __('landing.comparison_feature') }}</div>
                 <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.comparison_title') }}</h2>
                 <p class="text-lg text-gray-600 max-w-2xl mx-auto">{{ __('landing.comparison_subtitle') }}</p>
             </div>
-            
+
             <div class="overflow-x-auto">
                 <table class="w-full">
                     <thead>
                         <tr class="border-b-2 border-gray-200">
-                            <th class="py-4 px-4 text-left text-gray-900 font-bold">Функция</th>
+                            <th class="py-4 px-4 text-left text-gray-900 font-bold">{{ __('landing.comparison_feature') }}</th>
                             <th class="py-4 px-4 text-center">
-                                <div class="text-blue-600 font-bold text-lg mb-1">SellerMind</div>
-                                <div class="text-xs text-gray-500">Наша система</div>
+                                <div class="text-blue-600 font-bold text-lg mb-1">{{ __('landing.comparison_sellermind') }}</div>
+                                <div class="text-xs text-gray-500">{{ __('landing.comparison_our_system') }}</div>
                             </th>
                             <th class="py-4 px-4 text-center">
-                                <div class="text-gray-700 font-semibold mb-1">Компания 1</div>
-                                <div class="text-xs text-gray-500">Конкурент</div>
+                                <div class="text-gray-700 font-semibold mb-1">{{ __('landing.comparison_competitor') }} A</div>
                             </th>
                             <th class="py-4 px-4 text-center">
-                                <div class="text-gray-700 font-semibold mb-1">Компания 2</div>
-                                <div class="text-xs text-gray-500">Конкурент</div>
+                                <div class="text-gray-700 font-semibold mb-1">{{ __('landing.comparison_competitor') }} B</div>
                             </th>
                             <th class="py-4 px-4 text-center">
-                                <div class="text-gray-700 font-semibold mb-1">Компания 3</div>
-                                <div class="text-xs text-gray-500">Конкурент</div>
+                                <div class="text-gray-700 font-semibold mb-1">{{ __('landing.comparison_competitor') }} C</div>
                             </th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr class="border-b border-gray-100 hover:bg-gray-50">
-                            <td class="py-4 px-4 font-medium text-gray-900">Синхронизация остатков</td>
+                            <td class="py-4 px-4 font-medium text-gray-900">{{ __('landing.comparison_sync') }}</td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
                         </tr>
                         <tr class="border-b border-gray-100 hover:bg-gray-50">
-                            <td class="py-4 px-4 font-medium text-gray-900">AI-помощник</td>
+                            <td class="py-4 px-4 font-medium text-gray-900">{{ __('landing.comparison_ai') }}</td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                         </tr>
                         <tr class="border-b border-gray-100 hover:bg-gray-50">
-                            <td class="py-4 px-4 font-medium text-gray-900">Складской учёт (WMS)</td>
+                            <td class="py-4 px-4 font-medium text-gray-900">{{ __('landing.comparison_wms') }}</td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                         </tr>
                         <tr class="border-b border-gray-100 hover:bg-gray-50">
-                            <td class="py-4 px-4 font-medium text-gray-900">Автоматические промо-акции</td>
+                            <td class="py-4 px-4 font-medium text-gray-900">{{ __('landing.comparison_promo') }}</td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                         </tr>
                         <tr class="border-b border-gray-100 hover:bg-gray-50">
-                            <td class="py-4 px-4 font-medium text-gray-900">Умное ценообразование</td>
+                            <td class="py-4 px-4 font-medium text-gray-900">{{ __('landing.comparison_pricing') }}</td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
@@ -998,8 +949,8 @@
                         <tr class="border-b border-gray-100 hover:bg-gray-50 bg-blue-50">
                             <td class="py-4 px-4 font-medium text-gray-900">
                                 <div class="flex items-center gap-2">
-                                    <span>Интеграция с 4+ маркетплейсами</span>
-                                    <span class="text-xs bg-blue-600 text-white px-2 py-1 rounded-full">ТОЛЬКО У НАС</span>
+                                    <span>{{ __('landing.comparison_integration_4plus') }}</span>
+                                    <span class="text-xs bg-blue-600 text-white px-2 py-1 rounded-full">{{ __('landing.comparison_only_us') }}</span>
                                 </div>
                             </td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
@@ -1008,28 +959,28 @@
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                         </tr>
                         <tr class="border-b border-gray-100 hover:bg-gray-50">
-                            <td class="py-4 px-4 font-medium text-gray-900">Аналитика и дашборды</td>
+                            <td class="py-4 px-4 font-medium text-gray-900">{{ __('landing.comparison_analytics') }}</td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                         </tr>
                         <tr class="border-b border-gray-100 hover:bg-gray-50">
-                            <td class="py-4 px-4 font-medium text-gray-900">Telegram уведомления</td>
+                            <td class="py-4 px-4 font-medium text-gray-900">{{ __('landing.comparison_telegram') }}</td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                         </tr>
                         <tr class="border-b border-gray-100 hover:bg-gray-50">
-                            <td class="py-4 px-4 font-medium text-gray-900">Массовые операции</td>
+                            <td class="py-4 px-4 font-medium text-gray-900">{{ __('landing.comparison_bulk') }}</td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                         </tr>
                         <tr class="bg-blue-50">
-                            <td class="py-4 px-4 font-bold text-gray-900">Всего функций</td>
+                            <td class="py-4 px-4 font-bold text-gray-900">{{ __('landing.comparison_total') }}</td>
                             <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-blue-600">9/9</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">3/9</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">4/9</span></td>
@@ -1038,9 +989,9 @@
                     </tbody>
                 </table>
             </div>
-            
+
             <div class="mt-12 text-center">
-                <a href="/register" class="inline-flex items-center px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition text-lg shadow-lg shadow-blue-600/30">
+                <a href="/{{ app()->getLocale() }}/register" class="inline-flex items-center px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition text-lg shadow-lg shadow-blue-600/30">
                     {{ __('landing.comparison_cta') }}
                 </a>
             </div>
@@ -1050,14 +1001,14 @@
     <!-- CTA -->
     <section class="py-20 bg-blue-600">
         <div class="max-w-4xl mx-auto px-4 text-center">
-            <h2 class="text-3xl sm:text-4xl font-bold mb-6" style="color: white !important;">Готовы масштабировать бизнес?</h2>
-            <p class="text-xl mb-8" style="color: white !important;">Присоединяйтесь к 500+ компаниям на SellerMind</p>
+            <h2 class="text-3xl sm:text-4xl font-bold mb-6" style="color: white !important;">{{ __('landing.cta_title') }}</h2>
+            <p class="text-xl mb-8" style="color: white !important;">{{ __('landing.cta_subtitle') }}</p>
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="/register" class="px-10 py-4 bg-white font-bold rounded-xl hover:bg-blue-50 transition text-lg shadow-xl" style="color: #2563eb !important;">
-                    Начать бесплатно
+                <a href="/{{ app()->getLocale() }}/register" class="px-10 py-4 bg-white font-bold rounded-xl hover:bg-blue-50 transition text-lg shadow-xl" style="color: #2563eb !important;">
+                    {{ __('landing.cta_start_free') }}
                 </a>
-                <a href="#" class="px-10 py-4 border-2 border-white font-bold rounded-xl hover:bg-blue-700 transition text-lg" style="color: white !important;">
-                    Запросить демо
+                <a href="#pricing" class="px-10 py-4 border-2 border-white font-bold rounded-xl hover:bg-blue-700 transition text-lg" style="color: white !important;">
+                    {{ __('landing.cta_request_demo') }}
                 </a>
             </div>
         </div>
@@ -1076,26 +1027,26 @@
                         </div>
                         <span class="text-white font-bold">SellerMind</span>
                     </div>
-                    <p class="text-sm text-gray-500">Платформа для управления продажами на маркетплейсах</p>
+                    <p class="text-sm text-gray-500">{{ __('landing.footer_description') }}</p>
                 </div>
                 <div>
-                    <h4 class="text-white font-semibold mb-4">Продукт</h4>
+                    <h4 class="text-white font-semibold mb-4">{{ __('landing.footer_product') }}</h4>
                     <ul class="space-y-2 text-sm">
-                        <li><a href="#features" class="text-gray-300 hover:text-white transition">Возможности</a></li>
-                        <li><a href="#pricing" class="text-gray-300 hover:text-white transition">Тарифы</a></li>
-                        <li><a href="#integrations" class="text-gray-300 hover:text-white transition">Интеграции</a></li>
+                        <li><a href="#features" class="text-gray-300 hover:text-white transition">{{ __('landing.nav_features') }}</a></li>
+                        <li><a href="#pricing" class="text-gray-300 hover:text-white transition">{{ __('landing.nav_pricing') }}</a></li>
+                        <li><a href="#integrations" class="text-gray-300 hover:text-white transition">{{ __('landing.nav_integrations') }}</a></li>
                     </ul>
                 </div>
                 <div>
-                    <h4 class="text-white font-semibold mb-4">Ресурсы</h4>
+                    <h4 class="text-white font-semibold mb-4">{{ __('landing.footer_resources') }}</h4>
                     <ul class="space-y-2 text-sm">
-                        <li><a href="#" class="text-gray-300 hover:text-white transition">Документация</a></li>
-                        <li><a href="#faq" class="text-gray-300 hover:text-white transition">FAQ</a></li>
-                        <li><a href="#" class="text-gray-300 hover:text-white transition">Блог</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition">{{ __('landing.footer_documentation') }}</a></li>
+                        <li><a href="#faq" class="text-gray-300 hover:text-white transition">{{ __('landing.nav_faq') }}</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition">{{ __('landing.footer_blog') }}</a></li>
                     </ul>
                 </div>
                 <div>
-                    <h4 class="text-white font-semibold mb-4">Контакты</h4>
+                    <h4 class="text-white font-semibold mb-4">{{ __('landing.footer_contacts') }}</h4>
                     <ul class="space-y-2 text-sm text-gray-300">
                         <li>info@sellermind.uz</li>
                         <li>+998 90 123 45 67</li>
@@ -1103,7 +1054,7 @@
                 </div>
             </div>
             <div class="border-t border-gray-700 mt-8 pt-8 text-center text-sm text-gray-400">
-                © 2025 SellerMind. Все права защищены.
+                {{ __('landing.footer_copyright', ['year' => date('Y')]) }}
             </div>
         </div>
     </footer>

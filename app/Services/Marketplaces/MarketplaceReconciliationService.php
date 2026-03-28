@@ -4,7 +4,7 @@
 
 namespace App\Services\Marketplaces;
 
-use App\Models\MarketplaceOrder;
+use App\Models\MarketplaceAccount;
 use App\Models\MarketplacePayout;
 use App\Models\MarketplacePayoutItem;
 use App\Models\MarketplaceSyncLog;
@@ -31,27 +31,30 @@ class MarketplaceReconciliationService
         $items = $payout->items()->get();
         $summary['total_items'] = $items->count();
 
+        $account = MarketplaceAccount::find($payout->marketplace_account_id);
+
         foreach ($items as $item) {
             if ($item->operation_type === MarketplacePayoutItem::TYPE_SALE) {
                 $summary['actual_sales'] += $item->amount;
 
                 // Try to match with order
                 if ($item->marketplace_order_id) {
-                    $order = MarketplaceOrder::find($item->marketplace_order_id);
+                    $order = $this->findOrderById($account, $item->marketplace_order_id);
                     if ($order) {
-                        $summary['expected_sales'] += $order->total_amount;
+                        $totalAmount = $order->total_amount ?? $order->total_price ?? 0;
+                        $summary['expected_sales'] += $totalAmount;
                         $summary['matched_items']++;
 
                         // Check for discrepancy
-                        $diff = abs($item->amount - $order->total_amount);
+                        $diff = abs($item->amount - $totalAmount);
                         if ($diff > 0.01) {
                             $discrepancies[] = [
                                 'type' => 'amount_mismatch',
                                 'order_id' => $order->id,
-                                'external_order_id' => $order->external_order_id,
-                                'expected' => $order->total_amount,
+                                'external_order_id' => $order->external_order_id ?? $order->order_id ?? null,
+                                'expected' => $totalAmount,
                                 'actual' => $item->amount,
-                                'difference' => $item->amount - $order->total_amount,
+                                'difference' => $item->amount - $totalAmount,
                             ];
                         }
                     } else {
@@ -85,29 +88,65 @@ class MarketplaceReconciliationService
      */
     public function findMissingOrders(MarketplacePayout $payout): array
     {
+        $account = MarketplaceAccount::find($payout->marketplace_account_id);
+        if (! $account) {
+            return [];
+        }
+
         $payoutOrderIds = $payout->items()
             ->whereNotNull('marketplace_order_id')
             ->pluck('marketplace_order_id')
             ->toArray();
 
-        $missingOrders = MarketplaceOrder::where('marketplace_account_id', $payout->marketplace_account_id)
-            ->where('internal_status', MarketplaceOrder::INTERNAL_STATUS_DELIVERED)
-            ->whereNotNull('ordered_at')
-            ->when($payout->period_from, function ($query) use ($payout) {
-                $query->where('ordered_at', '>=', $payout->period_from);
+        $modelClass = $this->getOrderModelClass($account);
+        if (! $modelClass) {
+            return [];
+        }
+
+        // Определяем поля в зависимости от модели
+        $statusField = match ($account->marketplace) {
+            'ym' => 'status_normalized',
+            default => 'status',
+        };
+        $deliveredStatus = match ($account->marketplace) {
+            'wb' => 'completed',
+            'ym' => 'delivered',
+            default => 'delivered',
+        };
+        $dateField = match ($account->marketplace) {
+            'wb' => 'ordered_at',
+            'uzum' => 'ordered_at',
+            'ozon' => 'created_at_ozon',
+            'ym' => 'created_at_ym',
+            default => 'created_at',
+        };
+        $amountField = match ($account->marketplace) {
+            'wb', 'uzum' => 'total_amount',
+            default => 'total_price',
+        };
+        $externalIdField = match ($account->marketplace) {
+            'ozon', 'ym' => 'order_id',
+            default => 'external_order_id',
+        };
+
+        $missingOrders = $modelClass::where('marketplace_account_id', $payout->marketplace_account_id)
+            ->where($statusField, $deliveredStatus)
+            ->whereNotNull($dateField)
+            ->when($payout->period_from, function ($query) use ($payout, $dateField) {
+                $query->where($dateField, '>=', $payout->period_from);
             })
-            ->when($payout->period_to, function ($query) use ($payout) {
-                $query->where('ordered_at', '<=', $payout->period_to->endOfDay());
+            ->when($payout->period_to, function ($query) use ($payout, $dateField) {
+                $query->where($dateField, '<=', $payout->period_to->endOfDay());
             })
             ->whereNotIn('id', $payoutOrderIds)
             ->get();
 
-        return $missingOrders->map(function ($order) {
+        return $missingOrders->map(function ($order) use ($amountField, $externalIdField, $dateField) {
             return [
                 'order_id' => $order->id,
-                'external_order_id' => $order->external_order_id,
-                'total_amount' => $order->total_amount,
-                'ordered_at' => $order->ordered_at,
+                'external_order_id' => $order->{$externalIdField},
+                'total_amount' => $order->{$amountField},
+                'ordered_at' => $order->{$dateField},
             ];
         })->toArray();
     }
@@ -117,18 +156,84 @@ class MarketplaceReconciliationService
      */
     public function calculateExpectedPayout(int $accountId, string $periodFrom, string $periodTo): array
     {
-        $orders = MarketplaceOrder::where('marketplace_account_id', $accountId)
-            ->where('internal_status', MarketplaceOrder::INTERNAL_STATUS_DELIVERED)
-            ->whereBetween('ordered_at', [$periodFrom, $periodTo])
+        $account = MarketplaceAccount::find($accountId);
+        if (! $account) {
+            return ['orders_count' => 0, 'total_sales' => 0, 'orders' => []];
+        }
+
+        $modelClass = $this->getOrderModelClass($account);
+        if (! $modelClass) {
+            return ['orders_count' => 0, 'total_sales' => 0, 'orders' => []];
+        }
+
+        $statusField = match ($account->marketplace) {
+            'ym' => 'status_normalized',
+            default => 'status',
+        };
+        $deliveredStatus = match ($account->marketplace) {
+            'wb' => 'completed',
+            'ym' => 'delivered',
+            default => 'delivered',
+        };
+        $dateField = match ($account->marketplace) {
+            'wb' => 'ordered_at',
+            'uzum' => 'ordered_at',
+            'ozon' => 'created_at_ozon',
+            'ym' => 'created_at_ym',
+            default => 'created_at',
+        };
+        $amountField = match ($account->marketplace) {
+            'wb', 'uzum' => 'total_amount',
+            default => 'total_price',
+        };
+        $externalIdField = match ($account->marketplace) {
+            'ozon', 'ym' => 'order_id',
+            default => 'external_order_id',
+        };
+
+        $orders = $modelClass::where('marketplace_account_id', $accountId)
+            ->where($statusField, $deliveredStatus)
+            ->whereBetween($dateField, [$periodFrom, $periodTo])
             ->get();
 
-        $totalSales = $orders->sum('total_amount');
+        $totalSales = $orders->sum($amountField);
 
         return [
             'orders_count' => $orders->count(),
             'total_sales' => $totalSales,
-            'orders' => $orders->pluck('total_amount', 'external_order_id')->toArray(),
+            'orders' => $orders->pluck($amountField, $externalIdField)->toArray(),
         ];
+    }
+
+    /**
+     * Найти заказ по ID в соответствующей таблице маркетплейса
+     */
+    protected function findOrderById(?MarketplaceAccount $account, int $orderId): ?object
+    {
+        if (! $account) {
+            return null;
+        }
+
+        $modelClass = $this->getOrderModelClass($account);
+        if (! $modelClass) {
+            return null;
+        }
+
+        return $modelClass::find($orderId);
+    }
+
+    /**
+     * Получить класс модели заказов по маркетплейсу
+     */
+    protected function getOrderModelClass(MarketplaceAccount $account): ?string
+    {
+        return match ($account->marketplace) {
+            'wb' => \App\Models\WbOrder::class,
+            'uzum' => \App\Models\UzumOrder::class,
+            'ozon' => \App\Models\OzonOrder::class,
+            'ym' => \App\Models\YandexMarketOrder::class,
+            default => null,
+        };
     }
 
     /**

@@ -117,8 +117,8 @@ class SalesManagementController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'type' => 'required|in:marketplace,manual,pos',
-            'source' => 'nullable|in:uzum,wb,ozon,ym,manual,pos',
+            'type' => 'required|in:marketplace,manual,pos,store',
+            'source' => 'nullable|in:uzum,wb,ozon,ym,manual,pos,store,retail,wholesale,direct',
             'warehouse_id' => 'nullable|integer|exists:warehouses,id',
             'counterparty_id' => 'nullable|exists:counterparties,id',
             'currency' => 'nullable|in:UZS,USD,RUB',

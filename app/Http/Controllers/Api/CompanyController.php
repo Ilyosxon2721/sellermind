@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\CompanyResource;
 use App\Models\Company;
 use App\Models\UserCompanyRole;
+use App\Services\TrialService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -48,9 +49,21 @@ class CompanyController extends Controller
             $user->refresh();
         }
 
+        // Автоматически создаём пробный период (15 дней, полный функционал)
+        $trialService = app(TrialService::class);
+        $trial = null;
+        if (! $trialService->hasHadTrial($company)) {
+            $trial = $trialService->createTrial($company);
+        }
+
         return response()->json([
             'company' => new CompanyResource($company),
-            'user' => $user, // Return updated user so client can update their state
+            'user' => $user,
+            'trial' => $trial ? [
+                'active' => true,
+                'days_remaining' => TrialService::TRIAL_DAYS,
+                'ends_at' => $trial->trial_ends_at->toIso8601String(),
+            ] : null,
         ], 201);
     }
 
