@@ -128,6 +128,10 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.analytics');
     })->name('analytics');
 
+    Route::get('/business-analytics', function () {
+        return view('pages.business-analytics');
+    })->name('business-analytics');
+
     // Analytics sub-pages
     Route::prefix('analytics')->name('analytics.')->group(function () {
         Route::get('/revenue', function () {
