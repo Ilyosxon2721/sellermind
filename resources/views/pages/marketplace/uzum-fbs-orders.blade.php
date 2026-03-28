@@ -18,7 +18,7 @@
     .uzum-btn-outline { @apply border-2 border-[#3A007D] text-[#3A007D] hover:bg-[#3A007D] hover:text-white; }
 </style>
 
-<div x-data="uzumOrdersPage()" x-init="init()" x-cloak class="flex h-[calc(100vh-3.5rem)] lg:h-screen bg-gray-50 browser-only"
+<div x-data="uzumOrdersPage()" x-init="init()" x-cloak class="flex min-h-[calc(100vh-3.5rem)] lg:h-screen bg-gray-50 browser-only"
      :class="{
          'flex-row': $store.ui.navPosition === 'left',
          'flex-row-reverse': $store.ui.navPosition === 'right'
@@ -28,7 +28,7 @@
         <x-sidebar />
     </template>
 
-    <div class="flex-1 flex flex-col overflow-hidden font-sans"
+    <div class="flex-1 flex flex-col overflow-x-hidden lg:overflow-hidden font-sans"
          :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <!-- Uzum Header -->
         <header class="bg-white border-b border-gray-200 shadow-sm">
@@ -86,7 +86,7 @@
                         </div>
 
                         <!-- Shop Filter -->
-                        <div x-show="shopOptions.length > 1" class="relative" x-data="{ open: false }">
+                        <div x-show="shopOptions.length > 1" class="relative hidden sm:block" x-data="{ open: false }">
                             <button @click="open = !open"
                                     class="px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-medium flex items-center space-x-2 hover:border-[#3A007D] transition">
                                 <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,7 +118,7 @@
                         </div>
 
                         <!-- WebSocket Indicator -->
-                        <div class="flex items-center space-x-1 px-2 py-1 rounded-full"
+                        <div class="hidden sm:flex items-center space-x-1 px-2 py-1 rounded-full"
                              :class="wsConnected ? 'bg-green-100' : 'bg-gray-100'"
                              :title="wsConnected ? 'WebSocket подключён' : 'WebSocket отключён'">
                             <div class="w-2 h-2 rounded-full"
@@ -161,7 +161,7 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto">
+        <main class="flex-1 lg:overflow-y-auto">
             <!-- Messages -->
             <div x-show="message" x-transition class="px-4 sm:px-6 pt-4">
                 <div class="px-4 py-3 rounded-xl flex items-center space-x-3"
