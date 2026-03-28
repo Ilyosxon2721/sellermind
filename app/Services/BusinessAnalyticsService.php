@@ -309,34 +309,35 @@ final class BusinessAnalyticsService
                     'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'UZS'),
                 ]);
 
-            // Ozon
+            // Ozon — хранит заказы целиком (без offer_id/product_name)
+            // Используем order_id как идентификатор, posting_number для имени
             $ozonItems = DB::table('ozon_orders')
                 ->whereIn('marketplace_account_id', $accountIds)
                 ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
                 ->whereNotIn('status', self::CANCELLED_STATUSES)
                 ->select(
-                    DB::raw('COALESCE(offer_id, CAST(ozon_order_id AS CHAR)) as external_offer_id'),
-                    DB::raw('COALESCE(product_name, offer_id) as name'),
-                    DB::raw('COALESCE(items_count, 1) as quantity'),
+                    DB::raw('CAST(order_id AS CHAR) as external_offer_id'),
+                    DB::raw('COALESCE(posting_number, CAST(order_id AS CHAR)) as name'),
+                    DB::raw('1 as quantity'),
                     DB::raw('total_price')
                 )
                 ->get()
                 ->groupBy('external_offer_id')
                 ->map(fn ($rows) => [
                     'external_offer_id' => $rows->first()->external_offer_id,
-                    'name' => $rows->first()->name ?? $rows->first()->external_offer_id,
-                    'total_quantity' => (int) $rows->sum('quantity'),
+                    'name' => 'Ozon #' . $rows->first()->name,
+                    'total_quantity' => $rows->count(),
                     'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'RUB'),
                 ]);
 
-            // Yandex Market
+            // Yandex Market — хранит заказы целиком (без offer_id/product_name)
             $ymItems = DB::table('yandex_market_orders')
                 ->whereIn('marketplace_account_id', $accountIds)
                 ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
                 ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
                 ->select(
-                    DB::raw('COALESCE(offer_id, CAST(ym_order_id AS CHAR)) as external_offer_id'),
-                    DB::raw('COALESCE(product_name, offer_id) as name'),
+                    DB::raw('CAST(order_id AS CHAR) as external_offer_id'),
+                    DB::raw('CAST(order_id AS CHAR) as name'),
                     DB::raw('COALESCE(items_count, 1) as quantity'),
                     DB::raw('total_price')
                 )
@@ -344,7 +345,7 @@ final class BusinessAnalyticsService
                 ->groupBy('external_offer_id')
                 ->map(fn ($rows) => [
                     'external_offer_id' => $rows->first()->external_offer_id,
-                    'name' => $rows->first()->name ?? $rows->first()->external_offer_id,
+                    'name' => 'YM #' . $rows->first()->name,
                     'total_quantity' => (int) $rows->sum('quantity'),
                     'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'RUB'),
                 ]);
@@ -417,19 +418,19 @@ final class BusinessAnalyticsService
     {
         $customers = collect();
 
-        // Ручные продажи — основной источник данных по клиентам
+        // Ручные продажи — через контрагентов (counterparty_id → counterparties.name)
         $manualCustomers = DB::table('sales')
-            ->where('company_id', $this->companyId)
-            ->whereBetween('created_at', [$dateRange['from'], $dateRange['to']])
-            ->where('status', '!=', 'cancelled')
-            ->whereNull('deleted_at')
-            ->whereNotNull('customer_name')
+            ->join('counterparties', 'sales.counterparty_id', '=', 'counterparties.id')
+            ->where('sales.company_id', $this->companyId)
+            ->whereBetween('sales.created_at', [$dateRange['from'], $dateRange['to']])
+            ->where('sales.status', '!=', 'cancelled')
+            ->whereNull('sales.deleted_at')
             ->select(
-                DB::raw('COALESCE(customer_name, customer_phone, "Неизвестный") as customer_name'),
-                DB::raw('SUM(total) as total_amount'),
+                'counterparties.name as customer_name',
+                DB::raw('SUM(sales.total_amount) as total_amount'),
                 DB::raw('COUNT(*) as order_count')
             )
-            ->groupBy('customer_name')
+            ->groupBy('counterparties.name')
             ->get()
             ->map(fn ($row) => [
                 'customer_name' => $row->customer_name,
@@ -439,19 +440,19 @@ final class BusinessAnalyticsService
 
         $customers = $customers->merge($manualCustomers);
 
-        // Оффлайн продажи
-        $offlineCustomers = DB::table('offline_sales')
-            ->where('company_id', $this->companyId)
-            ->whereBetween('sale_date', [$dateRange['from'], $dateRange['to']])
-            ->whereIn('status', ['confirmed', 'delivered'])
-            ->whereNull('deleted_at')
-            ->whereNotNull('customer_name')
+        // Оффлайн продажи — через контрагентов или customer_name
+        $offlineByCounterparty = DB::table('offline_sales')
+            ->join('counterparties', 'offline_sales.counterparty_id', '=', 'counterparties.id')
+            ->where('offline_sales.company_id', $this->companyId)
+            ->whereBetween('offline_sales.sale_date', [$dateRange['from'], $dateRange['to']])
+            ->whereIn('offline_sales.status', ['confirmed', 'delivered'])
+            ->whereNull('offline_sales.deleted_at')
             ->select(
-                DB::raw('COALESCE(customer_name, customer_phone, "Неизвестный") as customer_name'),
-                DB::raw('SUM(total_amount) as total_amount'),
+                'counterparties.name as customer_name',
+                DB::raw('SUM(offline_sales.total_amount) as total_amount'),
                 DB::raw('COUNT(*) as order_count')
             )
-            ->groupBy('customer_name')
+            ->groupBy('counterparties.name')
             ->get()
             ->map(fn ($row) => [
                 'customer_name' => $row->customer_name,
@@ -459,7 +460,30 @@ final class BusinessAnalyticsService
                 'order_count' => (int) $row->order_count,
             ]);
 
-        $customers = $customers->merge($offlineCustomers);
+        $customers = $customers->merge($offlineByCounterparty);
+
+        // Оффлайн продажи без контрагента — по customer_name
+        $offlineByName = DB::table('offline_sales')
+            ->where('company_id', $this->companyId)
+            ->whereBetween('sale_date', [$dateRange['from'], $dateRange['to']])
+            ->whereIn('status', ['confirmed', 'delivered'])
+            ->whereNull('deleted_at')
+            ->whereNull('counterparty_id')
+            ->whereNotNull('customer_name')
+            ->select(
+                DB::raw('COALESCE(customer_name, customer_phone, "Неизвестный") as customer_name'),
+                DB::raw('SUM(total_amount) as total_amount'),
+                DB::raw('COUNT(*) as order_count')
+            )
+            ->groupBy(DB::raw('COALESCE(customer_name, customer_phone, "Неизвестный")'))
+            ->get()
+            ->map(fn ($row) => [
+                'customer_name' => $row->customer_name,
+                'total_amount' => (float) $row->total_amount,
+                'order_count' => (int) $row->order_count,
+            ]);
+
+        $customers = $customers->merge($offlineByName);
 
         // Объединяем одинаковых клиентов
         return $customers->groupBy('customer_name')->map(function ($group) {
