@@ -18,17 +18,38 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900">Бизнес-аналитика</h1>
-                    <p class="text-sm text-gray-500">ABC, ABCXYZ, SWOT и рейтинги товаров</p>
+                    <p class="text-sm text-gray-500">
+                        ABC, ABCXYZ, SWOT и рейтинги товаров
+                        <span x-show="source !== 'all'" class="inline-flex items-center ml-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700" x-text="
+                            source === 'wb' ? 'Wildberries' :
+                            source === 'ozon' ? 'Ozon' :
+                            source === 'uzum' ? 'Uzum' :
+                            source === 'ym' ? 'Yandex Market' :
+                            source === 'manual' ? 'Ручные' :
+                            source === 'offline' ? 'Оффлайн' : ''
+                        "></span>
+                    </p>
                 </div>
                 <div class="flex items-center space-x-3">
                     <template x-if="activeTab !== 'swot'">
-                        <select x-model="period" @change="loadCurrentTab()" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
-                            <option value="today">Сегодня</option>
-                            <option value="7days">7 дней</option>
-                            <option value="30days">30 дней</option>
-                            <option value="90days">90 дней</option>
-                            <option value="365days">Год</option>
-                        </select>
+                        <div class="flex items-center space-x-2">
+                            <select x-model="source" @change="loadCurrentTab()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
+                                <option value="all">Все каналы</option>
+                                <option value="wb">Wildberries</option>
+                                <option value="ozon">Ozon</option>
+                                <option value="uzum">Uzum Market</option>
+                                <option value="ym">Yandex Market</option>
+                                <option value="manual">Ручные продажи</option>
+                                <option value="offline">Оффлайн продажи</option>
+                            </select>
+                            <select x-model="period" @change="loadCurrentTab()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
+                                <option value="today">Сегодня</option>
+                                <option value="7days">7 дней</option>
+                                <option value="30days">30 дней</option>
+                                <option value="90days">90 дней</option>
+                                <option value="365days">Год</option>
+                            </select>
+                        </div>
                     </template>
                     <button @click="loadCurrentTab()" :disabled="loading" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
                         <span x-show="!loading">Обновить</span>
@@ -90,11 +111,18 @@
 <div class="pwa-only min-h-screen" x-data="businessAnalyticsPage()" x-init="init()" style="background: #f2f2f7;">
     <x-pwa-header title="Бизнес-аналитика">
         <template x-if="activeTab !== 'swot'">
-            <button @click="showPeriodSheet = true" class="native-header-btn">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
-            </button>
+            <div class="flex items-center space-x-1">
+                <button @click="showSourceSheet = true" class="native-header-btn">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                    </svg>
+                </button>
+                <button @click="showPeriodSheet = true" class="native-header-btn">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                </button>
+            </div>
         </template>
     </x-pwa-header>
 
@@ -150,6 +178,27 @@
             </div>
         </div>
     </template>
+
+    {{-- Source Bottom Sheet --}}
+    <template x-if="showSourceSheet">
+        <div class="fixed inset-0 z-50" @click.self="showSourceSheet = false">
+            <div class="absolute inset-0 bg-black/30" @click="showSourceSheet = false"></div>
+            <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-6 safe-area-bottom">
+                <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
+                <h3 class="text-lg font-semibold mb-4">Канал продаж</h3>
+                <div class="space-y-2">
+                    <template x-for="s in [{v:'all',l:'Все каналы',icon:'🌐'},{v:'wb',l:'Wildberries',icon:'🟣'},{v:'ozon',l:'Ozon',icon:'🔵'},{v:'uzum',l:'Uzum Market',icon:'🟢'},{v:'ym',l:'Yandex Market',icon:'🟡'},{v:'manual',l:'Ручные продажи',icon:'📝'},{v:'offline',l:'Оффлайн продажи',icon:'🏪'}]">
+                        <button @click="source = s.v; showSourceSheet = false; loadCurrentTab()"
+                                :class="source === s.v ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-700'"
+                                class="w-full py-3 px-4 rounded-xl text-left font-medium border transition flex items-center space-x-3">
+                            <span x-text="s.icon"></span>
+                            <span x-text="s.l"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </template>
 </div>
 
 @endsection
@@ -162,7 +211,9 @@ function businessAnalyticsPage() {
         loading: false,
         activeTab: 'abc',
         period: '30days',
+        source: 'all',
         showPeriodSheet: false,
+        showSourceSheet: false,
 
         // ABC данные
         abcData: {
@@ -492,7 +543,7 @@ function businessAnalyticsPage() {
         async loadAbcData() {
             this.loading = true;
             try {
-                const params = { period: this.period };
+                const params = { period: this.period, source: this.source };
                 const companyId = this.getCompanyId();
                 if (companyId) params.company_id = companyId;
 
@@ -515,7 +566,7 @@ function businessAnalyticsPage() {
         async loadAbcxyzData() {
             this.loading = true;
             try {
-                const params = { period: this.period };
+                const params = { period: this.period, source: this.source };
                 const companyId = this.getCompanyId();
                 if (companyId) params.company_id = companyId;
 
@@ -609,11 +660,11 @@ function businessAnalyticsPage() {
         async loadSalesRanking() {
             this.loading = true;
             try {
-                const params = { period: this.period };
+                const params = { period: this.period, source: this.source };
                 const companyId = this.getCompanyId();
                 if (companyId) params.company_id = companyId;
 
-                const response = await window.api.get('/business-analytics/rankings/sales', { params, silent: true });
+                const response = await window.api.get('/business-analytics/rankings/sales', { params: params, silent: true });
                 if (response?.data) {
                     this.salesData = response.data;
                     this.salesPage = 1;
@@ -630,11 +681,11 @@ function businessAnalyticsPage() {
         async loadMarginRanking() {
             this.loading = true;
             try {
-                const params = { period: this.period };
+                const params = { period: this.period, source: this.source };
                 const companyId = this.getCompanyId();
                 if (companyId) params.company_id = companyId;
 
-                const response = await window.api.get('/business-analytics/rankings/margin', { params, silent: true });
+                const response = await window.api.get('/business-analytics/rankings/margin', { params: params, silent: true });
                 if (response?.data) {
                     this.marginData = response.data;
                     this.marginPage = 1;

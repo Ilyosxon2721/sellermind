@@ -48,13 +48,13 @@ final class BusinessAnalyticsService
      * B = 30% ассортимента → ~15% продаж
      * C = 50% ассортимента → ~5% продаж
      */
-    public function getAbcAnalysis(int $companyId, string $period = '30days'): array
+    public function getAbcAnalysis(int $companyId, string $period = '30days', string $source = 'all'): array
     {
         $this->forCompany($companyId);
         $dateRange = $this->getDateRange($period);
-        $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
+        $accountIds = $this->getFilteredAccountIds($companyId, $source);
 
-        $items = $this->getAggregatedProductRevenue($accountIds, $dateRange);
+        $items = $this->getAggregatedProductRevenue($accountIds, $dateRange, $source);
 
         if ($items->isEmpty()) {
             return [
@@ -135,11 +135,11 @@ final class BusinessAnalyticsService
      * ABC — по сумме покупок: A >= $10 000, B >= $5 000, C < $5 000
      * XYZ — по частоте: X = ежедневно (>=5/нед), Y = еженедельно (1-4/нед), Z = ежемесячно (<1/нед)
      */
-    public function getAbcxyzAnalysis(int $companyId, string $period = '90days'): array
+    public function getAbcxyzAnalysis(int $companyId, string $period = '90days', string $source = 'all'): array
     {
         $this->forCompany($companyId);
         $dateRange = $this->getDateRange($period);
-        $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
+        $accountIds = $this->getFilteredAccountIds($companyId, $source);
 
         $customers = $this->getCustomerData($accountIds, $dateRange);
 
@@ -260,45 +260,148 @@ final class BusinessAnalyticsService
     }
 
     /**
+     * Получить отфильтрованные аккаунты маркетплейсов
+     */
+    protected function getFilteredAccountIds(int $companyId, string $source): Collection
+    {
+        $query = MarketplaceAccount::where('company_id', $companyId);
+
+        // Фильтр по конкретному маркетплейсу
+        if (in_array($source, ['wb', 'ozon', 'uzum', 'ym'])) {
+            $query->where('marketplace', $source);
+        }
+
+        return $query->pluck('id');
+    }
+
+    /**
+     * Проверить нужно ли включать данный источник
+     */
+    protected function shouldIncludeSource(string $source, string $type): bool
+    {
+        if ($source === 'all') {
+            return true;
+        }
+
+        return $source === $type;
+    }
+
+    /**
      * Получить агрегированные данные по выручке товаров из всех источников
      */
-    protected function getAggregatedProductRevenue(Collection $accountIds, array $dateRange): Collection
+    protected function getAggregatedProductRevenue(Collection $accountIds, array $dateRange, string $source = 'all'): Collection
     {
         $allItems = collect();
 
         if ($accountIds->isNotEmpty()) {
-            // WB Statistics API
-            $wbItems = DB::table('wildberries_orders')
-                ->whereIn('marketplace_account_id', $accountIds)
-                ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
-                ->where('is_cancel', false)
-                ->where('is_return', false)
-                ->select(
-                    DB::raw('COALESCE(supplier_article, CAST(nm_id AS CHAR)) as external_offer_id'),
-                    DB::raw('COALESCE(subject, supplier_article, CAST(nm_id AS CHAR)) as name'),
-                    DB::raw('1 as quantity'),
-                    DB::raw('for_pay as total_price')
-                )
-                ->get()
-                ->groupBy('external_offer_id')
-                ->map(fn ($rows) => [
-                    'external_offer_id' => $rows->first()->external_offer_id,
-                    'name' => $rows->first()->name,
-                    'total_quantity' => $rows->count(),
-                    'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'RUB'),
-                ]);
+            // WB
+            if ($this->shouldIncludeSource($source, 'wb')) {
+                $wbItems = DB::table('wildberries_orders')
+                    ->whereIn('marketplace_account_id', $accountIds)
+                    ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
+                    ->where('is_cancel', false)
+                    ->where('is_return', false)
+                    ->select(
+                        DB::raw('COALESCE(supplier_article, CAST(nm_id AS CHAR)) as external_offer_id'),
+                        DB::raw('COALESCE(subject, supplier_article, CAST(nm_id AS CHAR)) as name'),
+                        DB::raw('1 as quantity'),
+                        DB::raw('for_pay as total_price')
+                    )
+                    ->get()
+                    ->groupBy('external_offer_id')
+                    ->map(fn ($rows) => [
+                        'external_offer_id' => $rows->first()->external_offer_id,
+                        'name' => $rows->first()->name,
+                        'total_quantity' => $rows->count(),
+                        'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'RUB'),
+                    ]);
+                $allItems = $allItems->merge($wbItems);
+            }
 
             // Uzum
-            $uzumItems = DB::table('uzum_order_items')
-                ->join('uzum_orders', 'uzum_order_items.uzum_order_id', '=', 'uzum_orders.id')
-                ->whereIn('uzum_orders.marketplace_account_id', $accountIds)
-                ->whereBetween('uzum_orders.ordered_at', [$dateRange['from'], $dateRange['to']])
-                ->whereNotIn('uzum_orders.status_normalized', self::CANCELLED_STATUSES)
+            if ($this->shouldIncludeSource($source, 'uzum')) {
+                $uzumItems = DB::table('uzum_order_items')
+                    ->join('uzum_orders', 'uzum_order_items.uzum_order_id', '=', 'uzum_orders.id')
+                    ->whereIn('uzum_orders.marketplace_account_id', $accountIds)
+                    ->whereBetween('uzum_orders.ordered_at', [$dateRange['from'], $dateRange['to']])
+                    ->whereNotIn('uzum_orders.status_normalized', self::CANCELLED_STATUSES)
+                    ->select(
+                        'uzum_order_items.external_offer_id',
+                        'uzum_order_items.name',
+                        'uzum_order_items.quantity',
+                        'uzum_order_items.total_price'
+                    )
+                    ->get()
+                    ->groupBy('external_offer_id')
+                    ->map(fn ($rows) => [
+                        'external_offer_id' => $rows->first()->external_offer_id,
+                        'name' => $rows->first()->name ?? $rows->first()->external_offer_id,
+                        'total_quantity' => (int) $rows->sum('quantity'),
+                        'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'UZS'),
+                    ]);
+                $allItems = $allItems->merge($uzumItems);
+            }
+
+            // Ozon
+            if ($this->shouldIncludeSource($source, 'ozon')) {
+                $ozonItems = DB::table('ozon_orders')
+                    ->whereIn('marketplace_account_id', $accountIds)
+                    ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
+                    ->whereNotIn('status', self::CANCELLED_STATUSES)
+                    ->select(
+                        DB::raw('CAST(order_id AS CHAR) as external_offer_id'),
+                        DB::raw('COALESCE(posting_number, CAST(order_id AS CHAR)) as name'),
+                        DB::raw('1 as quantity'),
+                        DB::raw('total_price')
+                    )
+                    ->get()
+                    ->groupBy('external_offer_id')
+                    ->map(fn ($rows) => [
+                        'external_offer_id' => $rows->first()->external_offer_id,
+                        'name' => 'Ozon #' . $rows->first()->name,
+                        'total_quantity' => $rows->count(),
+                        'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'RUB'),
+                    ]);
+                $allItems = $allItems->merge($ozonItems);
+            }
+
+            // Yandex Market
+            if ($this->shouldIncludeSource($source, 'ym')) {
+                $ymItems = DB::table('yandex_market_orders')
+                    ->whereIn('marketplace_account_id', $accountIds)
+                    ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
+                    ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+                    ->select(
+                        DB::raw('CAST(order_id AS CHAR) as external_offer_id'),
+                        DB::raw('CAST(order_id AS CHAR) as name'),
+                        DB::raw('COALESCE(items_count, 1) as quantity'),
+                        DB::raw('total_price')
+                    )
+                    ->get()
+                    ->groupBy('external_offer_id')
+                    ->map(fn ($rows) => [
+                        'external_offer_id' => $rows->first()->external_offer_id,
+                        'name' => 'YM #' . $rows->first()->name,
+                        'total_quantity' => (int) $rows->sum('quantity'),
+                        'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'RUB'),
+                    ]);
+                $allItems = $allItems->merge($ymItems);
+            }
+        }
+
+        // Ручные продажи
+        if ($this->shouldIncludeSource($source, 'manual')) {
+            $manualItems = DB::table('sale_items')
+                ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                ->where('sales.company_id', $this->companyId)
+                ->whereBetween('sales.created_at', [$dateRange['from'], $dateRange['to']])
+                ->where('sales.status', '!=', 'cancelled')
+                ->whereNull('sales.deleted_at')
                 ->select(
-                    'uzum_order_items.external_offer_id',
-                    'uzum_order_items.name',
-                    'uzum_order_items.quantity',
-                    'uzum_order_items.total_price'
+                    DB::raw('COALESCE(sale_items.sku, sale_items.product_name) as external_offer_id'),
+                    'sale_items.product_name as name',
+                    'sale_items.quantity',
+                    'sale_items.total as total_price'
                 )
                 ->get()
                 ->groupBy('external_offer_id')
@@ -306,96 +409,35 @@ final class BusinessAnalyticsService
                     'external_offer_id' => $rows->first()->external_offer_id,
                     'name' => $rows->first()->name ?? $rows->first()->external_offer_id,
                     'total_quantity' => (int) $rows->sum('quantity'),
-                    'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'UZS'),
+                    'total_revenue' => (float) $rows->sum('total_price'),
                 ]);
-
-            // Ozon — хранит заказы целиком (без offer_id/product_name)
-            // Используем order_id как идентификатор, posting_number для имени
-            $ozonItems = DB::table('ozon_orders')
-                ->whereIn('marketplace_account_id', $accountIds)
-                ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
-                ->whereNotIn('status', self::CANCELLED_STATUSES)
-                ->select(
-                    DB::raw('CAST(order_id AS CHAR) as external_offer_id'),
-                    DB::raw('COALESCE(posting_number, CAST(order_id AS CHAR)) as name'),
-                    DB::raw('1 as quantity'),
-                    DB::raw('total_price')
-                )
-                ->get()
-                ->groupBy('external_offer_id')
-                ->map(fn ($rows) => [
-                    'external_offer_id' => $rows->first()->external_offer_id,
-                    'name' => 'Ozon #' . $rows->first()->name,
-                    'total_quantity' => $rows->count(),
-                    'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'RUB'),
-                ]);
-
-            // Yandex Market — хранит заказы целиком (без offer_id/product_name)
-            $ymItems = DB::table('yandex_market_orders')
-                ->whereIn('marketplace_account_id', $accountIds)
-                ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
-                ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
-                ->select(
-                    DB::raw('CAST(order_id AS CHAR) as external_offer_id'),
-                    DB::raw('CAST(order_id AS CHAR) as name'),
-                    DB::raw('COALESCE(items_count, 1) as quantity'),
-                    DB::raw('total_price')
-                )
-                ->get()
-                ->groupBy('external_offer_id')
-                ->map(fn ($rows) => [
-                    'external_offer_id' => $rows->first()->external_offer_id,
-                    'name' => 'YM #' . $rows->first()->name,
-                    'total_quantity' => (int) $rows->sum('quantity'),
-                    'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'RUB'),
-                ]);
-
-            $allItems = $allItems->merge($wbItems)->merge($uzumItems)->merge($ozonItems)->merge($ymItems);
+            $allItems = $allItems->merge($manualItems);
         }
 
-        // Ручные продажи
-        $manualItems = DB::table('sale_items')
-            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
-            ->where('sales.company_id', $this->companyId)
-            ->whereBetween('sales.created_at', [$dateRange['from'], $dateRange['to']])
-            ->where('sales.status', '!=', 'cancelled')
-            ->whereNull('sales.deleted_at')
-            ->select(
-                DB::raw('COALESCE(sale_items.sku, sale_items.product_name) as external_offer_id'),
-                'sale_items.product_name as name',
-                'sale_items.quantity',
-                'sale_items.total as total_price'
-            )
-            ->get()
-            ->groupBy('external_offer_id')
-            ->map(fn ($rows) => [
-                'external_offer_id' => $rows->first()->external_offer_id,
-                'name' => $rows->first()->name ?? $rows->first()->external_offer_id,
-                'total_quantity' => (int) $rows->sum('quantity'),
-                'total_revenue' => (float) $rows->sum('total_price'),
-            ]);
-
         // Оффлайн продажи
-        $offlineItems = DB::table('offline_sale_items')
-            ->join('offline_sales', 'offline_sale_items.offline_sale_id', '=', 'offline_sales.id')
-            ->where('offline_sales.company_id', $this->companyId)
-            ->whereBetween('offline_sales.sale_date', [$dateRange['from'], $dateRange['to']])
-            ->whereIn('offline_sales.status', ['confirmed', 'delivered'])
-            ->whereNull('offline_sales.deleted_at')
-            ->select(
-                DB::raw('COALESCE(offline_sale_items.sku_code, offline_sale_items.product_name) as external_offer_id'),
-                'offline_sale_items.product_name as name',
-                'offline_sale_items.quantity',
-                'offline_sale_items.line_total as total_price'
-            )
-            ->get()
-            ->groupBy('external_offer_id')
-            ->map(fn ($rows) => [
-                'external_offer_id' => $rows->first()->external_offer_id,
-                'name' => $rows->first()->name ?? $rows->first()->external_offer_id,
-                'total_quantity' => (int) $rows->sum('quantity'),
-                'total_revenue' => (float) $rows->sum('total_price'),
-            ]);
+        if ($this->shouldIncludeSource($source, 'offline')) {
+            $offlineItems = DB::table('offline_sale_items')
+                ->join('offline_sales', 'offline_sale_items.offline_sale_id', '=', 'offline_sales.id')
+                ->where('offline_sales.company_id', $this->companyId)
+                ->whereBetween('offline_sales.sale_date', [$dateRange['from'], $dateRange['to']])
+                ->whereIn('offline_sales.status', ['confirmed', 'delivered'])
+                ->whereNull('offline_sales.deleted_at')
+                ->select(
+                    DB::raw('COALESCE(offline_sale_items.sku_code, offline_sale_items.product_name) as external_offer_id'),
+                    'offline_sale_items.product_name as name',
+                    'offline_sale_items.quantity',
+                    'offline_sale_items.line_total as total_price'
+                )
+                ->get()
+                ->groupBy('external_offer_id')
+                ->map(fn ($rows) => [
+                    'external_offer_id' => $rows->first()->external_offer_id,
+                    'name' => $rows->first()->name ?? $rows->first()->external_offer_id,
+                    'total_quantity' => (int) $rows->sum('quantity'),
+                    'total_revenue' => (float) $rows->sum('total_price'),
+                ]);
+            $allItems = $allItems->merge($offlineItems);
+        }
 
         $allItems = $allItems->merge($manualItems)->merge($offlineItems);
 
@@ -498,13 +540,13 @@ final class BusinessAnalyticsService
     /**
      * Рейтинг товаров по количеству продаж
      */
-    public function getProductSalesRanking(int $companyId, string $period = '30days'): array
+    public function getProductSalesRanking(int $companyId, string $period = '30days', string $source = 'all'): array
     {
         $this->forCompany($companyId);
         $dateRange = $this->getDateRange($period);
-        $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
+        $accountIds = $this->getFilteredAccountIds($companyId, $source);
 
-        $items = $this->getAggregatedProductRevenue($accountIds, $dateRange);
+        $items = $this->getAggregatedProductRevenue($accountIds, $dateRange, $source);
 
         if ($items->isEmpty()) {
             return [
@@ -553,129 +595,138 @@ final class BusinessAnalyticsService
     /**
      * Рейтинг товаров по маржинальности
      */
-    public function getProductMarginRanking(int $companyId, string $period = '30days'): array
+    public function getProductMarginRanking(int $companyId, string $period = '30days', string $source = 'all'): array
     {
         $this->forCompany($companyId);
         $dateRange = $this->getDateRange($period);
-        $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
+        $accountIds = $this->getFilteredAccountIds($companyId, $source);
 
         $allItems = collect();
 
         if ($accountIds->isNotEmpty()) {
-            // WB — себестоимость через marketplace_products.purchase_price
-            $wbItems = DB::table('wildberries_orders')
-                ->leftJoin('marketplace_products', function ($join) {
-                    $join->on('wildberries_orders.marketplace_account_id', '=', 'marketplace_products.marketplace_account_id')
-                        ->on(DB::raw('COALESCE(wildberries_orders.supplier_article, CAST(wildberries_orders.nm_id AS CHAR))'), '=', 'marketplace_products.external_offer_id');
-                })
-                ->whereIn('wildberries_orders.marketplace_account_id', $accountIds)
-                ->whereBetween('wildberries_orders.order_date', [$dateRange['from'], $dateRange['to']])
-                ->where('wildberries_orders.is_cancel', false)
-                ->where('wildberries_orders.is_return', false)
-                ->select(
-                    DB::raw('COALESCE(wildberries_orders.supplier_article, CAST(wildberries_orders.nm_id AS CHAR)) as sku'),
-                    DB::raw('COALESCE(wildberries_orders.subject, wildberries_orders.supplier_article, CAST(wildberries_orders.nm_id AS CHAR)) as name'),
-                    DB::raw('1 as quantity'),
-                    DB::raw('wildberries_orders.for_pay as revenue'),
-                    DB::raw('marketplace_products.purchase_price as cost_price'),
-                    DB::raw("'RUB' as currency")
-                )
-                ->get();
+            // WB
+            if ($this->shouldIncludeSource($source, 'wb')) {
+                $wbItems = DB::table('wildberries_orders')
+                    ->leftJoin('marketplace_products', function ($join) {
+                        $join->on('wildberries_orders.marketplace_account_id', '=', 'marketplace_products.marketplace_account_id')
+                            ->on(DB::raw('COALESCE(wildberries_orders.supplier_article, CAST(wildberries_orders.nm_id AS CHAR))'), '=', 'marketplace_products.external_offer_id');
+                    })
+                    ->whereIn('wildberries_orders.marketplace_account_id', $accountIds)
+                    ->whereBetween('wildberries_orders.order_date', [$dateRange['from'], $dateRange['to']])
+                    ->where('wildberries_orders.is_cancel', false)
+                    ->where('wildberries_orders.is_return', false)
+                    ->select(
+                        DB::raw('COALESCE(wildberries_orders.supplier_article, CAST(wildberries_orders.nm_id AS CHAR)) as sku'),
+                        DB::raw('COALESCE(wildberries_orders.subject, wildberries_orders.supplier_article, CAST(wildberries_orders.nm_id AS CHAR)) as name'),
+                        DB::raw('1 as quantity'),
+                        DB::raw('wildberries_orders.for_pay as revenue'),
+                        DB::raw('marketplace_products.purchase_price as cost_price'),
+                        DB::raw("'RUB' as currency")
+                    )
+                    ->get();
 
-            foreach ($wbItems->groupBy('sku') as $sku => $rows) {
-                $costPrice = $rows->first()->cost_price;
-                $allItems->push([
-                    'sku' => $sku,
-                    'name' => $rows->first()->name,
-                    'quantity' => $rows->count(),
-                    'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), 'RUB'),
-                    'cost' => $costPrice ? $this->convertToDisplay((float) $costPrice * $rows->count(), 'RUB') : null,
-                    'has_cost' => $costPrice !== null,
-                ]);
+                foreach ($wbItems->groupBy('sku') as $sku => $rows) {
+                    $costPrice = $rows->first()->cost_price;
+                    $allItems->push([
+                        'sku' => $sku,
+                        'name' => $rows->first()->name,
+                        'quantity' => $rows->count(),
+                        'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), 'RUB'),
+                        'cost' => $costPrice ? $this->convertToDisplay((float) $costPrice * $rows->count(), 'RUB') : null,
+                        'has_cost' => $costPrice !== null,
+                    ]);
+                }
             }
 
             // Uzum
-            $uzumItems = DB::table('uzum_order_items')
-                ->join('uzum_orders', 'uzum_order_items.uzum_order_id', '=', 'uzum_orders.id')
-                ->leftJoin('marketplace_products', function ($join) {
-                    $join->on('uzum_orders.marketplace_account_id', '=', 'marketplace_products.marketplace_account_id')
-                        ->on('uzum_order_items.external_offer_id', '=', 'marketplace_products.external_offer_id');
-                })
-                ->whereIn('uzum_orders.marketplace_account_id', $accountIds)
-                ->whereBetween('uzum_orders.ordered_at', [$dateRange['from'], $dateRange['to']])
-                ->whereNotIn('uzum_orders.status_normalized', self::CANCELLED_STATUSES)
-                ->select(
-                    'uzum_order_items.external_offer_id as sku',
-                    'uzum_order_items.name',
-                    'uzum_order_items.quantity',
-                    'uzum_order_items.total_price as revenue',
-                    'marketplace_products.purchase_price as cost_price'
-                )
-                ->get();
+            if ($this->shouldIncludeSource($source, 'uzum')) {
+                $uzumItems = DB::table('uzum_order_items')
+                    ->join('uzum_orders', 'uzum_order_items.uzum_order_id', '=', 'uzum_orders.id')
+                    ->leftJoin('marketplace_products', function ($join) {
+                        $join->on('uzum_orders.marketplace_account_id', '=', 'marketplace_products.marketplace_account_id')
+                            ->on('uzum_order_items.external_offer_id', '=', 'marketplace_products.external_offer_id');
+                    })
+                    ->whereIn('uzum_orders.marketplace_account_id', $accountIds)
+                    ->whereBetween('uzum_orders.ordered_at', [$dateRange['from'], $dateRange['to']])
+                    ->whereNotIn('uzum_orders.status_normalized', self::CANCELLED_STATUSES)
+                    ->select(
+                        'uzum_order_items.external_offer_id as sku',
+                        'uzum_order_items.name',
+                        'uzum_order_items.quantity',
+                        'uzum_order_items.total_price as revenue',
+                        'marketplace_products.purchase_price as cost_price'
+                    )
+                    ->get();
 
-            foreach ($uzumItems->groupBy('sku') as $sku => $rows) {
-                $costPrice = $rows->first()->cost_price;
-                $totalQty = (int) $rows->sum('quantity');
-                $allItems->push([
-                    'sku' => $sku,
-                    'name' => $rows->first()->name ?? $sku,
-                    'quantity' => $totalQty,
-                    'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), 'UZS'),
-                    'cost' => $costPrice ? $this->convertToDisplay((float) $costPrice * $totalQty, 'UZS') : null,
-                    'has_cost' => $costPrice !== null,
-                ]);
+                foreach ($uzumItems->groupBy('sku') as $sku => $rows) {
+                    $costPrice = $rows->first()->cost_price;
+                    $totalQty = (int) $rows->sum('quantity');
+                    $allItems->push([
+                        'sku' => $sku,
+                        'name' => $rows->first()->name ?? $sku,
+                        'quantity' => $totalQty,
+                        'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), 'UZS'),
+                        'cost' => $costPrice ? $this->convertToDisplay((float) $costPrice * $totalQty, 'UZS') : null,
+                        'has_cost' => $costPrice !== null,
+                    ]);
+                }
             }
 
             // Ozon
-            $ozonItems = DB::table('ozon_orders')
-                ->whereIn('marketplace_account_id', $accountIds)
-                ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
-                ->whereNotIn('status', self::CANCELLED_STATUSES)
-                ->select(
-                    DB::raw('CAST(order_id AS CHAR) as sku'),
-                    DB::raw('COALESCE(posting_number, CAST(order_id AS CHAR)) as name'),
-                    DB::raw('1 as quantity'),
-                    DB::raw('total_price as revenue')
-                )
-                ->get();
+            if ($this->shouldIncludeSource($source, 'ozon')) {
+                $ozonItems = DB::table('ozon_orders')
+                    ->whereIn('marketplace_account_id', $accountIds)
+                    ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
+                    ->whereNotIn('status', self::CANCELLED_STATUSES)
+                    ->select(
+                        DB::raw('CAST(order_id AS CHAR) as sku'),
+                        DB::raw('COALESCE(posting_number, CAST(order_id AS CHAR)) as name'),
+                        DB::raw('1 as quantity'),
+                        DB::raw('total_price as revenue')
+                    )
+                    ->get();
 
-            foreach ($ozonItems->groupBy('sku') as $sku => $rows) {
-                $allItems->push([
-                    'sku' => $sku,
-                    'name' => 'Ozon #' . $rows->first()->name,
-                    'quantity' => $rows->count(),
-                    'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), 'RUB'),
-                    'cost' => null,
-                    'has_cost' => false,
-                ]);
+                foreach ($ozonItems->groupBy('sku') as $sku => $rows) {
+                    $allItems->push([
+                        'sku' => $sku,
+                        'name' => 'Ozon #' . $rows->first()->name,
+                        'quantity' => $rows->count(),
+                        'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), 'RUB'),
+                        'cost' => null,
+                        'has_cost' => false,
+                    ]);
+                }
             }
 
             // YM
-            $ymItems = DB::table('yandex_market_orders')
-                ->whereIn('marketplace_account_id', $accountIds)
-                ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
-                ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
-                ->select(
-                    DB::raw('CAST(order_id AS CHAR) as sku'),
-                    DB::raw('CAST(order_id AS CHAR) as name'),
-                    DB::raw('COALESCE(items_count, 1) as quantity'),
-                    DB::raw('total_price as revenue')
-                )
-                ->get();
+            if ($this->shouldIncludeSource($source, 'ym')) {
+                $ymItems = DB::table('yandex_market_orders')
+                    ->whereIn('marketplace_account_id', $accountIds)
+                    ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
+                    ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+                    ->select(
+                        DB::raw('CAST(order_id AS CHAR) as sku'),
+                        DB::raw('CAST(order_id AS CHAR) as name'),
+                        DB::raw('COALESCE(items_count, 1) as quantity'),
+                        DB::raw('total_price as revenue')
+                    )
+                    ->get();
 
-            foreach ($ymItems->groupBy('sku') as $sku => $rows) {
-                $allItems->push([
-                    'sku' => $sku,
-                    'name' => 'YM #' . $rows->first()->name,
-                    'quantity' => (int) $rows->sum('quantity'),
-                    'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), 'RUB'),
-                    'cost' => null,
-                    'has_cost' => false,
-                ]);
+                foreach ($ymItems->groupBy('sku') as $sku => $rows) {
+                    $allItems->push([
+                        'sku' => $sku,
+                        'name' => 'YM #' . $rows->first()->name,
+                        'quantity' => (int) $rows->sum('quantity'),
+                        'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), 'RUB'),
+                        'cost' => null,
+                        'has_cost' => false,
+                    ]);
+                }
             }
         }
 
-        // Ручные продажи — cost_price прямо в таблице
+        // Ручные продажи
+        if ($this->shouldIncludeSource($source, 'manual')) {
         $manualItems = DB::table('sale_items')
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->where('sales.company_id', $this->companyId)
@@ -711,8 +762,10 @@ final class BusinessAnalyticsService
                 'has_cost' => $hasCost,
             ]);
         }
+        }
 
         // Оффлайн продажи — unit_cost
+        if ($this->shouldIncludeSource($source, 'offline')) {
         $offlineItems = DB::table('offline_sale_items')
             ->join('offline_sales', 'offline_sale_items.offline_sale_id', '=', 'offline_sales.id')
             ->where('offline_sales.company_id', $this->companyId)
@@ -747,6 +800,7 @@ final class BusinessAnalyticsService
                 'cost' => $hasCost ? $totalCost : null,
                 'has_cost' => $hasCost,
             ]);
+        }
         }
 
         // Объединяем дубликаты по SKU
