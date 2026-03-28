@@ -236,6 +236,14 @@ final class BusinessAnalyticsService
             $filePath = "swot/company_{$companyId}.json";
             if (Storage::disk('local')->exists($filePath)) {
                 $data = json_decode(Storage::disk('local')->get($filePath), true);
+                // Восстановить в кэш после чтения
+                if ($data) {
+                    try {
+                        Cache::put($cacheKey, $data, now()->addDays(30));
+                    } catch (\Exception $e) {
+                        // Redis недоступен — OK, данные из файла
+                    }
+                }
             }
         }
 
@@ -262,7 +270,7 @@ final class BusinessAnalyticsService
         ];
 
         $cacheKey = "swot_analysis_{$companyId}";
-        Cache::forever($cacheKey, $swot);
+        Cache::put($cacheKey, $swot, now()->addDays(30));
 
         // Сохранить в файл для надёжности
         $filePath = "swot/company_{$companyId}.json";
@@ -306,7 +314,7 @@ final class BusinessAnalyticsService
         $allItems = collect();
 
         if ($accountIds->isNotEmpty()) {
-            // WB — SQL-агрегация по товарам (как в SalesAnalyticsService)
+            // WB — Statistics API + fallback на Marketplace API (wb_orders)
             if ($this->shouldIncludeSource($source, 'wb')) {
                 $wbItems = DB::table('wildberries_orders')
                     ->whereIn('marketplace_account_id', $accountIds)
@@ -327,6 +335,31 @@ final class BusinessAnalyticsService
                         'total_quantity' => (int) $row->total_quantity,
                         'total_revenue' => $this->convertToDisplay((float) $row->total_revenue, 'RUB'),
                     ]);
+
+                // Fallback: если Statistics API не дал выручку — берём из wb_order_items
+                $hasRevenue = $wbItems->sum('total_revenue') > 0;
+                if (!$hasRevenue) {
+                    $wbItems = DB::table('wb_order_items')
+                        ->join('wb_orders', 'wb_order_items.wb_order_id', '=', 'wb_orders.id')
+                        ->whereIn('wb_orders.marketplace_account_id', $accountIds)
+                        ->whereBetween('wb_orders.ordered_at', [$dateRange['from'], $dateRange['to']])
+                        ->whereNotIn('wb_orders.status_normalized', self::CANCELLED_STATUSES)
+                        ->select(
+                            DB::raw('COALESCE(wb_order_items.external_offer_id, wb_orders.article, CAST(wb_orders.nm_id AS CHAR)) as external_offer_id'),
+                            DB::raw('MAX(COALESCE(wb_order_items.name, wb_orders.product_name, wb_orders.article)) as name'),
+                            DB::raw('SUM(wb_order_items.quantity) as total_quantity'),
+                            DB::raw('SUM(COALESCE(wb_order_items.price * wb_order_items.quantity, 0)) as total_revenue')
+                        )
+                        ->groupBy('external_offer_id')
+                        ->get()
+                        ->map(fn ($row) => [
+                            'external_offer_id' => $row->external_offer_id,
+                            'name' => $row->name ?? $row->external_offer_id,
+                            'total_quantity' => (int) $row->total_quantity,
+                            'total_revenue' => $this->convertToDisplay((float) $row->total_revenue, 'RUB'),
+                        ]);
+                }
+
                 $allItems = $allItems->merge($wbItems);
             }
 
@@ -354,45 +387,69 @@ final class BusinessAnalyticsService
                 $allItems = $allItems->merge($uzumItems);
             }
 
-            // Ozon — извлекаем товары из JSON поля products
+            // Ozon — товары из JSON + fallback на total_price колонку
             if ($this->shouldIncludeSource($source, 'ozon')) {
                 $ozonOrders = DB::table('ozon_orders')
                     ->whereIn('marketplace_account_id', $accountIds)
                     ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
                     ->whereNotIn('status', self::CANCELLED_STATUSES)
-                    ->select('products', 'order_data')
+                    ->select('order_id', 'posting_number', 'total_price as order_total', 'products', 'order_data')
                     ->get();
 
                 $ozonProductItems = collect();
+                $ordersWithoutProducts = collect();
+
                 foreach ($ozonOrders as $order) {
                     $products = !empty($order->products) ? json_decode($order->products, true) : [];
                     if (empty($products) && !empty($order->order_data)) {
                         $orderData = json_decode($order->order_data, true);
                         $products = $orderData['products'] ?? [];
                     }
-                    foreach ($products as $product) {
-                        $sku = $product['sku'] ?? $product['offer_id'] ?? null;
-                        if (!$sku) {
-                            continue;
+
+                    if (!empty($products)) {
+                        foreach ($products as $product) {
+                            $sku = $product['sku'] ?? $product['offer_id'] ?? null;
+                            if (!$sku) {
+                                continue;
+                            }
+                            $ozonProductItems->push([
+                                'external_offer_id' => (string) $sku,
+                                'name' => $product['name'] ?? $sku,
+                                'quantity' => (int) ($product['quantity'] ?? 1),
+                                'total_price' => (float) ($product['total'] ?? (($product['price'] ?? 0) * ($product['quantity'] ?? 1))),
+                            ]);
                         }
-                        $ozonProductItems->push([
-                            'external_offer_id' => (string) $sku,
-                            'name' => $product['name'] ?? $sku,
-                            'quantity' => (int) ($product['quantity'] ?? 1),
-                            'total_price' => (float) ($product['total'] ?? (($product['price'] ?? 0) * ($product['quantity'] ?? 1))),
-                        ]);
+                    } else {
+                        // Нет JSON — используем order-level данные
+                        $ordersWithoutProducts->push($order);
                     }
                 }
 
-                $ozonItems = $ozonProductItems
-                    ->groupBy('external_offer_id')
-                    ->map(fn ($rows) => [
-                        'external_offer_id' => $rows->first()['external_offer_id'],
-                        'name' => $rows->first()['name'],
-                        'total_quantity' => (int) $rows->sum('quantity'),
-                        'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'RUB'),
-                    ]);
-                $allItems = $allItems->merge($ozonItems);
+                // Товары из JSON
+                if ($ozonProductItems->isNotEmpty()) {
+                    $ozonItems = $ozonProductItems
+                        ->groupBy('external_offer_id')
+                        ->map(fn ($rows) => [
+                            'external_offer_id' => $rows->first()['external_offer_id'],
+                            'name' => $rows->first()['name'],
+                            'total_quantity' => (int) $rows->sum('quantity'),
+                            'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'RUB'),
+                        ]);
+                    $allItems = $allItems->merge($ozonItems);
+                }
+
+                // Fallback: заказы без JSON товаров — как order-level
+                if ($ordersWithoutProducts->isNotEmpty()) {
+                    foreach ($ordersWithoutProducts as $order) {
+                        $key = 'ozon_order_' . ($order->posting_number ?? $order->order_id);
+                        $allItems->push([
+                            'external_offer_id' => $key,
+                            'name' => 'Ozon #' . ($order->posting_number ?? $order->order_id),
+                            'total_quantity' => 1,
+                            'total_revenue' => $this->convertToDisplay((float) ($order->order_total ?? 0), 'RUB'),
+                        ]);
+                    }
+                }
             }
 
             // Yandex Market — извлекаем товары из JSON поля order_data.items
@@ -668,8 +725,8 @@ final class BusinessAnalyticsService
             $customers = $customers->merge($offlineByName);
         }
 
-        // Объединяем одинаковых клиентов
-        return $customers->groupBy('customer_name')->map(function ($group) {
+        // Объединяем одинаковых клиентов (нормализуем регистр и пробелы)
+        return $customers->groupBy(fn ($c) => mb_strtolower(trim($c['customer_name'])))->map(function ($group) {
             return [
                 'customer_name' => $group->first()['customer_name'],
                 'total_amount' => $group->sum('total_amount'),
@@ -745,7 +802,7 @@ final class BusinessAnalyticsService
         $allItems = collect();
 
         if ($accountIds->isNotEmpty()) {
-            // WB
+            // WB — Statistics API + fallback на wb_order_items
             if ($this->shouldIncludeSource($source, 'wb')) {
                 $wbItems = DB::table('wildberries_orders')
                     ->leftJoin('marketplace_products', function ($join) {
@@ -758,24 +815,62 @@ final class BusinessAnalyticsService
                     ->where('wildberries_orders.is_return', false)
                     ->select(
                         DB::raw('COALESCE(wildberries_orders.supplier_article, CAST(wildberries_orders.nm_id AS CHAR)) as sku'),
-                        DB::raw('COALESCE(wildberries_orders.subject, wildberries_orders.supplier_article, CAST(wildberries_orders.nm_id AS CHAR)) as name'),
-                        DB::raw('1 as quantity'),
-                        DB::raw('COALESCE(wildberries_orders.for_pay, wildberries_orders.finished_price, wildberries_orders.total_price) as revenue'),
-                        DB::raw('marketplace_products.purchase_price as cost_price'),
-                        DB::raw("'RUB' as currency")
+                        DB::raw('MAX(COALESCE(wildberries_orders.subject, wildberries_orders.supplier_article, CAST(wildberries_orders.nm_id AS CHAR))) as name'),
+                        DB::raw('COUNT(*) as total_qty'),
+                        DB::raw('SUM(COALESCE(wildberries_orders.for_pay, wildberries_orders.finished_price, wildberries_orders.total_price, 0)) as total_revenue'),
+                        DB::raw('AVG(marketplace_products.purchase_price) as avg_cost')
                     )
+                    ->groupBy('sku')
                     ->get();
 
-                foreach ($wbItems->groupBy('sku') as $sku => $rows) {
-                    $costPrice = $rows->first()->cost_price;
-                    $allItems->push([
-                        'sku' => $sku,
-                        'name' => $rows->first()->name,
-                        'quantity' => $rows->count(),
-                        'revenue' => $this->convertToDisplay((float) $rows->sum('revenue'), 'RUB'),
-                        'cost' => $costPrice ? $this->convertToDisplay((float) $costPrice * $rows->count(), 'RUB') : null,
-                        'has_cost' => $costPrice !== null,
-                    ]);
+                $hasRevenue = $wbItems->sum('total_revenue') > 0;
+
+                if ($hasRevenue) {
+                    foreach ($wbItems as $row) {
+                        $qty = (int) $row->total_qty;
+                        $avgCost = $row->avg_cost;
+                        $allItems->push([
+                            'sku' => $row->sku,
+                            'name' => $row->name,
+                            'quantity' => $qty,
+                            'revenue' => $this->convertToDisplay((float) $row->total_revenue, 'RUB'),
+                            'cost' => $avgCost ? $this->convertToDisplay((float) $avgCost * $qty, 'RUB') : null,
+                            'has_cost' => $avgCost !== null,
+                        ]);
+                    }
+                } else {
+                    // Fallback: wb_order_items (Marketplace API)
+                    $wbFbsItems = DB::table('wb_order_items')
+                        ->join('wb_orders', 'wb_order_items.wb_order_id', '=', 'wb_orders.id')
+                        ->leftJoin('marketplace_products', function ($join) {
+                            $join->on('wb_orders.marketplace_account_id', '=', 'marketplace_products.marketplace_account_id')
+                                ->on('wb_order_items.external_offer_id', '=', 'marketplace_products.external_offer_id');
+                        })
+                        ->whereIn('wb_orders.marketplace_account_id', $accountIds)
+                        ->whereBetween('wb_orders.ordered_at', [$dateRange['from'], $dateRange['to']])
+                        ->whereNotIn('wb_orders.status_normalized', self::CANCELLED_STATUSES)
+                        ->select(
+                            DB::raw('COALESCE(wb_order_items.external_offer_id, wb_orders.article) as sku'),
+                            DB::raw('MAX(COALESCE(wb_order_items.name, wb_orders.product_name)) as name'),
+                            DB::raw('SUM(wb_order_items.quantity) as total_qty'),
+                            DB::raw('SUM(COALESCE(wb_order_items.price * wb_order_items.quantity, 0)) as total_revenue'),
+                            DB::raw('AVG(marketplace_products.purchase_price) as avg_cost')
+                        )
+                        ->groupBy('sku')
+                        ->get();
+
+                    foreach ($wbFbsItems as $row) {
+                        $qty = (int) $row->total_qty;
+                        $avgCost = $row->avg_cost;
+                        $allItems->push([
+                            'sku' => $row->sku,
+                            'name' => $row->name ?? $row->sku,
+                            'quantity' => $qty,
+                            'revenue' => $this->convertToDisplay((float) $row->total_revenue, 'RUB'),
+                            'cost' => $avgCost ? $this->convertToDisplay((float) $avgCost * $qty, 'RUB') : null,
+                            'has_cost' => $avgCost !== null,
+                        ]);
+                    }
                 }
             }
 
