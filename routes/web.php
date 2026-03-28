@@ -155,7 +155,7 @@ Route::middleware('auth.any')->group(function () {
         })->name('stock');
 
         Route::get('/funnel', function () {
-            return view('pages.analytics');
+            return view('pages.analytics.funnel');
         })->name('funnel');
 
         Route::get('/uzum', function () {
