@@ -666,6 +666,10 @@ Route::middleware('auth.any')->group(function () {
             Route::get('accounts/{account}/returns/shop/{shopId}', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'returns']);
             Route::get('accounts/{account}/returns/shop/{shopId}/{returnId}', [\App\Http\Controllers\Api\UzumInvoiceController::class, 'returnDetail']);
 
+            // Массовое управление остатками FBS/DBS
+            Route::get('accounts/{account}/stocks', [\App\Http\Controllers\Api\UzumStockBulkController::class, 'listStocks']);
+            Route::post('accounts/{account}/stocks/bulk-disable', [\App\Http\Controllers\Api\UzumStockBulkController::class, 'bulkDisable']);
+            Route::post('accounts/{account}/stocks/bulk-enable', [\App\Http\Controllers\Api\UzumStockBulkController::class, 'bulkEnable']);
         });
 
         // Yandex Market
