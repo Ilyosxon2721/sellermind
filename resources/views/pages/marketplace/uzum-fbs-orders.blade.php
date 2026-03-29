@@ -127,6 +127,16 @@
                                   x-text="wsConnected ? 'Live' : 'Offline'"></span>
                         </div>
 
+                        <!-- Bulk Stock Management Button -->
+                        <button @click="openStockModal()"
+                                class="px-3 sm:px-4 py-2 bg-white border-2 border-amber-500 text-amber-600 hover:bg-amber-500 hover:text-white rounded-xl text-sm font-medium transition flex items-center space-x-1 sm:space-x-2"
+                                title="Управление остатками FBS/DBS">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                            </svg>
+                            <span class="hidden sm:inline">Остатки</span>
+                        </button>
+
                         <button @click="triggerSync()"
                                 :disabled="syncInProgress"
                                 class="px-3 sm:px-4 py-2 bg-white border-2 border-[#3A007D] text-[#3A007D] hover:bg-[#3A007D] hover:text-white rounded-xl text-sm font-medium transition flex items-center space-x-1 sm:space-x-2 disabled:opacity-50">
@@ -714,6 +724,154 @@
             </div>
         </div>
     </div>
+
+    <!-- Stock Management Modal -->
+    <div x-show="showStockModal" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+        <div class="fixed inset-0 bg-black/50" @click="showStockModal = false"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-900 flex items-center space-x-2">
+                            <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                            </svg>
+                            <span>Управление остатками FBS/DBS</span>
+                        </h2>
+                        <p class="text-sm text-gray-500 mt-1" x-text="'Загружено: ' + stockItems.length + ' товаров'"></p>
+                    </div>
+                    <button @click="showStockModal = false" class="text-gray-400 hover:text-gray-600 p-1">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-wrap items-center gap-2 mt-3">
+                    <button @click="selectAllStock()" class="px-3 py-1.5 text-xs font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                        <span x-text="selectedStockIds.length === stockItems.length ? 'Снять все' : 'Выбрать все'"></span>
+                    </button>
+                    <div class="h-5 border-l border-gray-300"></div>
+                    <button @click="bulkStockAction('fbs')" :disabled="selectedStockIds.length === 0 || stockBusy"
+                            class="px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition disabled:opacity-50">
+                        Отключить FBS
+                    </button>
+                    <button @click="bulkStockAction('dbs')" :disabled="selectedStockIds.length === 0 || stockBusy"
+                            class="px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition disabled:opacity-50">
+                        Отключить DBS
+                    </button>
+                    <button @click="bulkStockAction('both')" :disabled="selectedStockIds.length === 0 || stockBusy"
+                            class="px-3 py-1.5 text-xs font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 transition disabled:opacity-50">
+                        Отключить FBS+DBS
+                    </button>
+                    <button @click="bulkStockAction('zero_stock')" :disabled="selectedStockIds.length === 0 || stockBusy"
+                            class="px-3 py-1.5 text-xs font-medium bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition disabled:opacity-50">
+                        Обнулить остатки
+                    </button>
+                    <div class="h-5 border-l border-gray-300"></div>
+                    <button @click="bulkStockEnable('fbs')" :disabled="selectedStockIds.length === 0 || stockBusy"
+                            class="px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition disabled:opacity-50">
+                        Включить FBS
+                    </button>
+                    <button @click="bulkStockEnable('dbs')" :disabled="selectedStockIds.length === 0 || stockBusy"
+                            class="px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition disabled:opacity-50">
+                        Включить DBS
+                    </button>
+                </div>
+
+                <!-- Filter -->
+                <div class="flex items-center gap-2 mt-3">
+                    <input type="text" x-model="stockSearch" placeholder="Поиск по названию, баркоду..."
+                           class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-400">
+                    <select x-model="stockFilter" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm">
+                        <option value="all">Все</option>
+                        <option value="fbs">Только FBS</option>
+                        <option value="dbs">Только DBS</option>
+                        <option value="both">FBS + DBS</option>
+                        <option value="none">Не подключено</option>
+                        <option value="zero">Остаток = 0</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div x-show="stockLoading" class="flex-1 flex items-center justify-center py-12">
+                <div class="text-center">
+                    <svg class="w-8 h-8 text-amber-500 animate-spin mx-auto mb-3" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    <p class="text-gray-500 text-sm">Загрузка остатков из Uzum...</p>
+                </div>
+            </div>
+
+            <!-- Stock Table -->
+            <div x-show="!stockLoading" class="flex-1 overflow-y-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50 sticky top-0 z-10">
+                        <tr>
+                            <th class="px-4 py-3 w-10">
+                                <input type="checkbox" @change="selectAllStock()" :checked="selectedStockIds.length === filteredStockItems.length && filteredStockItems.length > 0"
+                                       class="rounded border-gray-300 text-amber-600 focus:ring-amber-500">
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Товар</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase w-20">Остаток</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase w-16">FBS</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase w-16">DBS</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        <template x-for="item in filteredStockItems" :key="item.skuId">
+                            <tr class="hover:bg-amber-50/30 transition" :class="selectedStockIds.includes(item.skuId) ? 'bg-amber-50' : ''">
+                                <td class="px-4 py-2.5">
+                                    <input type="checkbox" :value="item.skuId" x-model.number="selectedStockIds"
+                                           class="rounded border-gray-300 text-amber-600 focus:ring-amber-500">
+                                </td>
+                                <td class="px-4 py-2.5">
+                                    <div class="text-sm font-medium text-gray-900 truncate max-w-xs" x-text="item.productTitle || item.skuTitle || '—'"></div>
+                                    <div class="text-xs text-gray-500">
+                                        <span x-text="'SKU: ' + item.skuId"></span>
+                                        <template x-if="item.barcode">
+                                            <span x-text="' | ' + item.barcode"></span>
+                                        </template>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-2.5 text-center">
+                                    <span class="font-semibold text-sm"
+                                          :class="item.amount > 0 ? 'text-green-600' : 'text-red-500'"
+                                          x-text="item.amount ?? 0"></span>
+                                </td>
+                                <td class="px-4 py-2.5 text-center">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                                          :class="item.fbsLinked ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400'"
+                                          x-text="item.fbsLinked ? 'Вкл' : 'Выкл'"></span>
+                                </td>
+                                <td class="px-4 py-2.5 text-center">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                                          :class="item.dbsLinked ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-400'"
+                                          x-text="item.dbsLinked ? 'Вкл' : 'Выкл'"></span>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                <div x-show="filteredStockItems.length === 0 && !stockLoading" class="py-12 text-center text-gray-400">
+                    Нет товаров
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between text-sm text-gray-500">
+                <span x-text="'Выбрано: ' + selectedStockIds.length + ' из ' + filteredStockItems.length"></span>
+                <span x-show="stockMessage" class="font-medium" :class="stockSuccess ? 'text-green-600' : 'text-red-600'" x-text="stockMessage"></span>
+            </div>
+        </div>
+    </div>
 </div>
 
 @php
@@ -752,6 +910,16 @@ function uzumOrdersPage() {
         wsConnected: false,
         shopOptions: @json($__uzumShopsJson ?? []),
         selectedShopId: null,
+        // Stock management
+        showStockModal: false,
+        stockItems: [],
+        selectedStockIds: [],
+        stockLoading: false,
+        stockBusy: false,
+        stockSearch: '',
+        stockFilter: 'all',
+        stockMessage: '',
+        stockSuccess: true,
         accountId: {{ $accountId }},
 
         // FBS Status Tabs
@@ -1189,6 +1357,126 @@ function uzumOrdersPage() {
         isDbs(order) {
             const scheme = (order.delivery_type || order.deliveryType || order.scheme || order.raw_payload?.scheme || '').toUpperCase();
             return scheme === 'DBS' || scheme === 'EDBS';
+        },
+
+        // ─── Управление остатками FBS/DBS ──────────────────────
+
+        get filteredStockItems() {
+            let items = this.stockItems || [];
+            if (this.stockSearch) {
+                const q = this.stockSearch.toLowerCase();
+                items = items.filter(i =>
+                    (i.productTitle || '').toLowerCase().includes(q) ||
+                    (i.skuTitle || '').toLowerCase().includes(q) ||
+                    String(i.skuId).includes(q) ||
+                    (i.barcode || '').toLowerCase().includes(q)
+                );
+            }
+            if (this.stockFilter === 'fbs') items = items.filter(i => i.fbsLinked && !i.dbsLinked);
+            else if (this.stockFilter === 'dbs') items = items.filter(i => i.dbsLinked && !i.fbsLinked);
+            else if (this.stockFilter === 'both') items = items.filter(i => i.fbsLinked && i.dbsLinked);
+            else if (this.stockFilter === 'none') items = items.filter(i => !i.fbsLinked && !i.dbsLinked);
+            else if (this.stockFilter === 'zero') items = items.filter(i => (i.amount ?? 0) === 0);
+            return items;
+        },
+
+        async openStockModal() {
+            this.showStockModal = true;
+            this.selectedStockIds = [];
+            this.stockMessage = '';
+            if (this.stockItems.length === 0) {
+                await this.loadStockItems();
+            }
+        },
+
+        async loadStockItems() {
+            this.stockLoading = true;
+            try {
+                const res = await this.authFetch(`/api/marketplace/uzum/accounts/${this.accountId}/stocks`);
+                if (res.ok) {
+                    const data = await res.json();
+                    this.stockItems = data.items || [];
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    this.stockMessage = err.message || 'Ошибка загрузки остатков';
+                    this.stockSuccess = false;
+                }
+            } catch (e) {
+                this.stockMessage = 'Ошибка сети';
+                this.stockSuccess = false;
+            }
+            this.stockLoading = false;
+        },
+
+        selectAllStock() {
+            const filtered = this.filteredStockItems;
+            if (this.selectedStockIds.length === filtered.length) {
+                this.selectedStockIds = [];
+            } else {
+                this.selectedStockIds = filtered.map(i => i.skuId);
+            }
+        },
+
+        async bulkStockAction(mode) {
+            if (this.selectedStockIds.length === 0) return;
+            const labels = { zero_stock: 'обнулить остатки', fbs: 'отключить FBS', dbs: 'отключить DBS', both: 'отключить FBS и DBS' };
+            if (!confirm(`${labels[mode]} для ${this.selectedStockIds.length} товаров?`)) return;
+
+            this.stockBusy = true;
+            this.stockMessage = '';
+            try {
+                const itemsData = this.stockItems
+                    .filter(i => this.selectedStockIds.includes(i.skuId))
+                    .map(i => ({ skuId: i.skuId, amount: i.amount ?? 0, barcode: i.barcode || '', skuTitle: i.skuTitle || '', productTitle: i.productTitle || '', fbsLinked: i.fbsLinked ?? true, dbsLinked: i.dbsLinked ?? false }));
+
+                const res = await this.authFetch(`/api/marketplace/uzum/accounts/${this.accountId}/stocks/bulk-disable`, {
+                    method: 'POST',
+                    headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sku_ids: this.selectedStockIds, mode, items_data: itemsData }),
+                });
+                const data = await res.json();
+                this.stockMessage = data.message || (data.success ? 'Готово' : 'Ошибка');
+                this.stockSuccess = !!data.success;
+                if (data.success) {
+                    await this.loadStockItems();
+                    this.selectedStockIds = [];
+                }
+            } catch (e) {
+                this.stockMessage = 'Ошибка сети';
+                this.stockSuccess = false;
+            }
+            this.stockBusy = false;
+        },
+
+        async bulkStockEnable(mode) {
+            if (this.selectedStockIds.length === 0) return;
+            const labels = { fbs: 'включить FBS', dbs: 'включить DBS', both: 'включить FBS и DBS' };
+            if (!confirm(`${labels[mode]} для ${this.selectedStockIds.length} товаров?`)) return;
+
+            this.stockBusy = true;
+            this.stockMessage = '';
+            try {
+                const itemsData = this.stockItems
+                    .filter(i => this.selectedStockIds.includes(i.skuId))
+                    .map(i => ({ skuId: i.skuId, amount: i.amount ?? 0, barcode: i.barcode || '', skuTitle: i.skuTitle || '', productTitle: i.productTitle || '', fbsLinked: i.fbsLinked ?? true, dbsLinked: i.dbsLinked ?? false }));
+
+                const res = await this.authFetch(`/api/marketplace/uzum/accounts/${this.accountId}/stocks/bulk-enable`, {
+                    method: 'POST',
+                    headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sku_ids: this.selectedStockIds, mode, items_data: itemsData }),
+                });
+                const data = await res.json();
+                this.stockMessage = data.message || (data.success ? 'Готово' : 'Ошибка');
+                this.stockSuccess = !!data.success;
+                if (data.success) {
+                    await this.loadStockItems();
+                    this.selectedStockIds = [];
+                }
+            } catch (e) {
+                this.stockMessage = 'Ошибка сети';
+                this.stockSuccess = false;
+            }
+            this.stockBusy = false;
         },
 
         openDocument(order, type) {
