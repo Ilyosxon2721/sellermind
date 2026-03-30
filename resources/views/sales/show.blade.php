@@ -490,6 +490,18 @@
 </div>
 
 <script nonce="{{ $cspNonce ?? '' }}">
+function getApiHeaders(json = false) {
+    const h = {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+    };
+    if (json) h['Content-Type'] = 'application/json';
+    const token = window.Alpine?.store?.('auth')?.token || localStorage.getItem('_x_auth_token')?.replace(/"/g, '');
+    if (token) h['Authorization'] = `Bearer ${token}`;
+    return h;
+}
+
 function orderDetails() {
     return {
         orderId: '{{ $orderId }}',
@@ -511,10 +523,7 @@ function orderDetails() {
             try {
                 const res = await fetch(`/api/sales/${this.orderId}`, {
                     credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    headers: getApiHeaders()
                 });
 
                 if (!res.ok) {
@@ -573,14 +582,17 @@ function orderDetails() {
                 const res = await fetch(`/api/sales-management/${id}/confirm`, {
                     method: "POST",
                     credentials: "same-origin",
-                    headers: {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": document.querySelector("meta[name=csrf-token]")?.content}
+                    headers: getApiHeaders(true)
                 });
-                const data = await res.json();
                 if (res.ok) {
+                    const data = await res.json();
                     alert("Продажа подтверждена! Товары зарезервированы.");
                     await this.loadOrder();
                 } else {
-                    alert("Ошибка: " + (data.error || data.message || "Не удалось подтвердить"));
+                    const data = await res.json().catch(() => ({}));
+                    const details = data.error || data.message || '';
+                    const validationErrors = data.errors ? Object.values(data.errors).flat().join('; ') : '';
+                    alert("Ошибка подтверждения: " + (details || validationErrors || "Статус " + res.status));
                 }
             } catch(e) { alert("Ошибка сети: " + e.message); }
             finally { this.actionLoading = false; }
@@ -594,7 +606,7 @@ function orderDetails() {
                 const res = await fetch(`/api/sales-management/${id}/complete`, {
                     method: "POST",
                     credentials: "same-origin",
-                    headers: {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": document.querySelector("meta[name=csrf-token]")?.content}
+                    headers: getApiHeaders(true)
                 });
                 const data = await res.json();
                 if (res.ok) {
@@ -615,7 +627,7 @@ function orderDetails() {
                 const res = await fetch(`/api/sales-management/${id}/cancel`, {
                     method: "POST",
                     credentials: "same-origin",
-                    headers: {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": document.querySelector("meta[name=csrf-token]")?.content}
+                    headers: getApiHeaders(true)
                 });
                 const data = await res.json();
                 if (res.ok) {
@@ -666,18 +678,12 @@ function orderDetails() {
         async saveChanges() {
             this.actionLoading = true;
             const id = this.getSaleId();
-            const headers = {
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-                "X-Requested-With": "XMLHttpRequest",
-                "X-CSRF-TOKEN": document.querySelector("meta[name=csrf-token]")?.content
-            };
             try {
                 for (const edit of this.editItems) {
                     await fetch(`/api/sales-management/${id}/items/${edit.id}`, {
                         method: "PUT",
                         credentials: "same-origin",
-                        headers,
+                        headers: getApiHeaders(true),
                         body: JSON.stringify({
                             quantity: edit.quantity,
                             unit_price: edit.price,
@@ -703,7 +709,7 @@ function orderDetails() {
                 const res = await fetch(`/api/sales-management/${id}/revert-draft`, {
                     method: "POST",
                     credentials: "same-origin",
-                    headers: {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": document.querySelector("meta[name=csrf-token]")?.content}
+                    headers: getApiHeaders(true)
                 });
                 const data = await res.json();
                 if (res.ok) {

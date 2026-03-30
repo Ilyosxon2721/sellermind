@@ -961,6 +961,19 @@ Route::middleware('auth.any')->group(function () {
         Route::post('offline-sales/{id}/cancel', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'cancel']);
         Route::post('offline-sales/{id}/pay', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'markPaid']);
 
+        // POS Terminal (Кассовый терминал)
+        Route::prefix('pos')->group(function () {
+            Route::post('/shift/open', [\App\Http\Controllers\Api\PosController::class, 'openShift']);
+            Route::post('/shift/close', [\App\Http\Controllers\Api\PosController::class, 'closeShift']);
+            Route::get('/shift/current', [\App\Http\Controllers\Api\PosController::class, 'currentShift']);
+            Route::get('/shift/report', [\App\Http\Controllers\Api\PosController::class, 'shiftReport']);
+            Route::post('/sell', [\App\Http\Controllers\Api\PosController::class, 'quickSell']);
+            Route::get('/products', [\App\Http\Controllers\Api\PosController::class, 'getProducts']);
+            Route::post('/cash-in', [\App\Http\Controllers\Api\PosController::class, 'cashIn']);
+            Route::post('/cash-out', [\App\Http\Controllers\Api\PosController::class, 'cashOut']);
+            Route::get('/recent-sales', [\App\Http\Controllers\Api\PosController::class, 'recentSales']);
+        });
+
         // KPI — планы, сферы продаж, шкалы бонусов
         Route::prefix('kpi')->group(function () {
             Route::get('dashboard', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'dashboard']);
