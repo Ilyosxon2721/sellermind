@@ -320,6 +320,11 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/orders/{id}/print/invoice', [\App\Http\Controllers\OrderPrintController::class, 'invoice'])->name('orders.print.invoice');
     Route::get('/orders/{id}/print/waybill', [\App\Http\Controllers\OrderPrintController::class, 'waybill'])->name('orders.print.waybill');
 
+    // POS Terminal
+    Route::get('/pos', function () {
+        return view('pos.terminal');
+    })->name('pos.terminal');
+
     Route::get('/companies', function () {
         return view('companies.index');
     })->name('companies.index');
