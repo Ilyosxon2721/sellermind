@@ -630,6 +630,7 @@ function saleCreatePage() {
                     credentials: 'same-origin',
                     headers: getHeaders(),
                     body: JSON.stringify({
+                        type: 'individual',
                         name: this.newCounterparty.name,
                         inn: this.newCounterparty.inn,
                         phone: this.newCounterparty.phone,
@@ -644,7 +645,9 @@ function saleCreatePage() {
                     this.showAddCounterpartyModal = false;
                     this.newCounterparty = { name: '', inn: '', phone: '' };
                 } else {
-                    alert('Ошибка создания контрагента');
+                    const error = await resp.json().catch(() => null);
+                    const details = error?.errors ? Object.values(error.errors).flat().join(', ') : (error?.message || '');
+                    alert('Ошибка создания контрагента' + (details ? ': ' + details : ''));
                 }
             } catch (e) {
                 console.error('Add counterparty error:', e);
