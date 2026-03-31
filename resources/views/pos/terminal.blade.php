@@ -440,6 +440,8 @@ function posTerminal() {
                     const d = await res.json();
                     this.shift = d.data || d.shift;
                     this.showSuccess('Смена открыта!');
+                } else if (res.status === 404) {
+                    alert('POS API не найден. Выполните на сервере:\nphp artisan route:clear && php artisan migrate');
                 } else {
                     const err = await res.json().catch(() => ({}));
                     alert('Ошибка: ' + (err.error || err.message || 'Не удалось открыть смену'));
