@@ -25,10 +25,14 @@ final class UzumStockBulkController extends Controller
             $uzum = new UzumApiManager($account);
             $response = $uzum->stocks()->get();
 
-            $items = $response['payload']['shopSkuList'] ?? $response['payload'] ?? [];
+            // API возвращает { payload: { skuAmountList: [...] } }
+            $payload = $response['payload'] ?? $response;
+            $items = $payload['skuAmountList']
+                ?? $payload['shopSkuList']
+                ?? [];
 
-            // Если payload — плоский список SKU
-            if (isset($items[0]['skuId'])) {
+            // Если items — плоский список SKU с skuId
+            if (! empty($items) && isset($items[0]['skuId'])) {
                 return response()->json([
                     'success' => true,
                     'items' => $items,
@@ -36,17 +40,18 @@ final class UzumStockBulkController extends Controller
                 ]);
             }
 
-            // Если payload — группировка по магазинам
+            // Если items — группировка по магазинам (shopId + skuList)
             $allItems = [];
-            if (is_array($items)) {
-                foreach ($items as $shopGroup) {
-                    $shopId = $shopGroup['shopId'] ?? null;
-                    $shopName = $shopGroup['shopName'] ?? null;
-                    foreach ($shopGroup['skuList'] ?? $shopGroup['items'] ?? [] as $sku) {
-                        $sku['shopId'] = $shopId;
-                        $sku['shopName'] = $shopName;
-                        $allItems[] = $sku;
-                    }
+            foreach ($items as $shopGroup) {
+                if (! is_array($shopGroup) || ! isset($shopGroup['shopId'])) {
+                    continue;
+                }
+                $shopId = $shopGroup['shopId'];
+                $shopName = $shopGroup['shopName'] ?? null;
+                foreach ($shopGroup['skuList'] ?? $shopGroup['skuAmountList'] ?? [] as $sku) {
+                    $sku['shopId'] = $shopId;
+                    $sku['shopName'] = $shopName;
+                    $allItems[] = $sku;
                 }
             }
 
