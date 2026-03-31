@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MarketplaceAccount;
+use App\Models\MarketplaceProduct;
 use App\Services\Uzum\Api\UzumApiManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,34 +32,54 @@ final class UzumStockBulkController extends Controller
                 ?? $payload['shopSkuList']
                 ?? [];
 
-            // Если items — плоский список SKU с skuId
-            if (! empty($items) && isset($items[0]['skuId'])) {
-                return response()->json([
-                    'success' => true,
-                    'items' => $items,
-                    'total' => count($items),
-                ]);
+            // Если items — группировка по магазинам (shopId + skuList)
+            if (! empty($items) && ! isset($items[0]['skuId'])) {
+                $grouped = [];
+                foreach ($items as $shopGroup) {
+                    if (! is_array($shopGroup) || ! isset($shopGroup['shopId'])) {
+                        continue;
+                    }
+                    $shopId = $shopGroup['shopId'];
+                    $shopName = $shopGroup['shopName'] ?? null;
+                    foreach ($shopGroup['skuList'] ?? $shopGroup['skuAmountList'] ?? [] as $sku) {
+                        $sku['shopId'] = $shopId;
+                        $sku['shopName'] = $shopName;
+                        $grouped[] = $sku;
+                    }
+                }
+                if (! empty($grouped)) {
+                    $items = $grouped;
+                }
             }
 
-            // Если items — группировка по магазинам (shopId + skuList)
-            $allItems = [];
-            foreach ($items as $shopGroup) {
-                if (! is_array($shopGroup) || ! isset($shopGroup['shopId'])) {
-                    continue;
+            // Обогащаем shopId из БД (по skuId из raw_payload.skuList)
+            $skuShopMap = $this->buildSkuShopMap($account);
+            foreach ($items as &$item) {
+                if (empty($item['shopId']) && isset($item['skuId'])) {
+                    $item['shopId'] = $skuShopMap[(int) $item['skuId']] ?? null;
                 }
-                $shopId = $shopGroup['shopId'];
-                $shopName = $shopGroup['shopName'] ?? null;
-                foreach ($shopGroup['skuList'] ?? $shopGroup['skuAmountList'] ?? [] as $sku) {
-                    $sku['shopId'] = $shopId;
-                    $sku['shopName'] = $shopName;
-                    $allItems[] = $sku;
+            }
+            unset($item);
+
+            // Собираем список уникальных магазинов из items
+            $shops = [];
+            $seenShops = [];
+            foreach ($items as $item) {
+                $sid = $item['shopId'] ?? null;
+                if ($sid && ! isset($seenShops[$sid])) {
+                    $seenShops[$sid] = true;
+                    $shops[] = [
+                        'id' => $sid,
+                        'name' => $item['shopName'] ?? $this->getShopName($account, $sid) ?? (string) $sid,
+                    ];
                 }
             }
 
             return response()->json([
                 'success' => true,
-                'items' => ! empty($allItems) ? $allItems : $items,
-                'total' => ! empty($allItems) ? count($allItems) : count($items),
+                'items' => array_values($items),
+                'total' => count($items),
+                'shops' => $shops,
             ]);
         } catch (\Throwable $e) {
             Log::error('UzumStockBulk: ошибка получения остатков', [
@@ -71,6 +92,52 @@ final class UzumStockBulkController extends Controller
                 'message' => 'Ошибка получения остатков: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Построить карту skuId -> shopId из raw_payload товаров
+     */
+    private function buildSkuShopMap(MarketplaceAccount $account): array
+    {
+        $map = [];
+        $products = MarketplaceProduct::where('marketplace_account_id', $account->id)
+            ->whereNotNull('shop_id')
+            ->select('shop_id', 'raw_payload')
+            ->get();
+
+        foreach ($products as $product) {
+            $payload = $product->raw_payload;
+            if (! is_array($payload)) {
+                continue;
+            }
+            $skuList = $payload['skuList'] ?? $payload['characteristics'] ?? [];
+            foreach ($skuList as $sku) {
+                if (isset($sku['skuId'])) {
+                    $map[(int) $sku['skuId']] = (string) $product->shop_id;
+                }
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * Получить название магазина по shopId из БД
+     */
+    private function getShopName(MarketplaceAccount $account, string $shopId): ?string
+    {
+        $product = MarketplaceProduct::where('marketplace_account_id', $account->id)
+            ->where('shop_id', $shopId)
+            ->whereNotNull('raw_payload')
+            ->first();
+
+        if (! $product) {
+            return null;
+        }
+
+        $payload = $product->raw_payload;
+
+        return $payload['shopTitle'] ?? $payload['shopName'] ?? null;
     }
 
     /**

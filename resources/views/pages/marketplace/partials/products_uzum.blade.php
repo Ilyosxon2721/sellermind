@@ -1139,6 +1139,14 @@
                 <div class="flex items-center gap-2 mt-3">
                     <input type="text" x-model="stockSearch" placeholder="Поиск по названию, баркоду, SKU ID..."
                            class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-400">
+                    <select x-model="stockShopFilter" @change="selectedStockIds = []"
+                            class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                            :class="stockShopFilter ? 'ring-2 ring-purple-500 bg-purple-50' : ''">
+                        <option value="">Все магазины</option>
+                        <template x-for="shop in stockShops" :key="shop.id">
+                            <option :value="shop.id" x-text="shop.name"></option>
+                        </template>
+                    </select>
                     <select x-model="stockFilter" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm">
                         <option value="all">Все</option>
                         <option value="fbs">Только FBS</option>
@@ -1275,6 +1283,8 @@ function uzumProducts(accountId) {
         stockBusy: false,
         stockSearch: '',
         stockFilter: 'all',
+        stockShopFilter: '',
+        stockShops: [],
         stockMessage: '',
         stockSuccess: true,
         seoModalOpen: false,
@@ -1817,6 +1827,9 @@ function uzumProducts(accountId) {
 
         get filteredStockItems() {
             let items = this.stockItems || [];
+            if (this.stockShopFilter) {
+                items = items.filter(i => String(i.shopId) === String(this.stockShopFilter));
+            }
             if (this.stockSearch) {
                 const q = this.stockSearch.toLowerCase();
                 items = items.filter(i =>
@@ -1850,6 +1863,7 @@ function uzumProducts(accountId) {
                 if (r.ok) {
                     const data = await r.json();
                     this.stockItems = data.items || [];
+                    this.stockShops = data.shops || [];
                 } else {
                     this.stockMessage = 'Ошибка загрузки остатков';
                     this.stockSuccess = false;
