@@ -202,6 +202,17 @@
             <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">{{ __('admin.sales') }}</span>
         </a>
 
+        {{-- POS Terminal --}}
+        <a href="/pos"
+           class="flex items-center rounded-lg transition {{ request()->is('pos*') ? 'bg-green-50 text-green-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           :class="$store.ui.sidebarCollapsed ? 'justify-center p-2.5' : 'space-x-3 px-3 py-2.5'"
+           :title="$store.ui.sidebarCollapsed ? 'POS-Касса' : ''">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+            </svg>
+            <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">POS-Касса</span>
+        </a>
+
         {{-- Counterparties --}}
         <a href="/counterparties"
            class="flex items-center rounded-lg transition {{ request()->is('counterparties*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
