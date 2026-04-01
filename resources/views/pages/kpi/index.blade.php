@@ -5,7 +5,7 @@
 @section('content')
 
 <div class="browser-only flex h-screen bg-gray-50" x-data="kpiPage({
-        tabLabels: { dashboard: {{ \Illuminate\Support\Js::from(__('kpi.tabs.dashboard')) }}, plans: {{ \Illuminate\Support\Js::from(__('kpi.tabs.plans')) }}, spheres: {{ \Illuminate\Support\Js::from(__('kpi.tabs.spheres')) }}, scales: {{ \Illuminate\Support\Js::from(__('kpi.tabs.scales')) }} },
+        tabLabels: { dashboard: {{ \Illuminate\Support\Js::from(__('kpi.tabs.dashboard')) }}, plans: {{ \Illuminate\Support\Js::from(__('kpi.tabs.plans')) }}, spheres: {{ \Illuminate\Support\Js::from(__('kpi.tabs.spheres')) }}, scales: {{ \Illuminate\Support\Js::from(__('kpi.tabs.scales')) }}, branches: 'Филиалы' },
         statuses: { active: {{ \Illuminate\Support\Js::from(__('kpi.statuses.active')) }}, calculated: {{ \Illuminate\Support\Js::from(__('kpi.statuses.calculated')) }}, approved: {{ \Illuminate\Support\Js::from(__('kpi.statuses.approved')) }}, cancelled: {{ \Illuminate\Support\Js::from(__('kpi.statuses.cancelled')) }} },
         bonusTypes: { fixed: {{ \Illuminate\Support\Js::from(__('kpi.scales.type_fixed')) }}, percent_revenue: {{ \Illuminate\Support\Js::from(__('kpi.scales.type_percent_revenue')) }}, percent_margin: {{ \Illuminate\Support\Js::from(__('kpi.scales.type_percent_margin')) }} }
     })"
@@ -49,8 +49,8 @@
 
             {{-- Табы --}}
             <div class="flex gap-1 mt-4 -mb-4">
-                <template x-for="t in ['dashboard','plans','spheres','scales']" :key="t">
-                    <button @click="tab = t; if(t==='plans') loadPlans(); if(t==='spheres') loadSpheres(); if(t==='scales') loadScales(); if(t==='dashboard') loadDashboard();"
+                <template x-for="t in ['dashboard','plans','spheres','scales','branches']" :key="t">
+                    <button @click="tab = t; if(t==='plans') loadPlans(); if(t==='spheres') loadSpheres(); if(t==='scales') loadScales(); if(t==='dashboard') loadDashboard(); if(t==='branches') loadBranches();"
                             class="px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition"
                             :class="tab === t ? 'text-blue-600 border-blue-600 bg-blue-50' : 'text-gray-500 border-transparent hover:text-gray-700'">
                         <span x-text="tabLabels[t]"></span>
