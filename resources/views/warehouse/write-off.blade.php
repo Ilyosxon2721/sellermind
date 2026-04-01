@@ -269,7 +269,7 @@
                     const resp = await fetch(`/api/marketplace/inventory/documents?${params.toString()}`, {headers: this.getAuthHeaders()});
                     const json = await resp.json();
                     if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка загрузки');
-                    this.items = json.data || [];
+                    this.items = Array.isArray(json.data) ? json.data : (json.data?.data || []);
                 } catch(e) {
                     console.error(e);
                     this.error = e.message || 'Ошибка';
