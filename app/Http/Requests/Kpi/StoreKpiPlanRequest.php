@@ -31,10 +31,19 @@ final class StoreKpiPlanRequest extends FormRequest
         $companyId = auth()->user()->company_id;
 
         return [
+            'plan_type' => ['sometimes', 'string', 'in:employee,branch'],
             'employee_id' => [
-                'required',
+                'required_if:plan_type,employee',
+                'required_without:branch_id',
+                'nullable',
                 'integer',
                 Rule::exists('employees', 'id')->where('company_id', $companyId),
+            ],
+            'branch_id' => [
+                'required_if:plan_type,branch',
+                'nullable',
+                'integer',
+                Rule::exists('branches', 'id')->where('company_id', $companyId),
             ],
             'kpi_sales_sphere_id' => [
                 'required',

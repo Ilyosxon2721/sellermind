@@ -507,14 +507,52 @@
                     </div>
                 </div>
                 <div class="space-y-4">
+                    {{-- Тип плана: сотрудник или филиал --}}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.plans.employee') }}</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Тип плана</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-colors"
+                                   :class="planForm.plan_type === 'employee' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
+                                <input type="radio" value="employee" x-model="planForm.plan_type" class="sr-only">
+                                <span class="text-lg">👤</span>
+                                <div>
+                                    <span class="text-sm font-medium">Сотрудник</span>
+                                    <p class="text-xs text-gray-400">План на одного человека</p>
+                                </div>
+                            </label>
+                            <label class="flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-colors"
+                                   :class="planForm.plan_type === 'branch' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
+                                <input type="radio" value="branch" x-model="planForm.plan_type" class="sr-only">
+                                <span class="text-lg">🏢</span>
+                                <div>
+                                    <span class="text-sm font-medium">Филиал</span>
+                                    <p class="text-xs text-gray-400">План на весь филиал</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    {{-- Сотрудник (для типа employee) --}}
+                    <div x-show="planForm.plan_type === 'employee'">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Сотрудник</label>
                         <select x-model="planForm.employee_id" class="w-full rounded-lg border-gray-300 text-sm">
                             <option value="">—</option>
                             <template x-for="e in employees" :key="e.id">
                                 <option :value="e.id" x-text="e.name"></option>
                             </template>
                         </select>
+                    </div>
+
+                    {{-- Филиал (для типа branch) --}}
+                    <div x-show="planForm.plan_type === 'branch'">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Филиал</label>
+                        <select x-model="planForm.branch_id" class="w-full rounded-lg border-gray-300 text-sm">
+                            <option value="">—</option>
+                            <template x-for="b in branches" :key="b.id">
+                                <option :value="b.id" x-text="b.name + (b.director ? ' (дир.: ' + b.director.last_name + ')' : '')"></option>
+                            </template>
+                        </select>
+                        <p class="text-xs text-gray-400 mt-1">После создания плана можно распределить его по сотрудникам филиала</p>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>

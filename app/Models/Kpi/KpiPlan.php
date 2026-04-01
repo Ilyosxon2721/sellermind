@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * KPI-план сотрудника по конкретной сфере за месяц
@@ -58,6 +59,9 @@ final class KpiPlan extends Model
     protected $fillable = [
         'company_id',
         'employee_id',
+        'branch_id',
+        'parent_plan_id',
+        'plan_type',
         'kpi_sales_sphere_id',
         'kpi_bonus_scale_id',
         'period_year',
@@ -112,6 +116,21 @@ final class KpiPlan extends Model
         return $this->belongsTo(Employee::class);
     }
 
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Branch::class);
+    }
+
+    public function parentPlan(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_plan_id');
+    }
+
+    public function childPlans(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_plan_id');
+    }
+
     public function salesSphere(): BelongsTo
     {
         return $this->belongsTo(SalesSphere::class, 'kpi_sales_sphere_id');
@@ -120,6 +139,30 @@ final class KpiPlan extends Model
     public function bonusScale(): BelongsTo
     {
         return $this->belongsTo(BonusScale::class, 'kpi_bonus_scale_id');
+    }
+
+    /**
+     * Это план на филиал?
+     */
+    public function isBranchPlan(): bool
+    {
+        return $this->plan_type === 'branch';
+    }
+
+    /**
+     * Процент распределения плана филиала (сумма дочерних / цель филиала)
+     */
+    public function getDistributionPercentAttribute(): float
+    {
+        if (! $this->isBranchPlan()) {
+            return 0;
+        }
+
+        $childrenRevenue = $this->childPlans()->sum('target_revenue');
+
+        return $this->target_revenue > 0
+            ? round($childrenRevenue / $this->target_revenue * 100, 1)
+            : 0;
     }
 
     public function approvedByUser(): BelongsTo

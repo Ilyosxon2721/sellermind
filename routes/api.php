@@ -1008,6 +1008,13 @@ Route::middleware('auth.any')->group(function () {
             Route::post('plans/calculate', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'calculate'])->middleware('throttle:kpi-calculate');
             Route::post('plans/ai-suggest', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'aiSuggest'])->middleware('throttle:kpi-ai');
             Route::post('plans/{id}/approve', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'approve']);
+            Route::post('plans/{id}/distribute', [\App\Http\Controllers\Api\Kpi\BranchController::class, 'distribute']);
+
+            // Филиалы
+            Route::get('branches', [\App\Http\Controllers\Api\Kpi\BranchController::class, 'index']);
+            Route::post('branches', [\App\Http\Controllers\Api\Kpi\BranchController::class, 'store']);
+            Route::put('branches/{id}', [\App\Http\Controllers\Api\Kpi\BranchController::class, 'update']);
+            Route::delete('branches/{id}', [\App\Http\Controllers\Api\Kpi\BranchController::class, 'destroy']);
         });
     });
 
