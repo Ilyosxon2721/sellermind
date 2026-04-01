@@ -386,7 +386,7 @@
                     const resp = await fetch(`/api/marketplace/inventory/documents?${params.toString()}`, {headers: this.getAuthHeaders()});
                     const json = await resp.json();
                     if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка загрузки');
-                    const newItems = json.data || [];
+                    const newItems = Array.isArray(json.data) ? json.data : (json.data?.data || []);
                     if (silent && this.items.length > 0 && window.SmartRefresh) {
                         const changed = window.SmartRefresh.merge(this.items, newItems, 'id');
                         if (changed) {
