@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Storefront\Traits\StorefrontHelpers;
 use App\Models\Store\Store;
-use App\Models\Store\StoreAnalytics;
 use App\Models\Store\StoreOrder;
 use App\Models\Store\StoreOrderItem;
 use App\Models\Store\StorePromocode;
@@ -15,14 +15,13 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Оформление заказа — страница чекаута и создание заказа
  */
 final class CheckoutController extends Controller
 {
-    use ApiResponder;
+    use ApiResponder, StorefrontHelpers;
 
     /**
      * Страница оформления заказа
@@ -356,20 +355,6 @@ final class CheckoutController extends Controller
     // ==================
 
     /**
-     * Получить опубликованный магазин по slug
-     *
-     * @param  array<int, string>  $with
-     */
-    private function getPublishedStore(string $slug, array $with = []): Store
-    {
-        return Store::where('slug', $slug)
-            ->where('is_active', true)
-            ->where('is_published', true)
-            ->with(array_merge(['theme'], $with))
-            ->firstOrFail();
-    }
-
-    /**
      * Получить корзину из сессии
      *
      * @return array<string, array{product_id: int, quantity: int, name: string, price: float, image: string|null}>
@@ -379,31 +364,4 @@ final class CheckoutController extends Controller
         return session()->get("store_cart_{$store->id}", []);
     }
 
-    /**
-     * Трекинг завершённого заказа — fire-and-forget
-     */
-    private function trackOrderCompleted(Store $store, float $total): void
-    {
-        try {
-            $today = now()->toDateString();
-
-            StoreAnalytics::updateOrCreate(
-                ['store_id' => $store->id, 'date' => $today],
-                []
-            );
-
-            StoreAnalytics::where('store_id', $store->id)
-                ->where('date', $today)
-                ->increment('orders_completed');
-
-            StoreAnalytics::where('store_id', $store->id)
-                ->where('date', $today)
-                ->increment('revenue', $total);
-        } catch (\Throwable $e) {
-            Log::debug('Ошибка трекинга завершённого заказа', [
-                'store_id' => $store->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
 }
