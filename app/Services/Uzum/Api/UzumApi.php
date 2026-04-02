@@ -155,6 +155,21 @@ final class UzumApi
     }
 
     /**
+     * Сбросить кэш конкретного эндпоинта
+     */
+    public function flushCacheFor(array $endpoint, array $params = [], array $query = [], array $body = []): void
+    {
+        $cacheKey = 'uzum:'.$this->account->id.':'.md5(json_encode([
+            $endpoint['path'] ?? '',
+            $params,
+            $query,
+            $body,
+        ]));
+
+        Cache::forget($cacheKey);
+    }
+
+    /**
      * Очистить кэш для текущего аккаунта
      */
     public function flushCache(): void

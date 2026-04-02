@@ -24,7 +24,8 @@ final class UzumStockBulkController extends Controller
     {
         try {
             $uzum = new UzumApiManager($account);
-            $response = $uzum->stocks()->get();
+            $fresh = $request->boolean('fresh');
+            $response = $fresh ? $uzum->stocks()->getFresh() : $uzum->stocks()->get();
 
             // API возвращает { payload: { skuAmountList: [...] } }
             $payload = $response['payload'] ?? $response;

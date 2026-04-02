@@ -17,11 +17,27 @@ final class StockPlugin
     ) {}
 
     /**
-     * Получить текущие остатки
+     * Получить текущие остатки (кэшированный)
      */
     public function get(): array
     {
         return $this->api->cachedCall(UzumEndpoints::FBS_STOCKS_GET, ttl: 300);
+    }
+
+    /**
+     * Получить текущие остатки без кэша
+     */
+    public function getFresh(): array
+    {
+        return $this->api->call(UzumEndpoints::FBS_STOCKS_GET);
+    }
+
+    /**
+     * Сбросить кэш остатков
+     */
+    public function clearCache(): void
+    {
+        $this->api->flushCacheFor(UzumEndpoints::FBS_STOCKS_GET);
     }
 
     /**
@@ -31,10 +47,15 @@ final class StockPlugin
      */
     public function update(array $items): array
     {
-        return $this->api->call(
+        $result = $this->api->call(
             UzumEndpoints::FBS_STOCKS_UPDATE,
             body: ['skuAmountList' => $items],
         );
+
+        // Сбрасываем кэш после обновления
+        $this->clearCache();
+
+        return $result;
     }
 
     /**
