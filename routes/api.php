@@ -156,6 +156,16 @@ Route::middleware(['web', 'auth.any'])->group(function () {
     Route::put('counterparties/{id}', [\App\Http\Controllers\Api\CounterpartyController::class, 'update']);
     Route::delete('counterparties/{id}', [\App\Http\Controllers\Api\CounterpartyController::class, 'destroy']);
 
+    // Marketplace Customers (клиентская база из DBS заказов)
+    Route::prefix('marketplace-customers')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'index']);
+        Route::get('/stats', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'stats']);
+        Route::post('/extract/{accountId}', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'extractFromOrders']);
+        Route::get('/{id}', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'show']);
+        Route::put('/{id}', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'update']);
+        Route::delete('/{id}', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'destroy']);
+    });
+
     // Counterparty contracts
     Route::get('counterparties/{id}/contracts', [\App\Http\Controllers\Api\CounterpartyController::class, 'contracts']);
     Route::post('counterparties/{id}/contracts', [\App\Http\Controllers\Api\CounterpartyController::class, 'storeContract']);

@@ -11,6 +11,7 @@ use App\Models\UzumOrderItem;
 use App\Models\WbOrder;
 use App\Models\WbOrderItem;
 use App\Services\Marketplaces\MarketplaceClientFactory;
+use App\Services\Marketplaces\MarketplaceCustomerService;
 use App\Services\Stock\OrderStockService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -20,11 +21,15 @@ class OrdersSyncService
 {
     protected OrderStockService $orderStockService;
 
+    protected MarketplaceCustomerService $customerService;
+
     public function __construct(
         protected MarketplaceClientFactory $clientFactory,
-        ?OrderStockService $orderStockService = null
+        ?OrderStockService $orderStockService = null,
+        ?MarketplaceCustomerService $customerService = null,
     ) {
         $this->orderStockService = $orderStockService ?? new OrderStockService;
+        $this->customerService = $customerService ?? new MarketplaceCustomerService;
     }
 
     /**
@@ -334,6 +339,9 @@ class OrdersSyncService
         // Дополнительная проверка: если заказ отменён, но резерв всё ещё активен - освободить
         $this->ensureCancelledOrderStockReleased($account, $order, 'wb');
 
+        // Извлечь данные клиента из DBS заказа
+        $this->extractCustomerFromOrder($account, $order);
+
         return $result['result'];
     }
 
@@ -443,6 +451,9 @@ class OrdersSyncService
         // Это нужно для случаев, когда отмена была пропущена при предыдущих синхронизациях
         $this->ensureCancelledOrderStockReleased($account, $order, 'uzum');
 
+        // Извлечь данные клиента из DBS заказа
+        $this->extractCustomerFromOrder($account, $order);
+
         return $result['result'];
     }
 
@@ -484,6 +495,23 @@ class OrdersSyncService
                 'price' => $itemData['price'] ?? 0,
                 'total_price' => $itemData['total_price'] ?? ($itemData['price'] ?? 0) * ($itemData['quantity'] ?? 1),
                 'raw_payload' => $itemData['raw_payload'] ?? $itemData,
+            ]);
+        }
+    }
+
+    /**
+     * Извлечь данные клиента из DBS заказа и сохранить в клиентскую базу
+     */
+    protected function extractCustomerFromOrder(MarketplaceAccount $account, $order): void
+    {
+        try {
+            $this->customerService->extractFromOrder($account, $order);
+        } catch (\Throwable $e) {
+            // Не прерываем синхронизацию из-за ошибки извлечения клиента
+            Log::warning('Ошибка извлечения клиента из заказа', [
+                'order_id' => $order->id,
+                'marketplace' => $account->marketplace,
+                'error' => $e->getMessage(),
             ]);
         }
     }
