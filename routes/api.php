@@ -1078,6 +1078,7 @@ Route::middleware('auth.any')->group(function () {
         // Orders
         Route::get('stores/{storeId}/orders', [\App\Http\Controllers\Store\StoreOrderController::class, 'index']);
         Route::get('stores/{storeId}/orders/stats', [\App\Http\Controllers\Store\StoreOrderController::class, 'stats']);
+        Route::get('stores/{storeId}/orders/export', [\App\Http\Controllers\Store\StoreOrderController::class, 'export']);
         Route::get('stores/{storeId}/orders/{orderId}', [\App\Http\Controllers\Store\StoreOrderController::class, 'show']);
         Route::put('stores/{storeId}/orders/{orderId}', [\App\Http\Controllers\Store\StoreOrderController::class, 'update']);
 

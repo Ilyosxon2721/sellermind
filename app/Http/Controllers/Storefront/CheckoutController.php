@@ -213,6 +213,20 @@ final class CheckoutController extends Controller
             ]);
         }
 
+        // Email-подтверждение покупателю
+        if ($order->customer_email) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($order->customer_email)->queue(
+                    new \App\Mail\StoreOrderStatusMail($order->load('items'), $store->name)
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::debug('Order confirmation email failed', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         return $this->successResponse(
             $order->load('items'),
             ['message' => 'Заказ успешно создан']
