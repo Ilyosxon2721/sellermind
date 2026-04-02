@@ -1854,12 +1854,11 @@ function uzumProducts(accountId) {
             if (this.stockItems.length === 0) await this.loadStockItems();
         },
 
-        async loadStockItems() {
+        async loadStockItems(fresh = false) {
             this.stockLoading = true;
             try {
-                const r = await fetch(`/api/marketplace/uzum/accounts/${this.accountId}/stocks`, {
-                    headers: this.getHeaders(), credentials: 'include',
-                });
+                const url = `/api/marketplace/uzum/accounts/${this.accountId}/stocks` + (fresh ? '?fresh=1' : '');
+                const r = await fetch(url, { headers: this.getHeaders(), credentials: 'include' });
                 if (r.ok) {
                     const data = await r.json();
                     this.stockItems = data.items || [];
@@ -1892,7 +1891,7 @@ function uzumProducts(accountId) {
                 const data = await r.json();
                 this.stockMessage = data.message || (data.success ? 'Готово' : 'Ошибка');
                 this.stockSuccess = !!data.success;
-                if (data.success) { await this.loadStockItems(); this.selectedStockIds = []; }
+                if (data.success) { await this.loadStockItems(true); this.selectedStockIds = []; }
             } catch { this.stockMessage = 'Ошибка сети'; this.stockSuccess = false; }
             this.stockBusy = false;
         },
@@ -1912,7 +1911,7 @@ function uzumProducts(accountId) {
                 const data = await r.json();
                 this.stockMessage = data.message || (data.success ? 'Готово' : 'Ошибка');
                 this.stockSuccess = !!data.success;
-                if (data.success) { await this.loadStockItems(); this.selectedStockIds = []; }
+                if (data.success) { await this.loadStockItems(true); this.selectedStockIds = []; }
             } catch { this.stockMessage = 'Ошибка сети'; this.stockSuccess = false; }
             this.stockBusy = false;
         },
