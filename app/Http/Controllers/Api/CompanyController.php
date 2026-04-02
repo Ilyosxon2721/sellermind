@@ -52,8 +52,15 @@ class CompanyController extends Controller
         // Автоматически создаём пробный период (15 дней, полный функционал)
         $trialService = app(TrialService::class);
         $trial = null;
-        if (! $trialService->hasHadTrial($company)) {
-            $trial = $trialService->createTrial($company);
+        try {
+            if (! $trialService->hasHadTrial($company)) {
+                $trial = $trialService->createTrial($company);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Ошибка создания пробного периода', [
+                'company_id' => $company->id,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return response()->json([

@@ -35,11 +35,11 @@ final class TrialService
         $plan = Plan::where('slug', self::TRIAL_PLAN_SLUG)->first();
 
         if (! $plan) {
-            Log::error('TrialService: тариф для пробного периода не найден', [
+            Log::warning('TrialService: тариф для пробного периода не найден, создаём автоматически', [
                 'slug' => self::TRIAL_PLAN_SLUG,
             ]);
 
-            throw new \RuntimeException('Тариф для пробного периода не найден. Запустите db:seed --class=PlanSeeder');
+            $plan = $this->createDefaultTrialPlan();
         }
 
         $now = now();
@@ -68,6 +68,48 @@ final class TrialService
         ]);
 
         return $subscription;
+    }
+
+    /**
+     * Создать тарифный план «Про» по умолчанию, если он отсутствует в БД
+     */
+    private function createDefaultTrialPlan(): Plan
+    {
+        return Plan::create([
+            'name' => 'Про',
+            'slug' => self::TRIAL_PLAN_SLUG,
+            'description' => 'Для крупных продавцов. Все маркетплейсы, неограниченная аналитика и приоритетная поддержка.',
+            'price' => 1990000,
+            'currency' => 'UZS',
+            'billing_period' => 'monthly',
+            'max_marketplace_accounts' => 10,
+            'max_products' => 10000,
+            'max_orders_per_month' => 30000,
+            'max_users' => 15,
+            'max_warehouses' => 10,
+            'max_ai_requests' => 1000,
+            'data_retention_days' => 365,
+            'has_api_access' => true,
+            'has_priority_support' => true,
+            'has_telegram_notifications' => true,
+            'has_auto_pricing' => true,
+            'has_analytics' => true,
+            'allowed_marketplaces' => ['uzum', 'wb', 'ozon', 'yandex'],
+            'features' => [
+                'Всё из тарифа «Бизнес»',
+                '4 маркетплейса включая Yandex Market',
+                'Мониторинг цен конкурентов (Uzum Analytics)',
+                'Приоритетная поддержка 24/7',
+                '1 000 AI-запросов в месяц',
+                'Годовое хранение данных',
+                'KPI и мотивация сотрудников',
+                'Расширенные отчёты и экспорт',
+                'Webhook-интеграции',
+            ],
+            'sort_order' => 3,
+            'is_active' => true,
+            'is_popular' => false,
+        ]);
     }
 
     /**
