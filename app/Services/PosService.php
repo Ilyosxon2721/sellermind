@@ -33,7 +33,7 @@ final class PosService
     {
         // Проверяем что нет открытой смены для этого пользователя/компании
         $existingShift = CashShift::where('company_id', $companyId)
-            ->where('user_id', $userId)
+            ->where('opened_by', $userId)
             ->where('status', CashShift::STATUS_OPEN)
             ->first();
 
@@ -43,18 +43,12 @@ final class PosService
 
         $shift = CashShift::create([
             'company_id' => $companyId,
-            'user_id' => $userId,
+            'opened_by' => $userId,
             'cash_account_id' => $data['cash_account_id'] ?? null,
             'warehouse_id' => $data['warehouse_id'] ?? null,
             'opening_balance' => $data['opening_balance'] ?? 0,
-            'current_balance' => $data['opening_balance'] ?? 0,
-            'total_sales' => 0,
-            'total_cash_in' => 0,
-            'total_cash_out' => 0,
-            'sales_count' => 0,
             'status' => CashShift::STATUS_OPEN,
             'opened_at' => now(),
-            'notes' => $data['notes'] ?? null,
         ]);
 
         Log::info('POS: Смена открыта', [
@@ -78,19 +72,15 @@ final class PosService
 
         $shift->update([
             'closing_balance' => $closingBalance,
-            'expected_balance' => $shift->opening_balance + $shift->total_sales + $shift->total_cash_in - $shift->total_cash_out,
-            'difference' => $closingBalance - ($shift->opening_balance + $shift->total_sales + $shift->total_cash_in - $shift->total_cash_out),
             'status' => CashShift::STATUS_CLOSED,
             'closed_at' => now(),
             'closed_by' => $userId,
-            'notes' => $notes ?? $shift->notes,
+            'close_notes' => $notes,
         ]);
 
         Log::info('POS: Смена закрыта', [
             'shift_id' => $shift->id,
             'closing_balance' => $closingBalance,
-            'expected_balance' => $shift->expected_balance,
-            'difference' => $shift->difference,
         ]);
 
         return $shift->fresh();
@@ -167,7 +157,7 @@ final class PosService
                 'delivered_date' => now(),
                 'stock_status' => 'none',
                 'notes' => $data['notes'] ?? null,
-                'created_by' => $shift->user_id,
+                'created_by' => $shift->opened_by,
                 'metadata' => [
                     'pos_shift_id' => $shift->id,
                     'pos_sale' => true,
@@ -238,7 +228,7 @@ final class PosService
                         'reference' => "SHIFT-{$shift->id}-IN",
                         'transaction_date' => now(),
                         'status' => CashTransaction::STATUS_CONFIRMED,
-                        'created_by' => $shift->user_id,
+                        'created_by' => $shift->opened_by,
                         'meta_json' => ['pos_shift_id' => $shift->id, 'operation' => 'cash_in'],
                     ]);
 
@@ -250,7 +240,6 @@ final class PosService
             $freshShift = CashShift::lockForUpdate()->find($shift->id);
             $freshShift->update([
                 'total_cash_in' => $freshShift->total_cash_in + $amount,
-                'current_balance' => $freshShift->current_balance + $amount,
             ]);
 
             Log::info('POS: Внесение наличных', [
@@ -294,7 +283,7 @@ final class PosService
                         'reference' => "SHIFT-{$shift->id}-OUT",
                         'transaction_date' => now(),
                         'status' => CashTransaction::STATUS_CONFIRMED,
-                        'created_by' => $shift->user_id,
+                        'created_by' => $shift->opened_by,
                         'meta_json' => ['pos_shift_id' => $shift->id, 'operation' => 'cash_out'],
                     ]);
 
@@ -306,7 +295,6 @@ final class PosService
             $freshShift = CashShift::lockForUpdate()->find($shift->id);
             $freshShift->update([
                 'total_cash_out' => $freshShift->total_cash_out + $amount,
-                'current_balance' => $freshShift->current_balance - $amount,
             ]);
 
             Log::info('POS: Изъятие наличных', [
@@ -522,7 +510,7 @@ final class PosService
             'reference' => $sale->sale_number,
             'transaction_date' => now(),
             'status' => CashTransaction::STATUS_CONFIRMED,
-            'created_by' => $shift->user_id,
+            'created_by' => $shift->opened_by,
             'meta_json' => [
                 'pos_shift_id' => $shift->id,
                 'payment_method' => $sale->payment_method,
@@ -540,9 +528,8 @@ final class PosService
         $freshShift = CashShift::lockForUpdate()->find($shift->id);
 
         $freshShift->update([
-            'total_sales' => $freshShift->total_sales + $saleAmount,
-            'sales_count' => $freshShift->sales_count + 1,
-            'current_balance' => $freshShift->current_balance + $saleAmount,
+            'total_sales_amount' => $freshShift->total_sales_amount + $saleAmount,
+            'total_sales_count' => $freshShift->total_sales_count + 1,
         ]);
     }
 }
