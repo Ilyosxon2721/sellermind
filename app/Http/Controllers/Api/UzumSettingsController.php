@@ -437,6 +437,9 @@ class UzumSettingsController extends Controller
                 }
             }
 
+            // Сбрасываем кэш остатков для актуальных данных при перезагрузке
+            $uzum->stocks()->clearCache();
+
             return response()->json([
                 'success' => true,
                 'updated' => $updated,
