@@ -121,11 +121,11 @@ final class PosController extends Controller
         }
 
         // Загружаем связанные данные для отображения
-        $shift->load(['user:id,name', 'cashAccount:id,name,type,balance']);
+        $shift->load(['openedBy:id,name', 'cashAccount:id,name,type,balance']);
 
         // Добавляем сводку по смене
         $salesInShift = OfflineSale::where('company_id', $companyId)
-            ->where('created_by', $shift->user_id)
+            ->where('created_by', $shift->opened_by)
             ->where('metadata->pos_shift_id', $shift->id)
             ->where('status', OfflineSale::STATUS_DELIVERED)
             ->get();
@@ -268,10 +268,12 @@ final class PosController extends Controller
             $data = $validator->validated();
             $this->posService->cashIn($shift, (float) $data['amount'], $data['description']);
 
+            $freshShift = $shift->fresh();
+
             return $this->successResponse([
                 'message' => 'Внесение выполнено',
                 'amount' => (float) $data['amount'],
-                'shift_balance' => (float) $shift->fresh()->current_balance,
+                'shift_balance' => $freshShift->getExpectedBalance(),
             ]);
         } catch (\RuntimeException $e) {
             return $this->errorResponse($e->getMessage(), 'cash_error', null, 422);
@@ -308,10 +310,12 @@ final class PosController extends Controller
             $data = $validator->validated();
             $this->posService->cashOut($shift, (float) $data['amount'], $data['description']);
 
+            $freshShift = $shift->fresh();
+
             return $this->successResponse([
                 'message' => 'Изъятие выполнено',
                 'amount' => (float) $data['amount'],
-                'shift_balance' => (float) $shift->fresh()->current_balance,
+                'shift_balance' => $freshShift->getExpectedBalance(),
             ]);
         } catch (\RuntimeException $e) {
             return $this->errorResponse($e->getMessage(), 'cash_error', null, 422);
@@ -359,14 +363,14 @@ final class PosController extends Controller
         $report = [
             'shift_id' => $shift->id,
             'status' => $shift->status,
-            'cashier' => $shift->user?->name ?? 'Неизвестен',
+            'cashier' => $shift->openedBy?->name ?? 'Неизвестен',
             'opened_at' => $shift->opened_at?->toIso8601String(),
             'closed_at' => $shift->closed_at?->toIso8601String(),
             'opening_balance' => (float) $shift->opening_balance,
             'closing_balance' => $shift->closing_balance ? (float) $shift->closing_balance : null,
-            'expected_balance' => (float) ($shift->opening_balance + $shift->total_sales + $shift->total_cash_in - $shift->total_cash_out),
-            'difference' => $shift->closing_balance
-                ? (float) $shift->closing_balance - (float) ($shift->opening_balance + $shift->total_sales + $shift->total_cash_in - $shift->total_cash_out)
+            'expected_balance' => $shift->getExpectedBalance(),
+            'difference' => $shift->closing_balance !== null
+                ? $shift->getDifference()
                 : null,
             'sales' => [
                 'count' => $deliveredSales->count(),
@@ -420,7 +424,7 @@ final class PosController extends Controller
     private function getCurrentOpenShift(int $companyId): ?CashShift
     {
         return CashShift::where('company_id', $companyId)
-            ->where('user_id', Auth::id())
+            ->where('opened_by', Auth::id())
             ->where('status', CashShift::STATUS_OPEN)
             ->first();
     }
