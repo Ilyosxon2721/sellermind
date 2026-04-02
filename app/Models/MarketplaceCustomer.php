@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 final class MarketplaceCustomer extends Model
@@ -49,6 +50,14 @@ final class MarketplaceCustomer extends Model
     public function lastOrder(): MorphTo
     {
         return $this->morphTo('last_order');
+    }
+
+    /**
+     * Все заказы клиента (связующая таблица)
+     */
+    public function customerOrders(): HasMany
+    {
+        return $this->hasMany(MarketplaceCustomerOrder::class, 'marketplace_customer_id');
     }
 
     // ========== Scopes ==========

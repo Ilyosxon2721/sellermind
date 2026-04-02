@@ -6,11 +6,11 @@ namespace Tests\Unit\Services;
 
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceCustomer;
+use App\Models\MarketplaceCustomerOrder;
 use App\Models\OzonOrder;
 use App\Models\UzumOrder;
 use App\Models\WbOrder;
 use App\Services\Marketplaces\MarketplaceCustomerService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionMethod;
 use Tests\TestCase;
@@ -18,7 +18,8 @@ use Tests\TestCase;
 /**
  * Тесты для MarketplaceCustomerService.
  *
- * Тестируем приватные методы через reflection, чтобы не зависеть от БД.
+ * Тестируем приватные методы через reflection (без БД)
+ * и логику дедупликации/фильтрации заказов.
  */
 class MarketplaceCustomerServiceTest extends TestCase
 {
@@ -296,5 +297,127 @@ class MarketplaceCustomerServiceTest extends TestCase
 
         $customer->source = 'ym';
         $this->assertEquals('Yandex Market', $customer->getSourceLabel());
+    }
+
+    // ========== MarketplaceCustomerOrder model ==========
+
+    public function test_customer_order_is_cancelled(): void
+    {
+        $co = new MarketplaceCustomerOrder;
+
+        $co->status = 'cancelled';
+        $this->assertTrue($co->isCancelled());
+
+        $co->status = 'canceled';
+        $this->assertTrue($co->isCancelled());
+
+        $co->status = 'CANCELLED';
+        $this->assertTrue($co->isCancelled());
+
+        $co->status = 'delivered';
+        $this->assertFalse($co->isCancelled());
+
+        $co->status = 'processing';
+        $this->assertFalse($co->isCancelled());
+    }
+
+    public function test_customer_order_status_labels(): void
+    {
+        $co = new MarketplaceCustomerOrder;
+
+        $co->status = 'delivered';
+        $this->assertEquals('Доставлен', $co->getStatusLabel());
+
+        $co->status = 'cancelled';
+        $this->assertEquals('Отменён', $co->getStatusLabel());
+
+        $co->status = 'processing';
+        $this->assertEquals('В обработке', $co->getStatusLabel());
+
+        $co->status = 'new';
+        $this->assertEquals('Новый', $co->getStatusLabel());
+
+        $co->status = null;
+        $this->assertEquals('Неизвестен', $co->getStatusLabel());
+    }
+
+    // ========== Source label helper ==========
+
+    public function test_get_source_label(): void
+    {
+        $method = new ReflectionMethod(MarketplaceCustomerService::class, 'getSourceLabel');
+
+        $this->assertEquals('Uzum Market', $method->invoke($this->service, 'uzum'));
+        $this->assertEquals('Wildberries', $method->invoke($this->service, 'wb'));
+        $this->assertEquals('Ozon', $method->invoke($this->service, 'ozon'));
+        $this->assertEquals('Yandex Market', $method->invoke($this->service, 'ym'));
+    }
+
+    // ========== Order items extraction ==========
+
+    public function test_get_order_items_from_uzum(): void
+    {
+        $method = new ReflectionMethod(MarketplaceCustomerService::class, 'getOrderItems');
+
+        $item = new \App\Models\UzumOrderItem;
+        $item->name = 'Футболка';
+        $item->external_offer_id = 'SKU-001';
+        $item->quantity = 2;
+        $item->price = 50000;
+        $item->total_price = 100000;
+
+        $order = new UzumOrder;
+        // Устанавливаем items через setRelation
+        $order->setRelation('items', collect([$item]));
+
+        $result = $method->invoke($this->service, $order);
+
+        $this->assertCount(1, $result);
+        $this->assertEquals('Футболка', $result[0]['name']);
+        $this->assertEquals('SKU-001', $result[0]['sku']);
+        $this->assertEquals(2, $result[0]['quantity']);
+        $this->assertEquals(50000, $result[0]['price']);
+        $this->assertEquals(100000, $result[0]['total_price']);
+    }
+
+    public function test_get_order_items_from_wb(): void
+    {
+        $method = new ReflectionMethod(MarketplaceCustomerService::class, 'getOrderItems');
+
+        $item = new \App\Models\WbOrderItem;
+        $item->name = 'Куртка';
+        $item->external_offer_id = 'WB-123';
+        $item->quantity = 1;
+        $item->price = 5000;
+        $item->total_price = 5000;
+
+        $order = new WbOrder;
+        $order->setRelation('items', collect([$item]));
+
+        $result = $method->invoke($this->service, $order);
+
+        $this->assertCount(1, $result);
+        $this->assertEquals('Куртка', $result[0]['name']);
+        $this->assertEquals('WB-123', $result[0]['sku']);
+    }
+
+    public function test_get_order_items_from_ozon(): void
+    {
+        $method = new ReflectionMethod(MarketplaceCustomerService::class, 'getOrderItems');
+
+        $order = new OzonOrder;
+        $order->products = [
+            ['name' => 'Наушники', 'offer_id' => 'OZ-001', 'quantity' => 1, 'price' => 3500],
+            ['name' => 'Кабель', 'offer_id' => 'OZ-002', 'quantity' => 2, 'price' => 500],
+        ];
+
+        $result = $method->invoke($this->service, $order);
+
+        $this->assertCount(2, $result);
+        $this->assertEquals('Наушники', $result[0]['name']);
+        $this->assertEquals('OZ-001', $result[0]['sku']);
+        $this->assertEquals(3500, $result[0]['total_price']);
+        $this->assertEquals('Кабель', $result[1]['name']);
+        $this->assertEquals(1000, $result[1]['total_price']); // 500 * 2
     }
 }

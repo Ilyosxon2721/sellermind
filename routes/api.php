@@ -162,6 +162,7 @@ Route::middleware(['web', 'auth.any'])->group(function () {
         Route::get('/stats', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'stats']);
         Route::post('/extract/{accountId}', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'extractFromOrders']);
         Route::get('/{id}', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'show']);
+        Route::get('/{id}/orders', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'orders']);
         Route::put('/{id}', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'update']);
         Route::delete('/{id}', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'destroy']);
     });

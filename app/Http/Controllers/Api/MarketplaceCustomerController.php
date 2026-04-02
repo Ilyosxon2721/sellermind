@@ -55,7 +55,7 @@ class MarketplaceCustomerController extends Controller
     }
 
     /**
-     * Детали клиента
+     * Детали клиента с количеством заказов
      */
     public function show(int $id): JsonResponse
     {
@@ -63,9 +63,51 @@ class MarketplaceCustomerController extends Controller
 
         $customer = MarketplaceCustomer::query()
             ->byCompany($companyId)
+            ->withCount('customerOrders')
             ->findOrFail($id);
 
         return response()->json(['data' => $customer]);
+    }
+
+    /**
+     * История заказов клиента с товарами
+     *
+     * Возвращает все заказы клиента: что купил, какой статус, какие товары.
+     * Отменённые заказы помечены флагом is_cancelled.
+     */
+    public function orders(int $id): JsonResponse
+    {
+        $companyId = $this->getCompanyId();
+
+        $customer = MarketplaceCustomer::query()
+            ->byCompany($companyId)
+            ->findOrFail($id);
+
+        $orders = $this->customerService->getCustomerOrders($customer);
+
+        // Считаем сводку
+        $totalOrders = $orders->count();
+        $cancelledOrders = $orders->where('is_cancelled', true)->count();
+        $completedOrders = $totalOrders - $cancelledOrders;
+        $totalSpent = $orders->where('is_cancelled', false)->sum('total_amount');
+
+        return response()->json([
+            'data' => [
+                'customer' => [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'phone' => $customer->phone,
+                    'source' => $customer->source,
+                ],
+                'summary' => [
+                    'total_orders' => $totalOrders,
+                    'completed_orders' => $completedOrders,
+                    'cancelled_orders' => $cancelledOrders,
+                    'total_spent' => round($totalSpent, 2),
+                ],
+                'orders' => $orders->values(),
+            ],
+        ]);
     }
 
     /**

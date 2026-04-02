@@ -6,9 +6,12 @@ namespace App\Services\Marketplaces;
 
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceCustomer;
+use App\Models\MarketplaceCustomerOrder;
 use App\Models\OzonOrder;
 use App\Models\UzumOrder;
 use App\Models\WbOrder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -16,6 +19,9 @@ use Illuminate\Support\Facades\Log;
  *
  * DBS (Delivery by Seller) заказы содержат контактные данные клиентов,
  * которые сохраняются в таблицу marketplace_customers для пополнения клиентской базы.
+ *
+ * Дедупликация: заказы отслеживаются через таблицу marketplace_customer_orders,
+ * повторная синхронизация того же заказа НЕ увеличивает счётчик заказов.
  */
 final class MarketplaceCustomerService
 {
@@ -56,6 +62,9 @@ final class MarketplaceCustomerService
             orderAt: $order->ordered_at,
             orderType: UzumOrder::class,
             orderId: $order->id,
+            externalOrderId: $order->external_order_id,
+            orderStatus: $order->status,
+            currency: $order->currency ?? 'UZS',
         );
     }
 
@@ -84,6 +93,9 @@ final class MarketplaceCustomerService
             orderAt: $order->ordered_at,
             orderType: WbOrder::class,
             orderId: $order->id,
+            externalOrderId: $order->external_order_id,
+            orderStatus: $order->status,
+            currency: $order->currency ?? 'RUB',
         );
     }
 
@@ -108,6 +120,9 @@ final class MarketplaceCustomerService
             orderAt: $order->created_at_ozon,
             orderType: OzonOrder::class,
             orderId: $order->id,
+            externalOrderId: $order->posting_number ?? $order->order_id,
+            orderStatus: $order->status,
+            currency: $order->currency ?? 'RUB',
         );
     }
 
@@ -149,7 +164,9 @@ final class MarketplaceCustomerService
             return $stats;
         }
 
-        $query->orderBy('ordered_at')->chunk(100, function ($orders) use ($account, &$stats) {
+        // Сортируем по дате для корректной хронологии
+        $sortColumn = $account->marketplace === 'ozon' ? 'created_at_ozon' : 'ordered_at';
+        $query->orderBy($sortColumn)->chunk(100, function ($orders) use ($account, &$stats) {
             foreach ($orders as $order) {
                 try {
                     $customer = $this->extractFromOrder($account, $order);
@@ -172,7 +189,52 @@ final class MarketplaceCustomerService
     }
 
     /**
-     * Создать или обновить клиента
+     * Получить все заказы клиента с товарами
+     *
+     * @return Collection<MarketplaceCustomerOrder>
+     */
+    public function getCustomerOrders(MarketplaceCustomer $customer): Collection
+    {
+        $customerOrders = $customer->customerOrders()
+            ->orderByDesc('ordered_at')
+            ->get();
+
+        // Подгружаем оригинальные заказы с items
+        return $customerOrders->map(function (MarketplaceCustomerOrder $co) {
+            $order = $this->loadOriginalOrder($co->order_type, $co->order_id);
+
+            // Обновляем кэшированный статус если изменился
+            if ($order && $order->status !== $co->status) {
+                $co->update(['status' => $order->status]);
+                $co->status = $order->status;
+            }
+
+            $items = $order ? $this->getOrderItems($order) : [];
+
+            return [
+                'id' => $co->id,
+                'external_order_id' => $co->external_order_id,
+                'source' => $co->source,
+                'source_label' => $this->getSourceLabel($co->source),
+                'status' => $co->status,
+                'status_label' => $co->getStatusLabel(),
+                'is_cancelled' => $co->isCancelled(),
+                'total_amount' => $co->total_amount,
+                'currency' => $co->currency,
+                'ordered_at' => $co->ordered_at?->toIso8601String(),
+                'items' => $items,
+            ];
+        });
+    }
+
+    /**
+     * Создать или обновить клиента.
+     *
+     * Ключевая логика дедупликации:
+     * - Клиент ищется по phone + company_id + source
+     * - Заказ ищется в marketplace_customer_orders по order_type + order_id
+     * - Если заказ уже привязан — только обновляем статус, НЕ увеличиваем счётчик
+     * - Если заказ новый — привязываем и увеличиваем счётчик
      */
     private function upsertCustomer(
         int $companyId,
@@ -185,57 +247,165 @@ final class MarketplaceCustomerService
         ?\DateTimeInterface $orderAt,
         ?string $orderType,
         ?int $orderId,
+        ?string $externalOrderId,
+        ?string $orderStatus,
+        string $currency = 'UZS',
     ): MarketplaceCustomer {
-        $existing = MarketplaceCustomer::where('company_id', $companyId)
-            ->where('phone', $phone)
-            ->where('source', $source)
-            ->first();
+        return DB::transaction(function () use (
+            $companyId, $phone, $name, $source, $address, $city,
+            $orderAmount, $orderAt, $orderType, $orderId,
+            $externalOrderId, $orderStatus, $currency,
+        ) {
+            // 1. Найти или создать клиента
+            $customer = MarketplaceCustomer::where('company_id', $companyId)
+                ->where('phone', $phone)
+                ->where('source', $source)
+                ->first();
 
-        if ($existing) {
-            // Обновляем: увеличиваем счётчик заказов и сумму
-            $updateData = [
-                'orders_count' => $existing->orders_count + 1,
-                'total_spent' => (float) $existing->total_spent + $orderAmount,
-                'last_order_at' => $orderAt ?? now(),
-                'last_order_type' => $orderType,
-                'last_order_id' => $orderId,
-            ];
+            $isNewCustomer = ! $customer;
 
-            // Обновляем имя и адрес если данные свежее
-            if ($name) {
-                $updateData['name'] = $name;
+            if ($isNewCustomer) {
+                $customer = MarketplaceCustomer::create([
+                    'company_id' => $companyId,
+                    'phone' => $phone,
+                    'name' => $name,
+                    'source' => $source,
+                    'address' => $address,
+                    'city' => $city,
+                    'orders_count' => 0,
+                    'total_spent' => 0,
+                    'first_order_at' => $orderAt ?? now(),
+                    'last_order_at' => $orderAt ?? now(),
+                    'last_order_type' => $orderType,
+                    'last_order_id' => $orderId,
+                ]);
             }
-            if ($address && ! $existing->address) {
-                $updateData['address'] = $address;
-            }
-            if ($city && ! $existing->city) {
-                $updateData['city'] = $city;
+
+            // 2. Проверить, привязан ли уже этот заказ
+            if ($orderType && $orderId) {
+                $existingLink = MarketplaceCustomerOrder::where('marketplace_customer_id', $customer->id)
+                    ->where('order_type', $orderType)
+                    ->where('order_id', $orderId)
+                    ->first();
+
+                if ($existingLink) {
+                    // Заказ уже привязан — только обновляем статус
+                    $existingLink->update(['status' => $orderStatus]);
+
+                    // Обновляем имя и адрес если есть новые данные
+                    $this->updateCustomerInfo($customer, $name, $address, $city);
+
+                    $customer->wasRecentlyCreated = false;
+
+                    return $customer;
+                }
+
+                // 3. Привязать новый заказ
+                MarketplaceCustomerOrder::create([
+                    'marketplace_customer_id' => $customer->id,
+                    'order_type' => $orderType,
+                    'order_id' => $orderId,
+                    'external_order_id' => $externalOrderId,
+                    'source' => $source,
+                    'status' => $orderStatus,
+                    'total_amount' => $orderAmount,
+                    'currency' => $currency,
+                    'ordered_at' => $orderAt,
+                ]);
+
+                // 4. Увеличить счётчик и сумму (только для НОВОГО заказа)
+                $customer->update([
+                    'orders_count' => $customer->orders_count + 1,
+                    'total_spent' => (float) $customer->total_spent + $orderAmount,
+                    'last_order_at' => $orderAt ?? now(),
+                    'last_order_type' => $orderType,
+                    'last_order_id' => $orderId,
+                ]);
             }
 
-            $existing->update($updateData);
-            $existing->wasRecentlyCreated = false;
+            // 5. Обновляем контактные данные
+            $this->updateCustomerInfo($customer, $name, $address, $city);
 
-            return $existing;
+            $customer->wasRecentlyCreated = $isNewCustomer;
+
+            return $customer;
+        });
+    }
+
+    /**
+     * Обновить контактную информацию клиента
+     */
+    private function updateCustomerInfo(MarketplaceCustomer $customer, string $name, ?string $address, ?string $city): void
+    {
+        $updateData = [];
+
+        if ($name) {
+            $updateData['name'] = $name;
+        }
+        if ($address && ! $customer->address) {
+            $updateData['address'] = $address;
+        }
+        if ($city && ! $customer->city) {
+            $updateData['city'] = $city;
         }
 
-        $customer = MarketplaceCustomer::create([
-            'company_id' => $companyId,
-            'phone' => $phone,
-            'name' => $name,
-            'source' => $source,
-            'address' => $address,
-            'city' => $city,
-            'orders_count' => 1,
-            'total_spent' => $orderAmount,
-            'first_order_at' => $orderAt ?? now(),
-            'last_order_at' => $orderAt ?? now(),
-            'last_order_type' => $orderType,
-            'last_order_id' => $orderId,
-        ]);
+        if ($updateData) {
+            $customer->update($updateData);
+        }
+    }
 
-        $customer->wasRecentlyCreated = true;
+    /**
+     * Загрузить оригинальный заказ из БД
+     */
+    private function loadOriginalOrder(string $orderType, int $orderId)
+    {
+        return match ($orderType) {
+            UzumOrder::class => UzumOrder::with('items')->find($orderId),
+            WbOrder::class => WbOrder::with('items')->find($orderId),
+            OzonOrder::class => OzonOrder::find($orderId),
+            default => null,
+        };
+    }
 
-        return $customer;
+    /**
+     * Получить товары заказа в унифицированном формате
+     */
+    private function getOrderItems($order): array
+    {
+        if ($order instanceof UzumOrder) {
+            return $order->items->map(fn ($item) => [
+                'name' => $item->name,
+                'sku' => $item->external_offer_id,
+                'quantity' => $item->quantity,
+                'price' => $item->price,
+                'total_price' => $item->total_price,
+            ])->toArray();
+        }
+
+        if ($order instanceof WbOrder) {
+            return $order->items->map(fn ($item) => [
+                'name' => $item->name,
+                'sku' => $item->external_offer_id,
+                'quantity' => $item->quantity,
+                'price' => $item->price,
+                'total_price' => $item->total_price,
+            ])->toArray();
+        }
+
+        if ($order instanceof OzonOrder) {
+            // У Ozon товары хранятся в JSON поле products
+            $products = $order->getProductsList();
+
+            return array_map(fn ($p) => [
+                'name' => $p['name'] ?? '',
+                'sku' => $p['offer_id'] ?? $p['sku'] ?? null,
+                'quantity' => $p['quantity'] ?? 1,
+                'price' => $p['price'] ?? 0,
+                'total_price' => ($p['price'] ?? 0) * ($p['quantity'] ?? 1),
+            ], $products);
+        }
+
+        return [];
     }
 
     /**
@@ -304,5 +474,19 @@ final class MarketplaceCustomerService
         ]);
 
         return $parts ? implode(', ', $parts) : null;
+    }
+
+    /**
+     * Название маркетплейса
+     */
+    private function getSourceLabel(string $source): string
+    {
+        return match ($source) {
+            'uzum' => 'Uzum Market',
+            'wb' => 'Wildberries',
+            'ozon' => 'Ozon',
+            'ym' => 'Yandex Market',
+            default => $source,
+        };
     }
 }
