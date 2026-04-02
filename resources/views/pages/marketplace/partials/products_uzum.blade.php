@@ -1818,6 +1818,10 @@ function uzumProducts(accountId) {
             if (this.allDbsToggling) return;
             const state = this.allDbsState();
             const newDbs = state ? !state.isOn : true;
+
+            const actionText = newDbs ? 'Включить' : 'Отключить';
+            if (!confirm(`${actionText} DBS для всех ${state?.allowed || 0} товаров?`)) return;
+
             this.allDbsToggling = true;
             try {
                 const r = await fetch(`/api/marketplace/uzum/accounts/${this.accountId}/sku-schemes/bulk`, {
@@ -1826,12 +1830,7 @@ function uzumProducts(accountId) {
                 });
                 const data = await r.json();
                 if (r.ok) {
-                    // Обновляем весь кэш схем
-                    const updated = {};
-                    for (const [key, s] of Object.entries(this.skuSchemes)) {
-                        updated[key] = s.dbsAllowed ? { ...s, dbsLinked: newDbs } : s;
-                    }
-                    this.skuSchemes = updated;
+                    await this.loadSkuSchemes(false, true);
                 } else {
                     alert(data.message || 'Ошибка изменения DBS');
                 }
@@ -1840,16 +1839,18 @@ function uzumProducts(accountId) {
         },
 
         // Состояние FBS для всего магазина
+        // FBS в Uzum — схема по умолчанию. fbsAllowed=true значит FBS активен.
+        // fbsLinked может быть false даже когда FBS работает, поэтому
+        // для FBS используем fbsAllowed || fbsLinked как признак включённости.
         allFbsState() {
             const keys = Object.keys(this.skuSchemes);
             if (!keys.length) return null;
-            let enabledCount = 0, allowedCount = 0;
+            let enabledCount = 0, totalCount = keys.length;
             for (const key of keys) {
                 const s = this.skuSchemes[key];
-                if (s.fbsAllowed) { allowedCount++; if (s.fbsLinked) enabledCount++; }
+                if (s.fbsAllowed || s.fbsLinked) enabledCount++;
             }
-            if (allowedCount === 0) return null;
-            return { enabled: enabledCount, allowed: allowedCount, isOn: enabledCount > allowedCount / 2 };
+            return { enabled: enabledCount, allowed: totalCount, isOn: enabledCount > totalCount / 2 };
         },
 
         // Переключить FBS для всего магазина
@@ -1859,6 +1860,10 @@ function uzumProducts(accountId) {
             const newFbs = state ? !state.isOn : true;
             const dbsState = this.allDbsState();
             const currentDbs = dbsState ? dbsState.isOn : false;
+
+            const actionText = newFbs ? 'Включить' : 'Отключить';
+            if (!confirm(`${actionText} FBS для всех ${state?.allowed || 0} товаров?`)) return;
+
             this.allFbsToggling = true;
             try {
                 const r = await fetch(`/api/marketplace/uzum/accounts/${this.accountId}/sku-schemes/bulk`, {
@@ -1867,11 +1872,8 @@ function uzumProducts(accountId) {
                 });
                 const data = await r.json();
                 if (r.ok) {
-                    const updated = {};
-                    for (const [key, s] of Object.entries(this.skuSchemes)) {
-                        updated[key] = s.fbsAllowed ? { ...s, fbsLinked: newFbs } : s;
-                    }
-                    this.skuSchemes = updated;
+                    // Перезагружаем схемы с сервера для актуальных данных
+                    await this.loadSkuSchemes(false, true);
                 } else {
                     alert(data.message || 'Ошибка изменения FBS');
                 }
