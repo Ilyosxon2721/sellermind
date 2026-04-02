@@ -1839,18 +1839,16 @@ function uzumProducts(accountId) {
         },
 
         // Состояние FBS для всего магазина
-        // FBS в Uzum — схема по умолчанию. fbsAllowed=true значит FBS активен.
-        // fbsLinked может быть false даже когда FBS работает, поэтому
-        // для FBS используем fbsAllowed || fbsLinked как признак включённости.
         allFbsState() {
             const keys = Object.keys(this.skuSchemes);
             if (!keys.length) return null;
-            let enabledCount = 0, totalCount = keys.length;
+            let enabledCount = 0, allowedCount = 0;
             for (const key of keys) {
                 const s = this.skuSchemes[key];
-                if (s.fbsAllowed || s.fbsLinked) enabledCount++;
+                if (s.fbsAllowed) { allowedCount++; if (s.fbsLinked) enabledCount++; }
             }
-            return { enabled: enabledCount, allowed: totalCount, isOn: enabledCount > totalCount / 2 };
+            if (allowedCount === 0) return null;
+            return { enabled: enabledCount, allowed: allowedCount, isOn: enabledCount > allowedCount / 2 };
         },
 
         // Переключить FBS для всего магазина
