@@ -1285,45 +1285,16 @@ Route::middleware('auth.any')->group(function () {
         ->name('payment.renew');
     // Store Builder — Admin pages
     Route::prefix('my-store')->name('store.')->group(function () {
-        Route::get('/', function () {
-            return view('store.admin.dashboard');
-        })->name('dashboard');
-
-        Route::get('/{storeId}/theme', function ($storeId) {
-            return view('store.admin.theme', ['storeId' => $storeId]);
-        })->name('theme');
-
-        Route::get('/{storeId}/catalog', function ($storeId) {
-            return view('store.admin.catalog', ['storeId' => $storeId]);
-        })->name('catalog');
-
-        Route::get('/{storeId}/delivery', function ($storeId) {
-            return view('store.admin.delivery', ['storeId' => $storeId]);
-        })->name('delivery');
-
-        Route::get('/{storeId}/payment', function ($storeId) {
-            return view('store.admin.payment', ['storeId' => $storeId]);
-        })->name('payment');
-
-        Route::get('/{storeId}/orders', function ($storeId) {
-            return view('store.admin.orders', ['storeId' => $storeId]);
-        })->name('orders');
-
-        Route::get('/{storeId}/orders/{orderId}', function ($storeId, $orderId) {
-            return view('store.admin.order-show', ['storeId' => $storeId, 'orderId' => $orderId]);
-        })->name('orders.show');
-
-        Route::get('/{storeId}/pages', function ($storeId) {
-            return view('store.admin.pages', ['storeId' => $storeId]);
-        })->name('pages');
-
-        Route::get('/{storeId}/analytics', function ($storeId) {
-            return view('store.admin.analytics', ['storeId' => $storeId]);
-        })->name('analytics');
-
-        Route::get('/{storeId}/banners', function ($storeId) {
-            return view('store.admin.banners', ['storeId' => $storeId]);
-        })->name('banners');
+        Route::get('/', [\App\Http\Controllers\Store\StorePageViewController::class, 'dashboard'])->name('dashboard');
+        Route::get('/{storeId}/theme', [\App\Http\Controllers\Store\StorePageViewController::class, 'theme'])->name('theme');
+        Route::get('/{storeId}/catalog', [\App\Http\Controllers\Store\StorePageViewController::class, 'catalog'])->name('catalog');
+        Route::get('/{storeId}/delivery', [\App\Http\Controllers\Store\StorePageViewController::class, 'delivery'])->name('delivery');
+        Route::get('/{storeId}/payment', [\App\Http\Controllers\Store\StorePageViewController::class, 'payment'])->name('payment');
+        Route::get('/{storeId}/orders', [\App\Http\Controllers\Store\StorePageViewController::class, 'orders'])->name('orders');
+        Route::get('/{storeId}/orders/{orderId}', [\App\Http\Controllers\Store\StorePageViewController::class, 'orderShow'])->name('orders.show');
+        Route::get('/{storeId}/pages', [\App\Http\Controllers\Store\StorePageViewController::class, 'pages'])->name('pages');
+        Route::get('/{storeId}/analytics', [\App\Http\Controllers\Store\StorePageViewController::class, 'analytics'])->name('analytics');
+        Route::get('/{storeId}/banners', [\App\Http\Controllers\Store\StorePageViewController::class, 'banners'])->name('banners');
     });
 }); // End of auth middleware group
 
@@ -1340,17 +1311,23 @@ Route::prefix('store/{slug}')->group(function () {
     Route::get('/payment/fail', [\App\Http\Controllers\Storefront\PaymentController::class, 'fail'])->name('storefront.payment.fail');
 
     // Storefront API (cart, checkout, payment — JSON endpoints)
-    Route::get('/api/search', [\App\Http\Controllers\Storefront\CatalogController::class, 'search']);
-    Route::get('/api/cart', [\App\Http\Controllers\Storefront\CartController::class, 'show']);
-    Route::post('/api/cart/add', [\App\Http\Controllers\Storefront\CartController::class, 'add']);
-    Route::put('/api/cart/update', [\App\Http\Controllers\Storefront\CartController::class, 'update']);
-    Route::delete('/api/cart/remove', [\App\Http\Controllers\Storefront\CartController::class, 'remove']);
-    Route::delete('/api/cart/clear', [\App\Http\Controllers\Storefront\CartController::class, 'clear']);
-    Route::post('/api/cart/promocode', [\App\Http\Controllers\Storefront\CartController::class, 'applyPromocode']);
-    Route::delete('/api/cart/promocode', [\App\Http\Controllers\Storefront\CartController::class, 'removePromocode']);
-    Route::post('/api/checkout', [\App\Http\Controllers\Storefront\CheckoutController::class, 'store']);
-    Route::post('/api/quick-order', [\App\Http\Controllers\Storefront\CheckoutController::class, 'quickOrder']);
-    Route::post('/api/payment/{orderId}/initiate', [\App\Http\Controllers\Storefront\PaymentController::class, 'initiate']);
+    // Rate limiting: 60 запросов/мин на корзину, 10/мин на оформление заказа
+    Route::middleware('throttle:60,1')->group(function () {
+        Route::get('/api/search', [\App\Http\Controllers\Storefront\CatalogController::class, 'search']);
+        Route::get('/api/cart', [\App\Http\Controllers\Storefront\CartController::class, 'show']);
+        Route::post('/api/cart/add', [\App\Http\Controllers\Storefront\CartController::class, 'add']);
+        Route::put('/api/cart/update', [\App\Http\Controllers\Storefront\CartController::class, 'update']);
+        Route::delete('/api/cart/remove', [\App\Http\Controllers\Storefront\CartController::class, 'remove']);
+        Route::delete('/api/cart/clear', [\App\Http\Controllers\Storefront\CartController::class, 'clear']);
+        Route::post('/api/cart/promocode', [\App\Http\Controllers\Storefront\CartController::class, 'applyPromocode']);
+        Route::delete('/api/cart/promocode', [\App\Http\Controllers\Storefront\CartController::class, 'removePromocode']);
+    });
+
+    Route::middleware('throttle:10,1')->group(function () {
+        Route::post('/api/checkout', [\App\Http\Controllers\Storefront\CheckoutController::class, 'store']);
+        Route::post('/api/quick-order', [\App\Http\Controllers\Storefront\CheckoutController::class, 'quickOrder']);
+        Route::post('/api/payment/{orderId}/initiate', [\App\Http\Controllers\Storefront\PaymentController::class, 'initiate']);
+    });
 
     // Wishlist page
     Route::get('/wishlist', [\App\Http\Controllers\Storefront\StorefrontController::class, 'wishlist'])->name('storefront.wishlist');

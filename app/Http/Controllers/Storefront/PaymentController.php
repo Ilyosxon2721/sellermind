@@ -158,33 +158,22 @@ final class PaymentController extends Controller
     }
 
     /**
-     * Найти заказ по query-параметру order_id или из сессии
+     * Найти заказ из сессии (безопасно — только заказы текущего покупателя)
+     *
+     * Не принимает order_id из query string, чтобы исключить IDOR —
+     * покупатель видит только свой последний заказ, сохранённый в сессии.
      */
     private function resolveOrderFromRequest(Request $request, Store $store): ?StoreOrder
     {
-        // Попытка найти заказ по order_id из query string
-        $orderId = $request->query('order_id');
-
-        if ($orderId !== null) {
-            $order = StoreOrder::where('store_id', $store->id)
-                ->where('id', (int) $orderId)
-                ->first();
-
-            if ($order !== null) {
-                return $order;
-            }
-        }
-
-        // Попытка найти последний заказ магазина из сессии
         $sessionOrderId = $request->session()->get("store_{$store->id}_last_order_id");
 
-        if ($sessionOrderId !== null) {
-            return StoreOrder::where('store_id', $store->id)
-                ->where('id', (int) $sessionOrderId)
-                ->first();
+        if ($sessionOrderId === null) {
+            return null;
         }
 
-        return null;
+        return StoreOrder::where('store_id', $store->id)
+            ->where('id', (int) $sessionOrderId)
+            ->first();
     }
 
     /**
