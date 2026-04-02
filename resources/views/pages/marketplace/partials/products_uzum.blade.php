@@ -55,36 +55,36 @@
                         </svg>
                         <span x-text="stocksSyncing ? 'Синхронизация...' : 'Синх. остатки'"></span>
                     </button>
-                    <!-- Глобальный DBS переключатель -->
+                    <!-- Глобальные FBS/DBS переключатели -->
                     <template x-if="Object.keys(skuSchemes).length > 0">
-                        <button @click="toggleAllFbs()"
-                                :disabled="allFbsToggling"
-                                class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium border transition-all"
-                                :class="allFbsState()?.isOn
-                                    ? 'bg-green-600 text-white border-green-600 hover:bg-green-700'
-                                    : 'bg-white text-gray-600 border-gray-300 hover:border-green-400 hover:text-green-600'"
-                                :title="allFbsState()?.isOn ? 'Отключить FBS для всего магазина' : 'Включить FBS для всего магазина'">
-                            <svg x-show="allFbsToggling" class="w-4 h-4 mr-1.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                            <svg x-show="!allFbsToggling && allFbsState()?.isOn" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                            <svg x-show="!allFbsToggling && !allFbsState()?.isOn" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h8M12 8v8"/></svg>
-                            <span>FBS магазин</span>
-                            <span x-show="allFbsState()" class="ml-1.5 text-[10px] opacity-75" x-text="allFbsState()?.enabled + '/' + allFbsState()?.allowed"></span>
-                        </button>
-                    </template>
-                    <template x-if="Object.keys(skuSchemes).length > 0">
-                        <button @click="toggleAllDbs()"
-                                :disabled="allDbsToggling"
-                                class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium border transition-all"
-                                :class="allDbsState()?.isOn
-                                    ? 'bg-purple-600 text-white border-purple-600 hover:bg-purple-700'
-                                    : 'bg-white text-gray-600 border-gray-300 hover:border-purple-400 hover:text-purple-600'"
-                                :title="allDbsState()?.isOn ? 'Отключить DBS для всего магазина' : 'Включить DBS для всего магазина'">
-                            <svg x-show="allDbsToggling" class="w-4 h-4 mr-1.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                            <svg x-show="!allDbsToggling && allDbsState()?.isOn" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                            <svg x-show="!allDbsToggling && !allDbsState()?.isOn" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h8M12 8v8"/></svg>
-                            <span>DBS магазин</span>
-                            <span x-show="allDbsState()" class="ml-1.5 text-[10px] opacity-75" x-text="allDbsState()?.enabled + '/' + allDbsState()?.allowed"></span>
-                        </button>
+                        <div class="flex items-center space-x-2">
+                            <button @click="toggleAllFbs()"
+                                    :disabled="allFbsToggling"
+                                    class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium border transition-all"
+                                    :class="allFbsState()?.isOn
+                                        ? 'bg-green-600 text-white border-green-600 hover:bg-green-700'
+                                        : 'bg-white text-gray-600 border-gray-300 hover:border-green-400 hover:text-green-600'"
+                                    :title="allFbsState()?.isOn ? 'Отключить FBS для всего магазина' : 'Включить FBS для всего магазина'">
+                                <svg x-show="allFbsToggling" class="w-4 h-4 mr-1.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                <svg x-show="!allFbsToggling && allFbsState()?.isOn" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                <svg x-show="!allFbsToggling && !allFbsState()?.isOn" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h8M12 8v8"/></svg>
+                                <span>FBS магазин</span>
+                                <span x-show="allFbsState()" class="ml-1.5 text-[10px] opacity-75" x-text="allFbsState()?.enabled + '/' + allFbsState()?.allowed"></span>
+                            </button>
+                            <button @click="toggleAllDbs()"
+                                    :disabled="allDbsToggling"
+                                    class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium border transition-all"
+                                    :class="allDbsState()?.isOn
+                                        ? 'bg-purple-600 text-white border-purple-600 hover:bg-purple-700'
+                                        : 'bg-white text-gray-600 border-gray-300 hover:border-purple-400 hover:text-purple-600'"
+                                    :title="allDbsState()?.isOn ? 'Отключить DBS для всего магазина' : 'Включить DBS для всего магазина'">
+                                <svg x-show="allDbsToggling" class="w-4 h-4 mr-1.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                <svg x-show="!allDbsToggling && allDbsState()?.isOn" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                <svg x-show="!allDbsToggling && !allDbsState()?.isOn" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h8M12 8v8"/></svg>
+                                <span>DBS магазин</span>
+                                <span x-show="allDbsState()" class="ml-1.5 text-[10px] opacity-75" x-text="allDbsState()?.enabled + '/' + allDbsState()?.allowed"></span>
+                            </button>
+                        </div>
                     </template>
                     <!-- Массовое управление остатками FBS/DBS -->
                     <button @click="openStockModal()"
