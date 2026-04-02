@@ -5,19 +5,19 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
-use App\Models\Store\Store;
-use App\Models\Store\StoreAnalytics;
+use App\Http\Controllers\Storefront\Traits\StorefrontHelpers;
 use App\Models\Store\StoreProduct;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Публичный каталог товаров магазина
  */
 final class CatalogController extends Controller
 {
+    use StorefrontHelpers;
+
     /**
      * Каталог товаров с фильтрацией и сортировкой
      *
@@ -240,49 +240,5 @@ final class CatalogController extends Controller
         });
 
         return response()->json(['results' => $results]);
-    }
-
-    /**
-     * Получить опубликованный магазин по slug с загрузкой темы
-     */
-    private function getPublishedStore(string $slug): Store
-    {
-        return Store::where('slug', $slug)
-            ->where('is_active', true)
-            ->where('is_published', true)
-            ->with('theme')
-            ->firstOrFail();
-    }
-
-    /**
-     * Экранирование спецсимволов LIKE
-     */
-    protected function escapeLike(string $value): string
-    {
-        return str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $value);
-    }
-
-    /**
-     * Трекинг просмотра страницы — fire-and-forget
-     */
-    private function trackPageView(Store $store): void
-    {
-        try {
-            $today = now()->toDateString();
-
-            StoreAnalytics::updateOrCreate(
-                ['store_id' => $store->id, 'date' => $today],
-                []
-            );
-
-            StoreAnalytics::where('store_id', $store->id)
-                ->where('date', $today)
-                ->increment('page_views');
-        } catch (\Throwable $e) {
-            Log::debug('Ошибка трекинга просмотра страницы каталога', [
-                'store_id' => $store->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
     }
 }

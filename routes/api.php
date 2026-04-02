@@ -1090,6 +1090,13 @@ Route::middleware('auth.any')->group(function () {
 
         // Analytics
         Route::get('stores/{storeId}/analytics', [\App\Http\Controllers\Store\StoreAnalyticsController::class, 'index']);
+
+        // Promocodes
+        Route::get('stores/{storeId}/promocodes', [\App\Http\Controllers\Store\StorePromocodeController::class, 'index']);
+        Route::post('stores/{storeId}/promocodes', [\App\Http\Controllers\Store\StorePromocodeController::class, 'store']);
+        Route::get('stores/{storeId}/promocodes/{id}', [\App\Http\Controllers\Store\StorePromocodeController::class, 'show']);
+        Route::put('stores/{storeId}/promocodes/{id}', [\App\Http\Controllers\Store\StorePromocodeController::class, 'update']);
+        Route::delete('stores/{storeId}/promocodes/{id}', [\App\Http\Controllers\Store\StorePromocodeController::class, 'destroy']);
     });
 });
 

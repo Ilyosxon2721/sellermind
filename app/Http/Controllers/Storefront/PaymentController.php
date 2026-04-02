@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Storefront\Traits\StorefrontHelpers;
 use App\Models\Store\Store;
 use App\Models\Store\StoreOrder;
 use App\Support\ApiResponder;
@@ -17,7 +18,7 @@ use Illuminate\Http\Request;
  */
 final class PaymentController extends Controller
 {
-    use ApiResponder;
+    use ApiResponder, StorefrontHelpers;
 
     /**
      * Инициировать оплату заказа
@@ -176,15 +177,4 @@ final class PaymentController extends Controller
             ->first();
     }
 
-    /**
-     * Получить опубликованный магазин по slug
-     */
-    private function getPublishedStore(string $slug): Store
-    {
-        return Store::where('slug', $slug)
-            ->where('is_active', true)
-            ->where('is_published', true)
-            ->with('theme')
-            ->firstOrFail();
-    }
 }

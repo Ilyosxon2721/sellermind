@@ -5,23 +5,21 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
-use App\Models\ProductVariant;
+use App\Http\Controllers\Storefront\Traits\StorefrontHelpers;
 use App\Models\Store\Store;
-use App\Models\Store\StoreAnalytics;
 use App\Models\Store\StoreProduct;
 use App\Models\Store\StorePromocode;
 use App\Support\ApiResponder;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Корзина покупателя (сессионная) — Blade-страница + API-эндпоинты
  */
 final class CartController extends Controller
 {
-    use ApiResponder;
+    use ApiResponder, StorefrontHelpers;
 
     /**
      * Страница корзины
@@ -351,18 +349,6 @@ final class CartController extends Controller
     // ==================
 
     /**
-     * Получить опубликованный магазин по slug
-     */
-    private function getPublishedStore(string $slug): Store
-    {
-        return Store::where('slug', $slug)
-            ->where('is_active', true)
-            ->where('is_published', true)
-            ->with('theme')
-            ->firstOrFail();
-    }
-
-    /**
      * Получить корзину из сессии
      *
      * @return array<string, array{product_id: int, quantity: int, name: string, price: float, image: string|null}>
@@ -410,27 +396,4 @@ final class CartController extends Controller
         return $count;
     }
 
-    /**
-     * Трекинг добавления в корзину — fire-and-forget
-     */
-    private function trackCartAddition(Store $store): void
-    {
-        try {
-            $today = now()->toDateString();
-
-            StoreAnalytics::updateOrCreate(
-                ['store_id' => $store->id, 'date' => $today],
-                []
-            );
-
-            StoreAnalytics::where('store_id', $store->id)
-                ->where('date', $today)
-                ->increment('cart_additions');
-        } catch (\Throwable $e) {
-            Log::debug('Ошибка трекинга добавления в корзину', [
-                'store_id' => $store->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
 }

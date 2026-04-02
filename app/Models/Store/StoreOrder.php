@@ -75,9 +75,28 @@ class StoreOrder extends Model
 
         static::creating(function ($order) {
             if (empty($order->order_number)) {
-                $order->order_number = 'SM-'.now()->format('Ymd').'-'.strtoupper(substr(uniqid(), -5));
+                $order->order_number = static::generateUniqueOrderNumber();
             }
         });
+    }
+
+    /**
+     * Сгенерировать уникальный номер заказа с retry при коллизии
+     */
+    private static function generateUniqueOrderNumber(): string
+    {
+        $prefix = 'SM-' . now()->format('Ymd') . '-';
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $number = $prefix . strtoupper(bin2hex(random_bytes(3)));
+
+            if (! static::where('order_number', $number)->exists()) {
+                return $number;
+            }
+        }
+
+        // Fallback с микросекундами — практически невозможна коллизия
+        return $prefix . strtoupper(bin2hex(random_bytes(5)));
     }
 
     // ==================

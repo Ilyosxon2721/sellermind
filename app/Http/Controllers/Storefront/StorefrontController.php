@@ -5,16 +5,17 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Storefront\Traits\StorefrontHelpers;
 use App\Models\Store\Store;
-use App\Models\Store\StoreAnalytics;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Публичная витрина магазина — главная страница, статические страницы
  */
 final class StorefrontController extends Controller
 {
+    use StorefrontHelpers;
+
     /**
      * Главная страница магазина
      *
@@ -78,69 +79,5 @@ final class StorefrontController extends Controller
         $this->trackPageView($store);
 
         return view('storefront.wishlist', compact('store'));
-    }
-
-    /**
-     * Получить опубликованный магазин по slug
-     */
-    protected function getPublishedStore(string $slug): Store
-    {
-        return Store::where('slug', $slug)
-            ->where('is_active', true)
-            ->where('is_published', true)
-            ->with('theme')
-            ->firstOrFail();
-    }
-
-    /**
-     * Трекинг визита (visits + page_views) — fire-and-forget
-     */
-    protected function trackVisit(Store $store): void
-    {
-        try {
-            $today = now()->toDateString();
-
-            StoreAnalytics::updateOrCreate(
-                ['store_id' => $store->id, 'date' => $today],
-                []
-            );
-
-            StoreAnalytics::where('store_id', $store->id)
-                ->where('date', $today)
-                ->increment('visits');
-
-            StoreAnalytics::where('store_id', $store->id)
-                ->where('date', $today)
-                ->increment('page_views');
-        } catch (\Throwable $e) {
-            Log::debug('Ошибка трекинга визита витрины', [
-                'store_id' => $store->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    /**
-     * Трекинг просмотра страницы (только page_views) — fire-and-forget
-     */
-    protected function trackPageView(Store $store): void
-    {
-        try {
-            $today = now()->toDateString();
-
-            StoreAnalytics::updateOrCreate(
-                ['store_id' => $store->id, 'date' => $today],
-                []
-            );
-
-            StoreAnalytics::where('store_id', $store->id)
-                ->where('date', $today)
-                ->increment('page_views');
-        } catch (\Throwable $e) {
-            Log::debug('Ошибка трекинга просмотра страницы витрины', [
-                'store_id' => $store->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
     }
 }
