@@ -341,6 +341,10 @@ Route::middleware('auth.any')->group(function () {
         return view('counterparties.index');
     })->name('counterparties.index');
 
+    Route::get('/marketplace-customers', function () {
+        return view('pages.marketplace.customers');
+    })->name('marketplace.customers');
+
     Route::get('/inventory', function () {
         return view('inventory.index');
     })->name('inventory.index');
