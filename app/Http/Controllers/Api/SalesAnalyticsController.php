@@ -11,6 +11,7 @@ use App\Models\Company;
 use App\Services\CurrencyConversionService;
 use App\Services\SalesAnalyticsService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 class SalesAnalyticsController extends Controller
@@ -138,6 +139,29 @@ class SalesAnalyticsController extends Controller
         $performance = $this->analyticsService->getProductPerformance($productId, $period);
 
         return response()->json($performance);
+    }
+
+    /**
+     * Получить статистику продаж по годам, месяцам, неделям.
+     * Поддерживает фильтрацию по источникам (маркетплейсы, ручные, оффлайн).
+     */
+    public function salesStatistics(Request $request): JsonResponse
+    {
+        $this->configureCurrencyService();
+        $companyId = $this->getCompanyId();
+        $groupBy = $request->input('group_by', 'month');
+        $sources = $request->input('sources', []);
+
+        if (is_string($sources)) {
+            $sources = array_filter(explode(',', $sources));
+        }
+
+        $cacheKey = "sales_statistics_{$companyId}_{$groupBy}_" . implode('_', $sources ?: ['all']);
+        $data = Cache::remember($cacheKey, now()->addMinutes(15), function () use ($companyId, $groupBy, $sources) {
+            return $this->analyticsService->getSalesStatistics($companyId, $groupBy, $sources);
+        });
+
+        return response()->json($data);
     }
 
     /**

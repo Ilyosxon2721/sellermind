@@ -387,6 +387,7 @@ Route::middleware('auth.any')->group(function () {
         Route::get('sales-by-category', [SalesAnalyticsController::class, 'salesByCategory']);
         Route::get('sales-by-marketplace', [SalesAnalyticsController::class, 'salesByMarketplace']);
         Route::get('product/{productId}/performance', [SalesAnalyticsController::class, 'productPerformance']);
+        Route::get('sales-statistics', [SalesAnalyticsController::class, 'salesStatistics']);
     });
 
     // Воронка продаж (Sales Funnel)

@@ -1457,4 +1457,257 @@ final class SalesAnalyticsService
             'orders' => (int) ($row->orders ?? 0),
         ];
     }
+
+    /**
+     * Получить статистику продаж по годам, месяцам и неделям.
+     * Поддерживает фильтрацию по источнику (маркетплейс, ручные, оффлайн).
+     *
+     * @param  string  $groupBy  Группировка: year, month, week
+     * @param  array<string>  $sources  Фильтр источников: wb, ozon, uzum, ym, manual, retail, wholesale, direct
+     */
+    public function getSalesStatistics(int $companyId, string $groupBy = 'month', array $sources = []): array
+    {
+        $this->companyId = $companyId;
+        $this->forCompany($companyId);
+
+        $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
+
+        // Определяем SQL-выражение для группировки
+        $groupExpressions = $this->getGroupByExpressions($groupBy);
+
+        $allData = collect();
+        $includeSources = empty($sources);
+
+        // --- Маркетплейсы ---
+        if ($accountIds->isNotEmpty()) {
+            // Wildberries
+            if ($includeSources || in_array('wb', $sources)) {
+                $wbData = DB::table('wildberries_orders')
+                    ->whereIn('marketplace_account_id', $accountIds)
+                    ->where('is_cancel', false)
+                    ->where('is_return', false)
+                    ->select(
+                        DB::raw($groupExpressions['select_date'] . ' as period_key'),
+                        DB::raw($groupExpressions['select_label'] . ' as period_label'),
+                        DB::raw('COUNT(*) as orders_count'),
+                        DB::raw('SUM(for_pay) as revenue'),
+                        DB::raw('COUNT(*) as quantity')
+                    )
+                    ->groupBy('period_key', 'period_label')
+                    ->get()
+                    ->map(function ($row) {
+                        $row->revenue = $this->convertToDisplay((float) $row->revenue, 'RUB');
+                        $row->source = 'wb';
+
+                        return $row;
+                    });
+                $allData = $allData->merge($wbData);
+            }
+
+            // Ozon
+            if ($includeSources || in_array('ozon', $sources)) {
+                $ozonData = DB::table('ozon_orders')
+                    ->whereIn('marketplace_account_id', $accountIds)
+                    ->whereNotIn('status', self::CANCELLED_STATUSES)
+                    ->select(
+                        DB::raw(str_replace('order_date', 'created_at_ozon', $groupExpressions['select_date']) . ' as period_key'),
+                        DB::raw(str_replace('order_date', 'created_at_ozon', $groupExpressions['select_label']) . ' as period_label'),
+                        DB::raw('COUNT(*) as orders_count'),
+                        DB::raw('SUM(total_price) as revenue'),
+                        DB::raw('SUM(COALESCE(items_count, 1)) as quantity')
+                    )
+                    ->groupBy('period_key', 'period_label')
+                    ->get()
+                    ->map(function ($row) {
+                        $row->revenue = $this->convertToDisplay((float) $row->revenue, 'RUB');
+                        $row->source = 'ozon';
+
+                        return $row;
+                    });
+                $allData = $allData->merge($ozonData);
+            }
+
+            // Uzum
+            if ($includeSources || in_array('uzum', $sources)) {
+                $uzumDateCol = str_replace('order_date', 'uzum_orders.ordered_at', $groupExpressions['select_date']);
+                $uzumLabelCol = str_replace('order_date', 'uzum_orders.ordered_at', $groupExpressions['select_label']);
+
+                $uzumData = DB::table('uzum_orders')
+                    ->join('uzum_order_items', 'uzum_order_items.uzum_order_id', '=', 'uzum_orders.id')
+                    ->whereIn('uzum_orders.marketplace_account_id', $accountIds)
+                    ->whereNotIn('uzum_orders.status_normalized', self::CANCELLED_STATUSES)
+                    ->select(
+                        DB::raw($uzumDateCol . ' as period_key'),
+                        DB::raw($uzumLabelCol . ' as period_label'),
+                        DB::raw('COUNT(DISTINCT uzum_orders.id) as orders_count'),
+                        DB::raw('SUM(uzum_order_items.total_price) as revenue'),
+                        DB::raw('SUM(uzum_order_items.quantity) as quantity')
+                    )
+                    ->groupBy('period_key', 'period_label')
+                    ->get()
+                    ->map(function ($row) {
+                        $row->revenue = $this->convertToDisplay((float) $row->revenue, 'UZS');
+                        $row->source = 'uzum';
+
+                        return $row;
+                    });
+                $allData = $allData->merge($uzumData);
+            }
+
+            // Yandex Market
+            if ($includeSources || in_array('ym', $sources)) {
+                $ymDateCol = str_replace('order_date', 'created_at_ym', $groupExpressions['select_date']);
+                $ymLabelCol = str_replace('order_date', 'created_at_ym', $groupExpressions['select_label']);
+
+                $ymData = DB::table('yandex_market_orders')
+                    ->whereIn('marketplace_account_id', $accountIds)
+                    ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+                    ->select(
+                        DB::raw($ymDateCol . ' as period_key'),
+                        DB::raw($ymLabelCol . ' as period_label'),
+                        DB::raw('COUNT(*) as orders_count'),
+                        DB::raw('SUM(total_price) as revenue'),
+                        DB::raw('SUM(COALESCE(items_count, 1)) as quantity')
+                    )
+                    ->groupBy('period_key', 'period_label')
+                    ->get()
+                    ->map(function ($row) {
+                        $row->revenue = $this->convertToDisplay((float) $row->revenue, 'RUB');
+                        $row->source = 'ym';
+
+                        return $row;
+                    });
+                $allData = $allData->merge($ymData);
+            }
+        }
+
+        // --- Ручные продажи ---
+        if ($includeSources || in_array('manual', $sources)) {
+            $manualDateCol = str_replace('order_date', 'sales.created_at', $groupExpressions['select_date']);
+            $manualLabelCol = str_replace('order_date', 'sales.created_at', $groupExpressions['select_label']);
+
+            $manualData = DB::table('sale_items')
+                ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                ->where('sales.company_id', $companyId)
+                ->where('sales.status', '!=', 'cancelled')
+                ->whereNull('sales.deleted_at')
+                ->select(
+                    DB::raw($manualDateCol . ' as period_key'),
+                    DB::raw($manualLabelCol . ' as period_label'),
+                    DB::raw('COUNT(DISTINCT sales.id) as orders_count'),
+                    DB::raw('SUM(sale_items.total) as revenue'),
+                    DB::raw('SUM(sale_items.quantity) as quantity')
+                )
+                ->groupBy('period_key', 'period_label')
+                ->get()
+                ->map(function ($row) {
+                    $row->source = 'manual';
+
+                    return $row;
+                });
+            $allData = $allData->merge($manualData);
+        }
+
+        // --- Оффлайн продажи (розница, опт, прямые) ---
+        $offlineTypes = array_intersect(['retail', 'wholesale', 'direct'], $sources);
+        if ($includeSources || ! empty($offlineTypes)) {
+            $offlineDateCol = str_replace('order_date', 'offline_sales.sale_date', $groupExpressions['select_date']);
+            $offlineLabelCol = str_replace('order_date', 'offline_sales.sale_date', $groupExpressions['select_label']);
+
+            $offlineQuery = DB::table('offline_sale_items')
+                ->join('offline_sales', 'offline_sale_items.offline_sale_id', '=', 'offline_sales.id')
+                ->where('offline_sales.company_id', $companyId)
+                ->whereIn('offline_sales.status', ['confirmed', 'delivered'])
+                ->whereNull('offline_sales.deleted_at');
+
+            // Фильтр по типам оффлайн продаж
+            if (! $includeSources && ! empty($offlineTypes)) {
+                $offlineQuery->whereIn('offline_sales.sale_type', $offlineTypes);
+            }
+
+            $offlineData = $offlineQuery
+                ->select(
+                    DB::raw($offlineDateCol . ' as period_key'),
+                    DB::raw($offlineLabelCol . ' as period_label'),
+                    DB::raw('COUNT(DISTINCT offline_sales.id) as orders_count'),
+                    DB::raw('SUM(offline_sale_items.line_total) as revenue'),
+                    DB::raw('SUM(offline_sale_items.quantity) as quantity')
+                )
+                ->groupBy('period_key', 'period_label')
+                ->get()
+                ->map(function ($row) {
+                    $row->source = 'offline';
+
+                    return $row;
+                });
+            $allData = $allData->merge($offlineData);
+        }
+
+        // Агрегируем данные по периодам
+        $aggregated = $allData
+            ->groupBy('period_key')
+            ->map(function ($rows) {
+                return [
+                    'period_key' => $rows->first()->period_key,
+                    'period_label' => $rows->first()->period_label,
+                    'orders_count' => $rows->sum('orders_count'),
+                    'revenue' => round((float) $rows->sum('revenue'), 2),
+                    'quantity' => (int) $rows->sum('quantity'),
+                ];
+            })
+            ->sortBy('period_key')
+            ->values();
+
+        // Разбивка по источникам для каждого периода
+        $bySource = $allData
+            ->groupBy('period_key')
+            ->map(function ($rows) {
+                return $rows->groupBy('source')->map(function ($sourceRows) {
+                    return [
+                        'orders_count' => $sourceRows->sum('orders_count'),
+                        'revenue' => round((float) $sourceRows->sum('revenue'), 2),
+                        'quantity' => (int) $sourceRows->sum('quantity'),
+                    ];
+                });
+            })
+            ->sortKeys();
+
+        // Общие итоги
+        $totals = [
+            'orders_count' => $aggregated->sum('orders_count'),
+            'revenue' => round($aggregated->sum('revenue'), 2),
+            'quantity' => (int) $aggregated->sum('quantity'),
+            'avg_order_value' => $aggregated->sum('orders_count') > 0
+                ? round($aggregated->sum('revenue') / $aggregated->sum('orders_count'), 2)
+                : 0,
+        ];
+
+        return [
+            'group_by' => $groupBy,
+            'periods' => $aggregated->toArray(),
+            'by_source' => $bySource->toArray(),
+            'totals' => $totals,
+        ];
+    }
+
+    /**
+     * Получить SQL-выражения для группировки по году/месяцу/неделе.
+     */
+    private function getGroupByExpressions(string $groupBy): array
+    {
+        return match ($groupBy) {
+            'year' => [
+                'select_date' => 'YEAR(order_date)',
+                'select_label' => 'YEAR(order_date)',
+            ],
+            'week' => [
+                'select_date' => 'YEARWEEK(order_date, 1)',
+                'select_label' => "CONCAT(YEAR(order_date), '-W', LPAD(WEEK(order_date, 1), 2, '0'))",
+            ],
+            default => [ // month
+                'select_date' => "DATE_FORMAT(order_date, '%Y-%m')",
+                'select_label' => "DATE_FORMAT(order_date, '%Y-%m')",
+            ],
+        };
+    }
 }

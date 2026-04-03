@@ -223,6 +223,138 @@
                 </div>
             </div>
 
+            {{-- Статистика продаж --}}
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100" x-data="salesStatistics()" x-init="loadStatistics()">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900">Статистика продаж</h2>
+                        <p class="text-sm text-gray-500 mt-0.5">Анализ по периодам и источникам</p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        {{-- Группировка --}}
+                        <div class="flex bg-gray-100 rounded-xl p-1">
+                            <button @click="statGroupBy = 'week'; loadStatistics()"
+                                    :class="statGroupBy === 'week' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-600 hover:text-gray-900'"
+                                    class="px-3 py-1.5 text-sm font-medium rounded-lg transition-all">Неделя</button>
+                            <button @click="statGroupBy = 'month'; loadStatistics()"
+                                    :class="statGroupBy === 'month' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-600 hover:text-gray-900'"
+                                    class="px-3 py-1.5 text-sm font-medium rounded-lg transition-all">Месяц</button>
+                            <button @click="statGroupBy = 'year'; loadStatistics()"
+                                    :class="statGroupBy === 'year' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-600 hover:text-gray-900'"
+                                    class="px-3 py-1.5 text-sm font-medium rounded-lg transition-all">Год</button>
+                        </div>
+                        {{-- Фильтр источников --}}
+                        <div class="relative" x-data="{ sourceDropdownOpen: false }">
+                            <button @click="sourceDropdownOpen = !sourceDropdownOpen"
+                                    class="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                                </svg>
+                                <span x-text="statSources.length === 0 ? 'Все источники' : statSources.length + ' выбрано'"></span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            <div x-show="sourceDropdownOpen" @click.away="sourceDropdownOpen = false" x-transition
+                                 class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
+                                <template x-for="src in availableSources" :key="src.value">
+                                    <label class="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer">
+                                        <input type="checkbox" :value="src.value"
+                                               :checked="statSources.includes(src.value)"
+                                               @change="toggleSource(src.value)"
+                                               class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                        <span class="ml-2 text-sm text-gray-700" x-text="src.label"></span>
+                                    </label>
+                                </template>
+                                <div class="border-t border-gray-100 mt-1 pt-1 px-4">
+                                    <button @click="statSources = []; loadStatistics(); sourceDropdownOpen = false"
+                                            class="text-xs text-indigo-600 hover:text-indigo-800">Сбросить фильтр</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Итоговые карточки --}}
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                    <div class="bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-xl p-4">
+                        <div class="text-xs text-indigo-600 font-medium mb-1">Общая выручка</div>
+                        <div class="text-xl font-bold text-indigo-700" x-text="formatStatMoney(statTotals.revenue)">0</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-green-50 to-green-100/50 rounded-xl p-4">
+                        <div class="text-xs text-green-600 font-medium mb-1">Заказов</div>
+                        <div class="text-xl font-bold text-green-700" x-text="statTotals.orders_count">0</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl p-4">
+                        <div class="text-xs text-blue-600 font-medium mb-1">Товаров продано</div>
+                        <div class="text-xl font-bold text-blue-700" x-text="statTotals.quantity">0</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl p-4">
+                        <div class="text-xs text-purple-600 font-medium mb-1">Средний чек</div>
+                        <div class="text-xl font-bold text-purple-700" x-text="formatStatMoney(statTotals.avg_order_value)">0</div>
+                    </div>
+                </div>
+
+                {{-- Загрузка --}}
+                <div x-show="statLoading" class="flex items-center justify-center py-12">
+                    <svg class="animate-spin h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="ml-2 text-gray-500 text-sm">Загрузка статистики...</span>
+                </div>
+
+                {{-- График --}}
+                <div x-show="!statLoading && statPeriods.length > 0" class="mb-6">
+                    <canvas id="salesStatisticsChart" height="300"></canvas>
+                </div>
+
+                {{-- Таблица --}}
+                <div x-show="!statLoading && statPeriods.length > 0" class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Период</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Заказы</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Товаров</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Выручка</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Ср. чек</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <template x-for="period in statPeriods" :key="period.period_key">
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-900" x-text="formatPeriodLabel(period.period_label)"></td>
+                                    <td class="px-4 py-3 text-sm text-right text-gray-700" x-text="period.orders_count"></td>
+                                    <td class="px-4 py-3 text-sm text-right text-gray-700" x-text="period.quantity"></td>
+                                    <td class="px-4 py-3 text-sm text-right font-semibold text-green-600" x-text="formatStatMoney(period.revenue)"></td>
+                                    <td class="px-4 py-3 text-sm text-right text-gray-700" x-text="formatStatMoney(period.orders_count > 0 ? period.revenue / period.orders_count : 0)"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                        <tfoot class="bg-gray-50">
+                            <tr class="font-semibold">
+                                <td class="px-4 py-3 text-sm text-gray-900">Итого</td>
+                                <td class="px-4 py-3 text-sm text-right text-gray-900" x-text="statTotals.orders_count"></td>
+                                <td class="px-4 py-3 text-sm text-right text-gray-900" x-text="statTotals.quantity"></td>
+                                <td class="px-4 py-3 text-sm text-right font-bold text-green-700" x-text="formatStatMoney(statTotals.revenue)"></td>
+                                <td class="px-4 py-3 text-sm text-right text-gray-900" x-text="formatStatMoney(statTotals.avg_order_value)"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                {{-- Пустое состояние --}}
+                <div x-show="!statLoading && statPeriods.length === 0" class="text-center py-8">
+                    <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                    </div>
+                    <p class="text-gray-500 text-sm">Нет данных для отображения</p>
+                </div>
+            </div>
+
             {{-- Filters --}}
             <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <div class="flex items-center justify-between mb-4">
@@ -516,6 +648,82 @@
                     <button @click="showPeriodSheet = true" class="text-blue-600 text-sm font-semibold" onclick="if(window.haptic) window.haptic.light()">
                         Изменить
                     </button>
+                </div>
+            </div>
+        </div>
+
+        {{-- Статистика продаж (PWA) --}}
+        <div class="px-4 pb-4" x-data="salesStatistics()" x-init="loadStatistics()">
+            <div class="native-card">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="native-body font-semibold">Статистика</h3>
+                    <button @click="showStatSheet = true" class="text-blue-600 text-sm font-semibold" onclick="if(window.haptic) window.haptic.light()">
+                        <span x-text="statGroupBy === 'week' ? 'По неделям' : (statGroupBy === 'month' ? 'По месяцам' : 'По годам')"></span>
+                    </button>
+                </div>
+
+                {{-- Мини-итоги --}}
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <div class="bg-indigo-50 rounded-lg p-2.5">
+                        <div class="text-xs text-indigo-600 font-medium">Выручка</div>
+                        <div class="text-base font-bold text-indigo-700" x-text="formatStatMoney(statTotals.revenue)">0</div>
+                    </div>
+                    <div class="bg-green-50 rounded-lg p-2.5">
+                        <div class="text-xs text-green-600 font-medium">Заказов</div>
+                        <div class="text-base font-bold text-green-700" x-text="statTotals.orders_count">0</div>
+                    </div>
+                </div>
+
+                {{-- Загрузка --}}
+                <div x-show="statLoading" class="flex items-center justify-center py-6">
+                    <svg class="animate-spin h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+
+                {{-- График --}}
+                <div x-show="!statLoading && statPeriods.length > 0">
+                    <canvas id="salesStatisticsChartPwa" height="200"></canvas>
+                </div>
+
+                {{-- Список периодов --}}
+                <div x-show="!statLoading && statPeriods.length > 0" class="mt-3 space-y-1.5 max-h-48 overflow-y-auto">
+                    <template x-for="period in statPeriods.slice(-6).reverse()" :key="period.period_key">
+                        <div class="flex items-center justify-between py-1.5 border-b border-gray-50">
+                            <span class="text-sm text-gray-700" x-text="formatPeriodLabel(period.period_label)"></span>
+                            <div class="text-right">
+                                <span class="text-sm font-semibold text-green-600" x-text="formatStatMoney(period.revenue)"></span>
+                                <span class="text-xs text-gray-400 ml-1" x-text="period.orders_count + ' зак.'"></span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- Stats Group Sheet --}}
+            <div x-show="showStatSheet" x-cloak @click.self="showStatSheet = false" class="native-modal-overlay" style="display: none;">
+                <div class="native-sheet" @click.away="showStatSheet = false">
+                    <div class="native-sheet-handle"></div>
+                    <h3 class="native-headline mb-4">Группировка</h3>
+                    <div class="space-y-2">
+                        <button @click="statGroupBy = 'week'; loadStatistics(); showStatSheet = false" class="native-btn w-full" :class="statGroupBy === 'week' ? '' : 'native-btn-secondary'">По неделям</button>
+                        <button @click="statGroupBy = 'month'; loadStatistics(); showStatSheet = false" class="native-btn w-full" :class="statGroupBy === 'month' ? '' : 'native-btn-secondary'">По месяцам</button>
+                        <button @click="statGroupBy = 'year'; loadStatistics(); showStatSheet = false" class="native-btn w-full" :class="statGroupBy === 'year' ? '' : 'native-btn-secondary'">По годам</button>
+                    </div>
+                    <h3 class="native-headline mb-3 mt-5">Источники</h3>
+                    <div class="space-y-2">
+                        <template x-for="src in availableSources" :key="src.value">
+                            <label class="flex items-center p-2 rounded-lg hover:bg-gray-50">
+                                <input type="checkbox" :value="src.value"
+                                       :checked="statSources.includes(src.value)"
+                                       @change="toggleSource(src.value)"
+                                       class="rounded border-gray-300 text-indigo-600">
+                                <span class="ml-2 text-sm" x-text="src.label"></span>
+                            </label>
+                        </template>
+                    </div>
+                    <button @click="loadStatistics(); showStatSheet = false" class="native-btn w-full mt-4">Применить</button>
                 </div>
             </div>
         </div>
@@ -1133,6 +1341,197 @@ function salesPage() {
                 manual: 'М'
             };
             return shorts[marketplace] || marketplace?.substring(0, 2).toUpperCase();
+        }
+    };
+}
+
+function salesStatistics() {
+    return {
+        statLoading: false,
+        statGroupBy: 'month',
+        statSources: [],
+        statPeriods: [],
+        statTotals: { revenue: 0, orders_count: 0, quantity: 0, avg_order_value: 0 },
+        statChart: null,
+        showStatSheet: false,
+        availableSources: [
+            { value: 'wb', label: 'Wildberries' },
+            { value: 'ozon', label: 'Ozon' },
+            { value: 'uzum', label: 'Uzum Market' },
+            { value: 'ym', label: 'Yandex Market' },
+            { value: 'manual', label: 'Ручные продажи' },
+            { value: 'retail', label: 'Розница' },
+            { value: 'wholesale', label: 'Оптовые' },
+            { value: 'direct', label: 'Прямые продажи' }
+        ],
+
+        toggleSource(value) {
+            const idx = this.statSources.indexOf(value);
+            if (idx === -1) {
+                this.statSources.push(value);
+            } else {
+                this.statSources.splice(idx, 1);
+            }
+            this.loadStatistics();
+        },
+
+        async loadStatistics() {
+            this.statLoading = true;
+            try {
+                const params = new URLSearchParams();
+                params.set('group_by', this.statGroupBy);
+                if (this.statSources.length > 0) {
+                    params.set('sources', this.statSources.join(','));
+                }
+                // Устанавливаем period для SalesAnalyticsRequest
+                params.set('period', 'all');
+
+                const response = await window.api.get(`/analytics/sales-statistics?${params}`);
+                const data = response.data;
+
+                this.statPeriods = data.periods || [];
+                this.statTotals = data.totals || { revenue: 0, orders_count: 0, quantity: 0, avg_order_value: 0 };
+
+                this.$nextTick(() => this.renderChart());
+            } catch (error) {
+                console.error('Failed to load sales statistics:', error);
+            } finally {
+                this.statLoading = false;
+            }
+        },
+
+        renderChart() {
+            // Определяем ID канваса — выбираем тот что виден
+            const canvasId = document.getElementById('salesStatisticsChart')
+                ? 'salesStatisticsChart'
+                : 'salesStatisticsChartPwa';
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+
+            if (this.statChart) {
+                this.statChart.destroy();
+            }
+
+            const labels = this.statPeriods.map(p => this.formatPeriodLabel(p.period_label));
+            const revenueData = this.statPeriods.map(p => p.revenue);
+            const ordersData = this.statPeriods.map(p => p.orders_count);
+
+            this.statChart = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Выручка',
+                            data: revenueData,
+                            backgroundColor: 'rgba(99, 102, 241, 0.7)',
+                            borderColor: 'rgb(99, 102, 241)',
+                            borderWidth: 1,
+                            borderRadius: 6,
+                            yAxisID: 'y',
+                            order: 2
+                        },
+                        {
+                            label: 'Заказы',
+                            data: ordersData,
+                            type: 'line',
+                            borderColor: 'rgb(34, 197, 94)',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: 'rgb(34, 197, 94)',
+                            pointRadius: 4,
+                            tension: 0.3,
+                            fill: true,
+                            yAxisID: 'y1',
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                padding: 15,
+                                font: { size: 12 }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: (ctx) => {
+                                    if (ctx.dataset.label === 'Выручка') {
+                                        return ' Выручка: ' + this.formatStatMoney(ctx.raw);
+                                    }
+                                    return ' Заказы: ' + ctx.raw;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 11 }, maxRotation: 45 }
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                            ticks: {
+                                font: { size: 11 },
+                                callback: (v) => this.formatShortMoney(v)
+                            },
+                            title: { display: true, text: 'Выручка', font: { size: 11 } }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            ticks: { font: { size: 11 }, precision: 0 },
+                            title: { display: true, text: 'Заказы', font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+        },
+
+        formatStatMoney(value) {
+            if (!value && value !== 0) return '0 сум';
+            return new Intl.NumberFormat('ru-RU').format(Math.round(value)) + ' сум';
+        },
+
+        formatShortMoney(value) {
+            if (value >= 1000000000) return Math.round(value / 1000000000) + ' млрд';
+            if (value >= 1000000) return Math.round(value / 1000000) + ' млн';
+            if (value >= 1000) return Math.round(value / 1000) + ' тыс';
+            return value;
+        },
+
+        formatPeriodLabel(label) {
+            if (!label) return '';
+            // Год: "2025"
+            if (/^\d{4}$/.test(label)) return label + ' г.';
+            // Месяц: "2025-03"
+            if (/^\d{4}-\d{2}$/.test(label)) {
+                const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+                const [year, month] = label.split('-');
+                return months[parseInt(month) - 1] + ' ' + year;
+            }
+            // Неделя: "2025-W13"
+            if (/^\d{4}-W\d{2}$/.test(label)) {
+                return 'Нед. ' + label.split('-W')[1] + ', ' + label.split('-')[0];
+            }
+            return label;
         }
     };
 }
