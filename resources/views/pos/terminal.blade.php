@@ -476,10 +476,38 @@ function posTerminal() {
             this.searching = true;
             try {
                 const wid = this.shift?.warehouse_id || this.shiftForm.warehouse_id || '';
-                const res = await fetch(`/api/pos/products?q=${encodeURIComponent(this.searchQuery)}&warehouse_id=${wid}&limit=20`, {
+
+                // Пробуем POS endpoint
+                let res = await fetch(`/api/pos/products?q=${encodeURIComponent(this.searchQuery)}&warehouse_id=${wid}&limit=20`, {
                     credentials: 'same-origin', headers: getApiHeaders()
                 });
-                if (res.ok) { const d = await res.json(); this.products = d.data || d || []; }
+
+                if (res.ok) {
+                    const d = await res.json();
+                    this.products = d.data || d || [];
+                } else {
+                    // Fallback на SalesManagement endpoint
+                    res = await fetch(`/api/sales-management/products?search=${encodeURIComponent(this.searchQuery)}&warehouse_id=${wid}`, {
+                        credentials: 'same-origin', headers: getApiHeaders()
+                    });
+                    if (res.ok) {
+                        const d = await res.json();
+                        // Нормализуем формат SalesManagement → POS формат
+                        const items = d.data || d || [];
+                        this.products = items.map(v => ({
+                            product_id: v.product_id,
+                            variant_id: v.id,
+                            sku_id: v.warehouse_sku_id || null,
+                            name: v.product?.name || 'Без названия',
+                            variant_name: v.option_values_summary || v.sku,
+                            sku: v.sku,
+                            barcode: v.barcode,
+                            price: v.price_default || 0,
+                            cost_price: v.purchase_price || 0,
+                            stock: v.available_stock ?? v.stock_default ?? 0,
+                        }));
+                    }
+                }
             } catch(e) { console.error('Search error:', e); }
             finally { this.searching = false; }
         },

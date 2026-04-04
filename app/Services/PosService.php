@@ -374,8 +374,8 @@ final class PosService
                         'variant_name' => $variant->option_values_summary ?? $variant->sku,
                         'sku' => $variant->sku,
                         'barcode' => $variant->barcode,
-                        'price' => $variant->price ?? 0,
-                        'cost_price' => $variant->cost_price ?? 0,
+                        'price' => $variant->price_default ?? 0,
+                        'cost_price' => $variant->purchase_price ?? 0,
                         'stock' => $stock,
                         'image' => $product->image_url ?? null,
                     ];
