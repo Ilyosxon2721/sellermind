@@ -1,7 +1,14 @@
-@extends('layouts.app')
-
-@section('content')
-<div class="min-h-screen bg-gray-100" x-data="posTerminal()" x-init="init()">
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>POS-Терминал — SellerMind</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+</head>
+<body class="bg-gray-900">
+<div class="min-h-screen" x-data="posTerminal()" x-init="init()">
 
     {{-- Header --}}
     <header class="bg-gray-900 text-white px-4 py-3 flex items-center justify-between">
@@ -653,4 +660,5 @@ function posTerminal() {
     };
 }
 </script>
-@endsection
+</body>
+</html>
