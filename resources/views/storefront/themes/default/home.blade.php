@@ -49,7 +49,16 @@
 {{-- Баннеры (карусель) --}}
 @if($store->activeBanners->isNotEmpty())
     <section
-        x-data="bannerCarousel()"
+        x-data="{
+            current: 0,
+            total: {{ $store->activeBanners->count() }},
+            interval: null,
+            startAutoplay() { if (this.total <= 1) return; this.interval = setInterval(() => this.next(), 5000); },
+            stopAutoplay() { clearInterval(this.interval); },
+            next() { this.current = (this.current + 1) % this.total; },
+            prev() { this.current = (this.current - 1 + this.total) % this.total; },
+            goTo(i) { this.current = i; this.stopAutoplay(); this.startAutoplay(); }
+        }"
         x-init="startAutoplay()"
         @mouseenter="stopAutoplay()"
         @mouseleave="startAutoplay()"
@@ -274,7 +283,7 @@
             </div>
 
             <div
-                x-data="productGrid()"
+                x-data="{ adding: null }"
                 class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
             >
                 @foreach($store->featuredProducts as $storeProduct)
@@ -343,23 +352,14 @@
                             @if($store->theme->show_add_to_cart ?? true)
                                 <button
                                     @click="addToCart({{ $storeProduct->id }})"
-                                    :disabled="adding === {{ $storeProduct->id }}"
-                                    class="mt-3 w-full btn-primary py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                                    class="mt-3 w-full btn-primary py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
                                 >
-                                    <template x-if="adding !== {{ $storeProduct->id }}">
-                                        <span class="flex items-center gap-2">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                                            </svg>
-                                            В корзину
-                                        </span>
-                                    </template>
-                                    <template x-if="adding === {{ $storeProduct->id }}">
-                                        <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                    <span class="flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                                         </svg>
-                                    </template>
+                                        В корзину
+                                    </span>
                                 </button>
                             @endif
                         </div>

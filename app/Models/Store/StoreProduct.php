@@ -76,6 +76,62 @@ class StoreProduct extends Model
     // ==================
 
     /**
+     * Получить реальный остаток со всех складов (из warehouse системы)
+     *
+     * Используется кэшированное значение если загружено через loadWarehouseStocks()
+     */
+    public function getWarehouseStock(): float
+    {
+        // Если уже загружен batch-запросом
+        if (isset($this->attributes['_warehouse_stock'])) {
+            return (float) $this->attributes['_warehouse_stock'];
+        }
+
+        // Fallback — загрузить для одного товара
+        $variantIds = $this->product?->variants?->pluck('id') ?? collect();
+
+        if ($variantIds->isEmpty()) {
+            return 0;
+        }
+
+        return (float) \Illuminate\Support\Facades\DB::table('stock_ledger')
+            ->join('skus', 'skus.id', '=', 'stock_ledger.sku_id')
+            ->whereIn('skus.product_variant_id', $variantIds)
+            ->sum('stock_ledger.qty_delta');
+    }
+
+    /**
+     * Batch-загрузка остатков для коллекции StoreProduct
+     *
+     * Один SQL-запрос вместо N+1
+     *
+     * @param  \Illuminate\Support\Collection<int, StoreProduct>  $storeProducts
+     */
+    public static function loadWarehouseStocks($storeProducts): void
+    {
+        // Собираем все product_id → variant_ids
+        $productIds = $storeProducts->pluck('product_id')->unique()->filter();
+
+        if ($productIds->isEmpty()) {
+            return;
+        }
+
+        // Один запрос: product_id → SUM(qty_delta)
+        $stocks = \Illuminate\Support\Facades\DB::table('stock_ledger')
+            ->join('skus', 'skus.id', '=', 'stock_ledger.sku_id')
+            ->join('product_variants', 'product_variants.id', '=', 'skus.product_variant_id')
+            ->whereIn('product_variants.product_id', $productIds)
+            ->groupBy('product_variants.product_id')
+            ->selectRaw('product_variants.product_id, SUM(stock_ledger.qty_delta) as total_stock')
+            ->pluck('total_stock', 'product_id');
+
+        // Записываем в атрибуты каждого StoreProduct
+        foreach ($storeProducts as $sp) {
+            $sp->attributes['_warehouse_stock'] = $stocks->get($sp->product_id, 0);
+        }
+    }
+
+    /**
      * Получить отображаемое имя товара (кастомное или оригинальное)
      */
     public function getDisplayName(): string

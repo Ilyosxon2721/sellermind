@@ -14,7 +14,9 @@
     $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
 
     // Вычисляем общий остаток по всем активным вариантам
-    $totalStock = $product->variants->sum('stock_default');
+    // Складские остатки из warehouse системы
+    $totalStock = (int) $storeProduct->getWarehouseStock();
+    if ($totalStock <= 0) $totalStock = max(0, $product->variants->sum('stock_default'));
     $firstVariant = $product->variants->first();
     $firstVariantStock = $firstVariant?->stock_default ?? 0;
 
@@ -518,7 +520,7 @@
                     $relHasDiscount = $relOldPrice && (float)$relOldPrice > $relDisplayPrice;
                     $relDiscountPercent = $relHasDiscount ? round((1 - $relDisplayPrice / (float)$relOldPrice) * 100) : 0;
                     $relTotalStock = $relProduct->variants->sum('stock_default');
-                    $relIsOutOfStock = $relTotalStock <= 0;
+                    $relIsOutOfStock = false; // Видимый товар считается в наличии
                 @endphp
                 <div class="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
                     <a href="/store/{{ $store->slug }}/product/{{ $related->id }}" class="block">

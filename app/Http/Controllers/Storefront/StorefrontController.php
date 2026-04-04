@@ -44,6 +44,10 @@ final class StorefrontController extends Controller
             return view('storefront.maintenance', compact('store'));
         }
 
+        // Batch-загрузка складских остатков (1 SQL-запрос)
+        \App\Models\Store\StoreProduct::loadWarehouseStocks($store->featuredProducts);
+        \App\Models\Store\StoreProduct::loadWarehouseStocks($store->visibleProducts);
+
         $this->trackVisit($store);
 
         $template = $store->theme?->resolvedTemplate() ?? 'default';
