@@ -193,6 +193,13 @@
                         </button>
                     @endif
 
+                    {{-- Аккаунт --}}
+                    <a href="/store/{{ $store->slug }}/account" class="p-2 rounded-full hover:bg-black/5 transition-colors" aria-label="Аккаунт">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                    </a>
+
                     {{-- Избранное --}}
                     <a href="/store/{{ $store->slug }}/wishlist" class="relative p-2 rounded-full hover:bg-black/5 transition-colors" aria-label="Избранное">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
