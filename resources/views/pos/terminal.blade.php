@@ -26,6 +26,7 @@
         <div class="flex items-center gap-4 text-sm" x-show="shift">
             <span class="text-gray-400">Смена #<span x-text="shift?.id"></span></span>
             <span class="text-gray-400">Кассир: <span class="text-white" x-text="shift?.opened_by_name || 'Вы'"></span></span>
+            <span x-show="isOffline" class="px-2 py-1 bg-red-600 rounded-lg text-xs font-bold animate-pulse">ОФФЛАЙН</span>
             <span class="text-green-400 font-mono" x-text="clock"></span>
         </div>
         <div class="flex items-center gap-2">
@@ -70,20 +71,40 @@
     {{-- Main layout --}}
     <div class="flex h-[calc(100vh-56px)]" x-show="shift">
 
-        {{-- LEFT: Product search --}}
+        {{-- LEFT: Categories + Product search --}}
         <div class="w-3/5 flex flex-col border-r bg-white">
             {{-- Search bar --}}
-            <div class="p-4 border-b">
+            <div class="p-3 border-b">
                 <div class="relative">
                     <svg class="w-5 h-5 absolute left-3 top-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    <input type="text" x-model="searchQuery" @input.debounce.300ms="searchProducts()" x-ref="searchInput"
-                           class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:border-blue-500 focus:ring-0"
+                    <input type="text" x-model="searchQuery" @input.debounce.300ms="onSearchInput()" x-ref="searchInput"
+                           class="w-full pl-10 pr-10 py-3 border-2 border-gray-200 rounded-xl text-lg focus:border-blue-500 focus:ring-0"
                            placeholder="Поиск по названию, SKU, штрихкоду...">
+                    <button x-show="searchQuery" @click="searchQuery = ''; products = []; activeCategory = null;" class="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
                 </div>
             </div>
 
+            {{-- Categories bar --}}
+            <div class="flex gap-2 p-3 border-b overflow-x-auto flex-shrink-0" x-show="!searchQuery">
+                <button @click="activeCategory = null; products = []"
+                        class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all"
+                        :class="!activeCategory ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">
+                    Все
+                </button>
+                <template x-for="(cat, cIdx) in categories" :key="cIdx">
+                    <button @click="selectCategory(cat)"
+                            class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all"
+                            :class="activeCategory === cat.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">
+                        <span x-text="cat.name"></span>
+                        <span class="ml-1 text-xs opacity-70" x-text="'(' + cat.products_count + ')'"></span>
+                    </button>
+                </template>
+            </div>
+
             {{-- Product grid --}}
-            <div class="flex-1 overflow-y-auto p-4">
+            <div class="flex-1 overflow-y-auto p-3">
                 <div x-show="searching" class="text-center py-12">
                     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                     <p class="text-gray-500 mt-2">Поиск...</p>
@@ -92,11 +113,15 @@
                     <p class="text-4xl mb-2">🔍</p>
                     <p>Товары не найдены</p>
                 </div>
-                <div x-show="!searching && products.length === 0 && !searchQuery" class="text-center py-12 text-gray-400">
+                <div x-show="!searching && products.length === 0 && !searchQuery && !activeCategory" class="text-center py-12 text-gray-400">
                     <p class="text-4xl mb-2">📦</p>
-                    <p>Начните ввод или отсканируйте штрихкод</p>
+                    <p>Выберите категорию или введите запрос</p>
                 </div>
-                <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" x-show="products.length > 0">
+                <div x-show="!searching && products.length === 0 && activeCategory" class="text-center py-12 text-gray-400">
+                    <p class="text-4xl mb-2">📂</p>
+                    <p>В этой категории нет товаров</p>
+                </div>
+                <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2" x-show="products.length > 0">
                     <template x-for="(product, pIdx) in products" :key="pIdx">
                         <button @click="addToCart(product)"
                                 class="text-left bg-gray-50 hover:bg-blue-50 border-2 border-transparent hover:border-blue-300 rounded-xl p-3 transition-all active:scale-95">
@@ -366,11 +391,14 @@ function posTerminal() {
         shift: null,
         cart: [],
         products: [],
+        categories: [],
+        activeCategory: null,
         searchQuery: '',
         searching: false,
         loading: false,
         warehouses: [],
         clock: '',
+        isOffline: !navigator.onLine,
 
         // Modals
         paymentModal: false,
@@ -418,8 +446,13 @@ function posTerminal() {
                 }
             });
 
+            // Отслеживание онлайн/оффлайн
+            window.addEventListener('online', () => { this.isOffline = false; this.showSuccess('Соединение восстановлено'); this.syncOfflineSales(); });
+            window.addEventListener('offline', () => { this.isOffline = true; });
+
             await this.loadWarehouses();
             await this.loadCurrentShift();
+            await this.loadCategories();
         },
 
         async loadWarehouses() {
@@ -481,6 +514,53 @@ function posTerminal() {
                 }
             } catch(e) { alert('Ошибка сети: ' + e.message); }
             finally { this.loading = false; }
+        },
+
+        async loadCategories() {
+            try {
+                const res = await fetch('/api/pos/categories', { credentials: 'same-origin', headers: getApiHeaders() });
+                if (res.ok) {
+                    const d = await res.json();
+                    this.categories = d.data || [];
+                    // Кэшируем для оффлайн
+                    try { localStorage.setItem('pos_categories', JSON.stringify(this.categories)); } catch(e) {}
+                }
+            } catch(e) {
+                // Оффлайн — берём из кэша
+                try { this.categories = JSON.parse(localStorage.getItem('pos_categories') || '[]'); } catch(e2) {}
+            }
+        },
+
+        async selectCategory(cat) {
+            this.activeCategory = cat.id;
+            this.searchQuery = '';
+            this.searching = true;
+            try {
+                const wid = this.shift?.warehouse_id || '';
+                const res = await fetch(`/api/pos/categories/${cat.id}/products?warehouse_id=${wid}`, {
+                    credentials: 'same-origin', headers: getApiHeaders()
+                });
+                if (res.ok) {
+                    const d = await res.json();
+                    this.products = d.data || [];
+                    // Кэшируем для оффлайн
+                    try { localStorage.setItem('pos_cat_' + cat.id, JSON.stringify(this.products)); } catch(e) {}
+                }
+            } catch(e) {
+                // Оффлайн — берём из кэша
+                try { this.products = JSON.parse(localStorage.getItem('pos_cat_' + cat.id) || '[]'); } catch(e2) {}
+            }
+            this.searching = false;
+        },
+
+        onSearchInput() {
+            if (this.searchQuery && this.searchQuery.length >= 2) {
+                this.activeCategory = null;
+                this.searchProducts();
+            } else if (!this.searchQuery) {
+                this.products = [];
+                // Если была выбрана категория — вернём её
+            }
         },
 
         async searchProducts() {
@@ -620,8 +700,49 @@ function posTerminal() {
                     const err = await res.json().catch(() => ({}));
                     alert('Ошибка продажи: ' + (err.error || err.message || 'Неизвестная ошибка'));
                 }
-            } catch(e) { alert('Ошибка сети: ' + e.message); }
+            } catch(e) {
+                if (!navigator.onLine) {
+                    this.saveOfflineSale(payload);
+                    this.cart = [];
+                    this.paymentModal = false;
+                    this.showSuccess('Продажа сохранена оффлайн. Синхронизируется при подключении.');
+                } else {
+                    alert('Ошибка сети: ' + e.message);
+                }
+            }
             finally { this.loading = false; }
+        },
+
+        saveOfflineSale(payload) {
+            try {
+                const queue = JSON.parse(localStorage.getItem('pos_offline_queue') || '[]');
+                payload._offline_id = Date.now();
+                payload._created_at = new Date().toISOString();
+                queue.push(payload);
+                localStorage.setItem('pos_offline_queue', JSON.stringify(queue));
+            } catch(e) { console.error('Failed to save offline sale:', e); }
+        },
+
+        async syncOfflineSales() {
+            const queue = JSON.parse(localStorage.getItem('pos_offline_queue') || '[]');
+            if (queue.length === 0) return;
+
+            let synced = 0;
+            const remaining = [];
+            for (const sale of queue) {
+                try {
+                    const res = await fetch('/api/pos/sell', {
+                        method: 'POST', credentials: 'same-origin', headers: getApiHeaders(true),
+                        body: JSON.stringify(sale)
+                    });
+                    if (res.ok) { synced++; } else { remaining.push(sale); }
+                } catch(e) { remaining.push(sale); break; }
+            }
+            localStorage.setItem('pos_offline_queue', JSON.stringify(remaining));
+            if (synced > 0) {
+                this.showSuccess(`Синхронизировано ${synced} оффлайн-продаж`);
+                await this.loadCurrentShift();
+            }
         },
 
         async processCashOp() {

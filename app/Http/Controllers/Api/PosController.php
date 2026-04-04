@@ -236,6 +236,30 @@ final class PosController extends Controller
         return $this->successResponse($products);
     }
 
+    /**
+     * Получить категории товаров
+     */
+    public function getCategories(): JsonResponse
+    {
+        $companyId = $this->getCompanyId();
+        $categories = $this->posService->getCategories($companyId);
+
+        return $this->successResponse($categories);
+    }
+
+    /**
+     * Получить товары по категории
+     */
+    public function getProductsByCategory(Request $request, int $categoryId): JsonResponse
+    {
+        $companyId = $this->getCompanyId();
+        $warehouseId = $request->integer('warehouse_id') ?: null;
+
+        $products = $this->posService->getProductsByCategory($companyId, $categoryId, $warehouseId);
+
+        return $this->successResponse($products);
+    }
+
     // ========== Кассовые операции ==========
 
     /**
