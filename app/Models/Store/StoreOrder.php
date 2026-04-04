@@ -5,9 +5,11 @@ namespace App\Models\Store;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class StoreOrder extends Model
 {
+    use SoftDeletes;
     // ==================
     // Константы статусов заказа
     // ==================
@@ -38,6 +40,7 @@ class StoreOrder extends Model
 
     protected $fillable = [
         'store_id',
+        'store_customer_id',
         'order_number',
         'customer_name',
         'customer_phone',
@@ -106,6 +109,11 @@ class StoreOrder extends Model
     public function store(): BelongsTo
     {
         return $this->belongsTo(Store::class);
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(StoreCustomer::class, 'store_customer_id');
     }
 
     public function deliveryMethod(): BelongsTo

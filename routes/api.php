@@ -1099,6 +1099,7 @@ Route::middleware('auth.any')->group(function () {
         // Orders
         Route::get('stores/{storeId}/orders', [\App\Http\Controllers\Store\StoreOrderController::class, 'index']);
         Route::get('stores/{storeId}/orders/stats', [\App\Http\Controllers\Store\StoreOrderController::class, 'stats']);
+        Route::get('stores/{storeId}/orders/export', [\App\Http\Controllers\Store\StoreOrderController::class, 'export']);
         Route::get('stores/{storeId}/orders/{orderId}', [\App\Http\Controllers\Store\StoreOrderController::class, 'show']);
         Route::put('stores/{storeId}/orders/{orderId}', [\App\Http\Controllers\Store\StoreOrderController::class, 'update']);
 
@@ -1111,6 +1112,13 @@ Route::middleware('auth.any')->group(function () {
 
         // Analytics
         Route::get('stores/{storeId}/analytics', [\App\Http\Controllers\Store\StoreAnalyticsController::class, 'index']);
+
+        // Reviews (модерация)
+        Route::get('stores/{storeId}/reviews', [\App\Http\Controllers\Store\StoreReviewController::class, 'index']);
+        Route::get('stores/{storeId}/reviews/stats', [\App\Http\Controllers\Store\StoreReviewController::class, 'stats']);
+        Route::get('stores/{storeId}/reviews/{reviewId}', [\App\Http\Controllers\Store\StoreReviewController::class, 'show']);
+        Route::put('stores/{storeId}/reviews/{reviewId}', [\App\Http\Controllers\Store\StoreReviewController::class, 'update']);
+        Route::delete('stores/{storeId}/reviews/{reviewId}', [\App\Http\Controllers\Store\StoreReviewController::class, 'destroy']);
 
         // Promocodes
         Route::get('stores/{storeId}/promocodes', [\App\Http\Controllers\Store\StorePromocodeController::class, 'index']);

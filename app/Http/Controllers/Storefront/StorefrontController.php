@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Storefront\Traits\StorefrontHelpers;
 use App\Models\Store\Store;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Публичная витрина магазина — главная страница, статические страницы
@@ -23,17 +24,19 @@ final class StorefrontController extends Controller
      */
     public function home(string $slug): View
     {
-        $store = Store::where('slug', $slug)
-            ->where('is_active', true)
-            ->where('is_published', true)
-            ->with([
-                'theme',
-                'activeBanners',
-                'visibleCategories.category',
-                'featuredProducts.product.mainImage',
-                'featuredProducts.product.variants:id,product_id,price_default,old_price_default',
-            ])
-            ->firstOrFail();
+        $store = Cache::remember("storefront:home:{$slug}", 300, function () use ($slug) {
+            return Store::where('slug', $slug)
+                ->where('is_active', true)
+                ->where('is_published', true)
+                ->with([
+                    'theme',
+                    'activeBanners',
+                    'visibleCategories.category',
+                    'featuredProducts.product.mainImage',
+                    'featuredProducts.product.variants:id,product_id,price_default,old_price_default',
+                ])
+                ->firstOrFail();
+        });
 
         if ($store->maintenance_mode) {
             return view('storefront.maintenance', compact('store'));
@@ -55,9 +58,11 @@ final class StorefrontController extends Controller
     {
         $store = $this->getPublishedStore($slug);
 
-        $page = $store->activePages()
-            ->where('slug', $pageSlug)
-            ->firstOrFail();
+        $page = Cache::remember("storefront:page:{$slug}:{$pageSlug}", 300, function () use ($store, $pageSlug) {
+            return $store->activePages()
+                ->where('slug', $pageSlug)
+                ->firstOrFail();
+        });
 
         $this->trackPageView($store);
 

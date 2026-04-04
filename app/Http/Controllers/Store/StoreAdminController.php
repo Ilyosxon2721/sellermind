@@ -10,6 +10,7 @@ use App\Models\Store\Store;
 use App\Support\ApiResponder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Управление магазинами компании (CRUD)
@@ -103,6 +104,9 @@ final class StoreAdminController extends Controller
         ]);
 
         $store->update($data);
+
+        // Инвалидация кэша витрины
+        Cache::forget("storefront:home:{$store->slug}");
 
         return $this->successResponse($store->fresh('theme'));
     }
