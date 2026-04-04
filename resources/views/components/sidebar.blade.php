@@ -224,6 +224,17 @@
             <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">{{ __('admin.counterparties') }}</span>
         </a>
 
+        {{-- Клиентская база --}}
+        <a href="/marketplace-customers"
+           class="flex items-center rounded-lg transition {{ request()->is('marketplace-customers*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           :class="$store.ui.sidebarCollapsed ? 'justify-center p-2.5' : 'space-x-3 px-3 py-2.5'"
+           :title="$store.ui.sidebarCollapsed ? 'Клиентская база' : ''">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+            </svg>
+            <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">Клиентская база</span>
+        </a>
+
         {{-- Inventory --}}
         <a href="/inventory"
            class="flex items-center rounded-lg transition {{ request()->is('inventory*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
