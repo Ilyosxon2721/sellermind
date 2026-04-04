@@ -72,6 +72,45 @@ final class StorefrontController extends Controller
     }
 
     /**
+     * Страница входа/регистрации покупателя
+     *
+     * GET /store/{slug}/login
+     */
+    public function login(string $slug): View
+    {
+        $store = $this->getPublishedStore($slug);
+        $template = $store->theme?->resolvedTemplate() ?? 'default';
+
+        // Если тема marketplace — используем её, иначе fallback
+        $view = "storefront.themes.{$template}.account-login";
+
+        if (! view()->exists($view)) {
+            $view = 'storefront.themes.marketplace.account-login';
+        }
+
+        return view($view, compact('store'));
+    }
+
+    /**
+     * Личный кабинет покупателя
+     *
+     * GET /store/{slug}/account
+     */
+    public function account(string $slug): View
+    {
+        $store = $this->getPublishedStore($slug);
+        $template = $store->theme?->resolvedTemplate() ?? 'default';
+
+        $view = "storefront.themes.{$template}.account";
+
+        if (! view()->exists($view)) {
+            $view = 'storefront.themes.marketplace.account';
+        }
+
+        return view($view, compact('store'));
+    }
+
+    /**
      * Страница избранного (Wishlist)
      *
      * GET /store/{slug}/wishlist

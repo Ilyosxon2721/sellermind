@@ -1113,6 +1113,12 @@ Route::middleware('auth.any')->group(function () {
         // Analytics
         Route::get('stores/{storeId}/analytics', [\App\Http\Controllers\Store\StoreAnalyticsController::class, 'index']);
 
+        // Customers
+        Route::get('stores/{storeId}/customers', [\App\Http\Controllers\Store\StoreCustomerController::class, 'index']);
+        Route::get('stores/{storeId}/customers/stats', [\App\Http\Controllers\Store\StoreCustomerController::class, 'stats']);
+        Route::get('stores/{storeId}/customers/{customerId}', [\App\Http\Controllers\Store\StoreCustomerController::class, 'show']);
+        Route::put('stores/{storeId}/customers/{customerId}', [\App\Http\Controllers\Store\StoreCustomerController::class, 'update']);
+
         // Reviews (модерация)
         Route::get('stores/{storeId}/reviews', [\App\Http\Controllers\Store\StoreReviewController::class, 'index']);
         Route::get('stores/{storeId}/reviews/stats', [\App\Http\Controllers\Store\StoreReviewController::class, 'stats']);

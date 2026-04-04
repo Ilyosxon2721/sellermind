@@ -1359,6 +1359,10 @@ Route::prefix('store/{slug}')->group(function () {
         Route::get('/api/customer/orders/{orderNumber}', [\App\Http\Controllers\Storefront\CustomerController::class, 'orderDetail']);
     });
 
+    // Account pages
+    Route::get('/login', [\App\Http\Controllers\Storefront\StorefrontController::class, 'login'])->name('storefront.login');
+    Route::get('/account', [\App\Http\Controllers\Storefront\StorefrontController::class, 'account'])->name('storefront.account');
+
     // Wishlist page
     Route::get('/wishlist', [\App\Http\Controllers\Storefront\StorefrontController::class, 'wishlist'])->name('storefront.wishlist');
 });
