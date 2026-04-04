@@ -88,12 +88,13 @@
                     <template x-for="product in products" :key="product.id">
                         <button @click="addToCart(product)"
                                 class="text-left bg-gray-50 hover:bg-blue-50 border-2 border-transparent hover:border-blue-300 rounded-xl p-3 transition-all active:scale-95">
-                            <p class="font-medium text-sm text-gray-900 line-clamp-2" x-text="product.product?.name || product.product_name || 'Без названия'"></p>
+                            <p class="font-medium text-sm text-gray-900 line-clamp-2" x-text="product.name || product.product_name || 'Без названия'"></p>
                             <p class="text-xs text-gray-500 mt-1" x-text="'SKU: ' + (product.sku || '-')"></p>
+                            <p class="text-xs text-gray-400" x-show="product.variant_name" x-text="product.variant_name"></p>
                             <div class="flex justify-between items-end mt-2">
-                                <span class="text-lg font-bold text-blue-600" x-text="formatMoney(product.price_default)"></span>
-                                <span class="text-xs" :class="(product.available_stock || product.stock_default || 0) > 0 ? 'text-green-600' : 'text-red-500'"
-                                      x-text="'Ост: ' + (product.available_stock || product.stock_default || 0)"></span>
+                                <span class="text-lg font-bold text-blue-600" x-text="formatMoney(product.price || product.price_default || 0)"></span>
+                                <span class="text-xs" :class="(product.stock ?? product.available_stock ?? 0) > 0 ? 'text-green-600' : 'text-red-500'"
+                                      x-text="'Ост: ' + (product.stock ?? product.available_stock ?? 0)"></span>
                             </div>
                         </button>
                     </template>
@@ -322,7 +323,7 @@
     </div>
 
     {{-- SUCCESS TOAST --}}
-    <div x-show="successMessage" x-transition class="fixed top-4 right-4 z-50 bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg font-medium">
+    <div x-show="successMessage" x-cloak class="fixed top-4 right-4 z-50 bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg font-medium">
         <span x-text="successMessage"></span>
     </div>
 
@@ -475,31 +476,61 @@ function posTerminal() {
             this.searching = true;
             try {
                 const wid = this.shift?.warehouse_id || this.shiftForm.warehouse_id || '';
-                const res = await fetch(`/api/pos/products?q=${encodeURIComponent(this.searchQuery)}&warehouse_id=${wid}&limit=20`, {
+
+                // Пробуем POS endpoint
+                let res = await fetch(`/api/pos/products?q=${encodeURIComponent(this.searchQuery)}&warehouse_id=${wid}&limit=20`, {
                     credentials: 'same-origin', headers: getApiHeaders()
                 });
-                if (res.ok) { const d = await res.json(); this.products = d.data || d || []; }
+
+                if (res.ok) {
+                    const d = await res.json();
+                    this.products = d.data || d || [];
+                } else {
+                    // Fallback на SalesManagement endpoint
+                    res = await fetch(`/api/sales-management/products?search=${encodeURIComponent(this.searchQuery)}&warehouse_id=${wid}`, {
+                        credentials: 'same-origin', headers: getApiHeaders()
+                    });
+                    if (res.ok) {
+                        const d = await res.json();
+                        // Нормализуем формат SalesManagement → POS формат
+                        const items = d.data || d || [];
+                        this.products = items.map(v => ({
+                            product_id: v.product_id,
+                            variant_id: v.id,
+                            sku_id: v.warehouse_sku_id || null,
+                            name: v.product?.name || 'Без названия',
+                            variant_name: v.option_values_summary || v.sku,
+                            sku: v.sku,
+                            barcode: v.barcode,
+                            price: v.price_default || 0,
+                            cost_price: v.purchase_price || 0,
+                            stock: v.available_stock ?? v.stock_default ?? 0,
+                        }));
+                    }
+                }
             } catch(e) { console.error('Search error:', e); }
             finally { this.searching = false; }
         },
 
         addToCart(product) {
-            const existing = this.cart.find(i => i.variant_id === product.id);
+            const vid = product.variant_id || product.id;
+            const existing = this.cart.find(i => i.variant_id === vid);
+            const price = product.price || product.price_default || 0;
             if (existing) {
                 existing.quantity++;
                 existing.line_total = existing.quantity * existing.unit_price;
             } else {
                 this.cart.push({
-                    variant_id: product.id,
-                    sku_id: product.warehouse_sku_id || null,
+                    variant_id: vid,
+                    sku_id: product.sku_id || product.warehouse_sku_id || null,
                     product_id: product.product_id,
-                    product_name: product.product?.name || product.product_name || 'Без названия',
+                    product_name: product.name || product.product_name || 'Без названия',
                     sku_code: product.sku || '',
                     quantity: 1,
-                    unit_price: product.price_default || 0,
-                    unit_cost: product.purchase_price || 0,
+                    unit_price: price,
+                    unit_cost: product.cost_price || product.purchase_price || 0,
                     discount_percent: 0,
-                    line_total: product.price_default || 0,
+                    line_total: price,
                 });
             }
             this.$refs.searchInput?.focus();
