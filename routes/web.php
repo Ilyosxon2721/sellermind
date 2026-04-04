@@ -1337,6 +1337,19 @@ Route::prefix('store/{slug}')->group(function () {
         Route::post('/api/products/{productId}/reviews', [\App\Http\Controllers\Storefront\ReviewController::class, 'store']);
     });
 
+    // Customer account API
+    Route::middleware('throttle:10,1')->group(function () {
+        Route::post('/api/customer/register', [\App\Http\Controllers\Storefront\CustomerController::class, 'register']);
+        Route::post('/api/customer/login', [\App\Http\Controllers\Storefront\CustomerController::class, 'login']);
+    });
+    Route::middleware('throttle:60,1')->group(function () {
+        Route::post('/api/customer/logout', [\App\Http\Controllers\Storefront\CustomerController::class, 'logout']);
+        Route::get('/api/customer/profile', [\App\Http\Controllers\Storefront\CustomerController::class, 'profile']);
+        Route::put('/api/customer/profile', [\App\Http\Controllers\Storefront\CustomerController::class, 'updateProfile']);
+        Route::get('/api/customer/orders', [\App\Http\Controllers\Storefront\CustomerController::class, 'orders']);
+        Route::get('/api/customer/orders/{orderNumber}', [\App\Http\Controllers\Storefront\CustomerController::class, 'orderDetail']);
+    });
+
     // Wishlist page
     Route::get('/wishlist', [\App\Http\Controllers\Storefront\StorefrontController::class, 'wishlist'])->name('storefront.wishlist');
 });

@@ -146,6 +146,11 @@
             animation: checkmark 0.5s ease-out forwards;
         }
 
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
         {{ $store->theme->custom_css ?? '' }}
     </style>
 
@@ -221,6 +226,34 @@
                 minimumFractionDigits: 0,
                 maximumFractionDigits: 0,
             }).format(value);
+        }
+
+        function addToCart(productId, variantId, qty) {
+            const slug = '{{ $store->slug }}';
+            const body = { product_id: productId, quantity: qty || 1 };
+            if (variantId) body.variant_id = variantId;
+
+            fetch(`/store/${slug}/api/cart/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify(body)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.data) {
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: { message: 'Товар добавлен в корзину', type: 'success' } }));
+                    window.dispatchEvent(new CustomEvent('cart-updated', { detail: data.data }));
+                } else {
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: { message: data.message || 'Ошибка', type: 'error' } }));
+                }
+            })
+            .catch(() => {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: { message: 'Ошибка сети', type: 'error' } }));
+            });
         }
     </script>
 </body>

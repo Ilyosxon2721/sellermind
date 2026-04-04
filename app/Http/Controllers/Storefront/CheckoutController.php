@@ -149,11 +149,15 @@ final class CheckoutController extends Controller
             );
         }
 
+        // Привязка к авторизованному покупателю
+        $customerId = session()->get("store_customer_{$store->id}");
+
         // Создаём заказ в транзакции
-        $order = DB::transaction(function () use ($store, $data, $cart, $subtotal, $discount, $deliveryPrice, $total, $promocode) {
+        $order = DB::transaction(function () use ($store, $data, $cart, $subtotal, $discount, $deliveryPrice, $total, $promocode, $customerId) {
             /** @var StoreOrder $order */
             $order = StoreOrder::create([
                 'store_id' => $store->id,
+                'store_customer_id' => $customerId,
                 'customer_name' => $data['customer_name'],
                 'customer_phone' => $data['customer_phone'],
                 'customer_email' => $data['customer_email'] ?? null,

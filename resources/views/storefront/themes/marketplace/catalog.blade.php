@@ -120,20 +120,5 @@ function mpCatalog() {
     }
 }
 
-function addToCart(productId) {
-    fetch('/store/{{ $slug }}/api/cart/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '', 'Accept': 'application/json' },
-        body: JSON.stringify({ product_id: productId, quantity: 1 })
-    })
-    .then(r => r.json())
-    .then(data => {
-        window.dispatchEvent(new CustomEvent('show-toast', { detail: { message: 'Товар добавлен в корзину', type: 'success' } }));
-        window.dispatchEvent(new CustomEvent('cart-updated', { detail: data.data }));
-    })
-    .catch(() => {
-        window.dispatchEvent(new CustomEvent('show-toast', { detail: { message: 'Ошибка при добавлении', type: 'error' } }));
-    });
-}
 </script>
 @endsection
