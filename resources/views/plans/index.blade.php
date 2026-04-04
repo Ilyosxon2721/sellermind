@@ -40,7 +40,7 @@
     </template>
 
     <!-- Plans Grid -->
-    <div x-show="!loading" class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+    <div x-show="!loading" class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         <template x-for="plan in plans" :key="plan.id">
             <div class="relative bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden transition-all hover:scale-105 hover:shadow-2xl"
                  :class="plan.is_popular ? 'ring-4 ring-indigo-500' : ''">

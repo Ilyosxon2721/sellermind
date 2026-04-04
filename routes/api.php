@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\DialogAdminController;
+use App\Http\Controllers\Api\Admin\PlanAdminController;
 use App\Http\Controllers\Api\AgentTaskController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChatController;
@@ -1036,6 +1037,14 @@ Route::middleware('auth.any')->group(function () {
         Route::get('dialogs/hidden', [DialogAdminController::class, 'hiddenDialogs']);
         Route::get('dialogs/hidden/{dialog}', [DialogAdminController::class, 'showHiddenDialog']);
         Route::get('dialogs/stats', [DialogAdminController::class, 'stats']);
+
+        // Управление тарифами
+        Route::get('plans', [PlanAdminController::class, 'index']);
+        Route::post('plans', [PlanAdminController::class, 'store']);
+        Route::get('plans/{plan}', [PlanAdminController::class, 'show']);
+        Route::put('plans/{plan}', [PlanAdminController::class, 'update']);
+        Route::delete('plans/{plan}', [PlanAdminController::class, 'destroy']);
+        Route::post('plans/{plan}/toggle-active', [PlanAdminController::class, 'toggleActive']);
     });
 
     // Store Builder — Admin API
