@@ -42,10 +42,14 @@
     <div class="flex flex-col flex-1 p-3">
         {{-- Цена --}}
         <div class="mb-1.5">
-            <span class="text-base sm:text-lg font-bold text-gray-900">{{ number_format($price, 0, '.', ' ') }}</span>
-            <span class="text-xs sm:text-sm text-gray-500"> {{ $currency }}</span>
-            @if($hasDiscount)
-                <span class="ml-1.5 text-xs sm:text-sm text-gray-400 line-through">{{ number_format((float)$oldPrice, 0, '.', ' ') }}</span>
+            @if($price > 0)
+                <span class="text-base sm:text-lg font-bold text-gray-900">{{ number_format($price, 0, '.', ' ') }}</span>
+                <span class="text-xs sm:text-sm text-gray-500"> {{ $currency }}</span>
+                @if($hasDiscount)
+                    <span class="ml-1.5 text-xs sm:text-sm text-gray-400 line-through">{{ number_format((float)$oldPrice, 0, '.', ' ') }}</span>
+                @endif
+            @else
+                <span class="text-sm text-gray-400">Цена по запросу</span>
             @endif
         </div>
 

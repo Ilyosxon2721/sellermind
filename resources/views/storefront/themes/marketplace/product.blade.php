@@ -120,7 +120,7 @@
                     В корзину
                 </button>
                 <button
-                    @click="$dispatch('open-buy-one-click', { productId: {{ $storeProduct->id }}, name: '{{ addslashes($storeProduct->getDisplayName()) }}' })"
+                    @click="$dispatch('buy-one-click', { productId: {{ $storeProduct->id }}, variantId: selectedVariant?.id, name: '{{ addslashes($storeProduct->getDisplayName()) }}', price: currentPrice, image: '{{ $product?->mainImage?->url }}', slug: '{{ $slug }}', quantity: qty })"
                     class="py-3 px-5 rounded-xl border-2 font-semibold text-sm transition-all hover:bg-gray-50"
                     style="border-color: var(--primary); color: var(--primary);"
                 >Купить в 1 клик</button>

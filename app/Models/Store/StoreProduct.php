@@ -92,6 +92,13 @@ class StoreProduct extends Model
             return (float) $this->custom_price;
         }
 
+        // Подгружаем варианты если не загружены
+        if (! $this->relationLoaded('product')) {
+            $this->load('product.variants');
+        } elseif ($this->product && ! $this->product->relationLoaded('variants')) {
+            $this->product->load('variants');
+        }
+
         return (float) ($this->product?->variants?->first()?->price_default ?? 0);
     }
 }

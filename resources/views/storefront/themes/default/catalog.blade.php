@@ -347,13 +347,17 @@
                                     </h3>
                                 </a>
                                 <div class="mt-2 flex items-baseline gap-2">
-                                    <span class="text-lg font-bold {{ $isOutOfStock ? 'text-gray-400' : '' }}" @if(!$isOutOfStock) style="color: var(--primary);" @endif>
-                                        {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
-                                    </span>
-                                    @if($hasDiscount && !$isOutOfStock)
-                                        <span class="text-xs text-gray-400 line-through">
-                                            {{ number_format($oldPrice, 0, '.', ' ') }}
+                                    @if($displayPrice > 0)
+                                        <span class="text-lg font-bold {{ $isOutOfStock ? 'text-gray-400' : '' }}" @if(!$isOutOfStock) style="color: var(--primary);" @endif>
+                                            {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
                                         </span>
+                                        @if($hasDiscount && !$isOutOfStock)
+                                            <span class="text-xs text-gray-400 line-through">
+                                                {{ number_format($oldPrice, 0, '.', ' ') }}
+                                            </span>
+                                        @endif
+                                    @else
+                                        <span class="text-sm text-gray-400">Цена по запросу</span>
                                     @endif
                                 </div>
 
