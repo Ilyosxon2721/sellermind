@@ -113,16 +113,6 @@ final class CartController extends Controller
                 ->first();
         }
 
-        // Проверка наличия выбранного варианта
-        if ($variant && $variant->stock_default <= 0) {
-            return $this->errorResponse(
-                'Товар закончился на складе',
-                'out_of_stock',
-                'variant_id',
-                422
-            );
-        }
-
         // Цена: если передан variant_id — берём цену варианта; иначе кастомную или из первого варианта
         $price = $variant
             ? (float) ($variant->price_default ?? $storeProduct->getDisplayPrice())

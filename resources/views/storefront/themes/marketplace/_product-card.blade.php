@@ -10,7 +10,7 @@
     $discountPercent = $hasDiscount ? round((1 - $price / (float)$oldPrice) * 100) : 0;
     $rating = $variant?->rating ?? null;
     $reviewCount = 0;
-    $inStock = !$variant || ($variant->stock_default ?? 0) > 0;
+    $inStock = true; // Видимый товар считается в наличии (остатки управляются через is_visible)
 @endphp
 
 <div class="group bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg hover:border-gray-200 transition-all duration-200 flex flex-col">

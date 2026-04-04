@@ -275,7 +275,7 @@
                             $hasDiscount = $oldPrice && (float)$oldPrice > $displayPrice;
                             $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
                             $totalStock = $product->variants->sum('stock_default');
-                            $isOutOfStock = $totalStock <= 0;
+                            $isOutOfStock = false; // Видимый товар считается в наличии (остатки управляются через is_visible)
                         @endphp
                         <div class="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
                             <a href="/store/{{ $store->slug }}/product/{{ $storeProduct->id }}" class="block">
