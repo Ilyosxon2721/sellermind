@@ -59,7 +59,7 @@
                     {{-- Шаблон --}}
                     <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                         <h2 class="text-lg font-semibold text-gray-900 mb-4">Шаблон</h2>
-                        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                             <template x-for="tpl in templates" :key="tpl.id">
                                 <button @click="theme.template = tpl.id"
                                         class="relative rounded-xl border-2 p-4 text-center transition-all hover:shadow-md"
@@ -290,6 +290,7 @@ function themeEditor(storeId) {
             { id: 'boutique', name: 'Бутик', desc: 'Элегантный', icon: '👗', bgClass: 'bg-pink-100' },
             { id: 'tech', name: 'Техно', desc: 'Технологичный', icon: '💻', bgClass: 'bg-indigo-100' },
             { id: 'grocery', name: 'Продукты', desc: 'Яркий', icon: '🛒', bgClass: 'bg-green-100' },
+            { id: 'marketplace', name: 'Маркетплейс', desc: 'Как WB/Uzum', icon: '🛍️', bgClass: 'bg-purple-100' },
         ],
         theme: {
             template: 'default',
