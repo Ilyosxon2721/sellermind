@@ -34,6 +34,8 @@ final class StorefrontController extends Controller
                     'visibleCategories.category',
                     'featuredProducts.product.mainImage',
                     'featuredProducts.product.variants:id,product_id,price_default,old_price_default',
+                    'visibleProducts.product.mainImage',
+                    'visibleProducts.product.variants:id,product_id,price_default,old_price_default',
                 ])
                 ->firstOrFail();
         });

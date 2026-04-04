@@ -326,13 +326,17 @@
                                 </h3>
                             </a>
                             <div class="mt-2 flex items-baseline gap-2">
-                                <span class="text-lg font-bold" style="color: var(--primary);">
-                                    {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
-                                </span>
-                                @if($hasDiscount)
-                                    <span class="text-sm text-gray-400 line-through">
-                                        {{ number_format($oldPrice, 0, '.', ' ') }}
+                                @if($displayPrice > 0)
+                                    <span class="text-lg font-bold" style="color: var(--primary);">
+                                        {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
                                     </span>
+                                    @if($hasDiscount)
+                                        <span class="text-sm text-gray-400 line-through">
+                                            {{ number_format($oldPrice, 0, '.', ' ') }}
+                                        </span>
+                                    @endif
+                                @else
+                                    <span class="text-sm text-gray-400">Цена по запросу</span>
                                 @endif
                             </div>
 
