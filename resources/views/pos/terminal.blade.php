@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>POS-Терминал — SellerMind</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css'])
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="bg-gray-900">
 <div class="min-h-screen" x-data="posTerminal()" x-init="init()">
@@ -92,7 +93,7 @@
                     <p>Начните ввод или отсканируйте штрихкод</p>
                 </div>
                 <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" x-show="products.length > 0">
-                    <template x-for="product in products" :key="product.id">
+                    <template x-for="(product, pIdx) in products" :key="pIdx">
                         <button @click="addToCart(product)"
                                 class="text-left bg-gray-50 hover:bg-blue-50 border-2 border-transparent hover:border-blue-300 rounded-xl p-3 transition-all active:scale-95">
                             <p class="font-medium text-sm text-gray-900 line-clamp-2" x-text="product.name || product.product_name || 'Без названия'"></p>
@@ -273,7 +274,7 @@
             </div>
             <div x-show="recentSales.length === 0" class="text-center py-8 text-gray-400">Нет продаж в текущей смене</div>
             <div class="space-y-2">
-                <template x-for="sale in recentSales" :key="sale.id">
+                <template x-for="(sale, sIdx) in recentSales" :key="sIdx">
                     <div class="bg-gray-50 rounded-xl p-3 flex justify-between items-center">
                         <div>
                             <p class="font-medium text-sm" x-text="sale.sale_number"></p>
