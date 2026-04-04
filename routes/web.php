@@ -105,6 +105,11 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.settings');
     })->name('settings');
 
+    // Admin — Управление тарифами
+    Route::get('/admin/plans', function () {
+        return view('admin.plans');
+    })->name('admin.plans');
+
     Route::get('/profile', function () {
         return view('pages.profile');
     })->name('profile');
