@@ -1329,6 +1329,14 @@ Route::prefix('store/{slug}')->group(function () {
         Route::post('/api/payment/{orderId}/initiate', [\App\Http\Controllers\Storefront\PaymentController::class, 'initiate']);
     });
 
+    // Reviews API (публичные)
+    Route::middleware('throttle:60,1')->group(function () {
+        Route::get('/api/products/{productId}/reviews', [\App\Http\Controllers\Storefront\ReviewController::class, 'index']);
+    });
+    Route::middleware('throttle:5,1')->group(function () {
+        Route::post('/api/products/{productId}/reviews', [\App\Http\Controllers\Storefront\ReviewController::class, 'store']);
+    });
+
     // Wishlist page
     Route::get('/wishlist', [\App\Http\Controllers\Storefront\StorefrontController::class, 'wishlist'])->name('storefront.wishlist');
 });

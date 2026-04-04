@@ -7,6 +7,8 @@ namespace App\Http\Controllers\Storefront;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Storefront\Traits\StorefrontHelpers;
 use App\Models\Store\StoreProduct;
+use App\Models\Store\StoreReview;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -91,7 +93,11 @@ final class CatalogController extends Controller
 
         $products = $query->paginate($perPage)->withQueryString();
 
-        $categories = $store->visibleCategories()->with('category')->get();
+        $categories = Cache::remember(
+            "storefront:categories:{$store->id}",
+            300,
+            fn () => $store->visibleCategories()->with('category')->get()
+        );
 
         $this->trackPageView($store);
 
@@ -153,11 +159,23 @@ final class CatalogController extends Controller
                 ->get();
         }
 
+        // Отзывы на товар (первые 5 + статистика)
+        $reviews = StoreReview::where('store_product_id', $storeProduct->id)
+            ->where('is_approved', true)
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        $reviewStats = StoreReview::where('store_product_id', $storeProduct->id)
+            ->where('is_approved', true)
+            ->selectRaw('COUNT(*) as total, AVG(rating) as avg_rating')
+            ->first();
+
         $this->trackPageView($store);
 
         $template = $store->theme?->resolvedTemplate() ?? 'default';
 
-        return view("storefront.themes.{$template}.product", compact('store', 'storeProduct', 'variantsJson', 'relatedProducts'));
+        return view("storefront.themes.{$template}.product", compact('store', 'storeProduct', 'variantsJson', 'relatedProducts', 'reviews', 'reviewStats'));
     }
 
     /**

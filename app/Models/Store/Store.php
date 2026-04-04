@@ -214,6 +214,11 @@ class Store extends Model
         return $this->hasMany(StorePromocode::class);
     }
 
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(StoreReview::class)->latest();
+    }
+
     public function analytics(): HasMany
     {
         return $this->hasMany(StoreAnalytics::class);

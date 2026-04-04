@@ -1092,6 +1092,13 @@ Route::middleware('auth.any')->group(function () {
         // Analytics
         Route::get('stores/{storeId}/analytics', [\App\Http\Controllers\Store\StoreAnalyticsController::class, 'index']);
 
+        // Reviews (модерация)
+        Route::get('stores/{storeId}/reviews', [\App\Http\Controllers\Store\StoreReviewController::class, 'index']);
+        Route::get('stores/{storeId}/reviews/stats', [\App\Http\Controllers\Store\StoreReviewController::class, 'stats']);
+        Route::get('stores/{storeId}/reviews/{reviewId}', [\App\Http\Controllers\Store\StoreReviewController::class, 'show']);
+        Route::put('stores/{storeId}/reviews/{reviewId}', [\App\Http\Controllers\Store\StoreReviewController::class, 'update']);
+        Route::delete('stores/{storeId}/reviews/{reviewId}', [\App\Http\Controllers\Store\StoreReviewController::class, 'destroy']);
+
         // Promocodes
         Route::get('stores/{storeId}/promocodes', [\App\Http\Controllers\Store\StorePromocodeController::class, 'index']);
         Route::post('stores/{storeId}/promocodes', [\App\Http\Controllers\Store\StorePromocodeController::class, 'store']);
