@@ -104,7 +104,7 @@
                 {{-- Стрелки навигации по изображениям --}}
                 @if($images->count() > 1)
                     <button
-                        @click="activeImage = (activeImage - 1 + {{ $images->count() }}) % {{ $images->count() }}"
+                        @click.stop="activeImage = (activeImage - 1 + {{ $images->count() }}) % {{ $images->count() }}"
                         class="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-gray-700 hover:bg-white transition-colors opacity-0 group-hover:opacity-100 z-10"
                         aria-label="Предыдущее фото"
                     >
@@ -113,7 +113,7 @@
                         </svg>
                     </button>
                     <button
-                        @click="activeImage = (activeImage + 1) % {{ $images->count() }}"
+                        @click.stop="activeImage = (activeImage + 1) % {{ $images->count() }}"
                         class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-gray-700 hover:bg-white transition-colors opacity-0 group-hover:opacity-100 z-10"
                         aria-label="Следующее фото"
                     >
@@ -311,7 +311,7 @@
                     <span class="text-sm font-medium text-gray-700">Количество:</span>
                     <div class="flex items-center border border-gray-200 rounded-xl overflow-hidden">
                         <button
-                            @click="quantity > 1 ? quantity-- : null"
+                            @click="quantity = Math.max(1, quantity - 1)"
                             class="w-11 h-11 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"
                             aria-label="Уменьшить"
                         >
@@ -327,7 +327,7 @@
                             class="w-14 h-11 text-center text-sm font-medium border-x border-gray-200 focus:outline-none"
                         >
                         <button
-                            @click="quantity < 99 ? quantity++ : null"
+                            @click="quantity = Math.min(99, quantity + 1)"
                             class="w-11 h-11 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"
                             aria-label="Увеличить"
                         >
