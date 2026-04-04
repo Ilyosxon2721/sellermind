@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400">
+  <defs>
+    <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f43f5e"/>
+      <stop offset="50%" style="stop-color:#e11d48"/>
+      <stop offset="100%" style="stop-color:#fb7185"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="400" fill="url(#g2)"/>
+  <circle cx="1000" cy="100" r="200" fill="rgba(255,255,255,0.06)"/>
+  <circle cx="200" cy="320" r="150" fill="rgba(255,255,255,0.05)"/>
+  <circle cx="600" cy="-50" r="180" fill="rgba(255,255,255,0.04)"/>
+  <text x="950" y="220" font-family="Arial, sans-serif" font-size="160" font-weight="bold" fill="rgba(255,255,255,0.12)" text-anchor="middle">50%</text>
+  <polygon points="850,50 870,90 910,90 878,115 890,155 850,130 810,155 822,115 790,90 830,90" fill="rgba(255,255,255,0.15)"/>
+  <polygon points="1100,280 1112,304 1138,304 1117,320 1125,344 1100,328 1075,344 1083,320 1062,304 1088,304" fill="rgba(255,255,255,0.12)"/>
+  <polygon points="750,320 758,336 776,336 762,347 767,363 750,352 733,363 738,347 724,336 742,336" fill="rgba(255,255,255,0.1)"/>
+</svg>

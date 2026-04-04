@@ -70,12 +70,49 @@ class Store extends Model
             }
         });
 
-        // Create default theme when store is created
+        // Создать тему и шаблонные баннеры при создании магазина
         static::created(function ($store) {
             $store->theme()->create([
                 'template' => 'default',
                 'hero_title' => $store->name,
                 'hero_subtitle' => $store->description,
+            ]);
+
+            // Шаблонные промо-баннеры
+            $store->banners()->createMany([
+                [
+                    'title' => 'Добро пожаловать в ' . $store->name,
+                    'subtitle' => 'Лучшие товары по выгодным ценам с доставкой',
+                    'button_text' => 'В каталог',
+                    'url' => '/store/' . $store->slug . '/catalog',
+                    'text_color' => '#ffffff',
+                    'display_mode' => 'overlay',
+                    'image' => '/banners/default-banner-1.svg',
+                    'position' => 0,
+                    'is_active' => true,
+                ],
+                [
+                    'title' => 'Скидки до 50%',
+                    'subtitle' => 'Успейте купить по лучшей цене',
+                    'button_text' => 'Смотреть акции',
+                    'url' => '/store/' . $store->slug . '/catalog?sort=popular',
+                    'text_color' => '#ffffff',
+                    'display_mode' => 'overlay',
+                    'image' => '/banners/default-banner-2.svg',
+                    'position' => 1,
+                    'is_active' => true,
+                ],
+                [
+                    'title' => 'Бесплатная доставка',
+                    'subtitle' => 'При заказе от 200 000 сум',
+                    'button_text' => 'Подробнее',
+                    'url' => '/store/' . $store->slug . '/catalog',
+                    'text_color' => '#ffffff',
+                    'display_mode' => 'overlay',
+                    'image' => '/banners/default-banner-3.svg',
+                    'position' => 2,
+                    'is_active' => true,
+                ],
             ]);
         });
     }

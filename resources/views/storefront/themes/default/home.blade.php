@@ -68,8 +68,8 @@
                     class="relative"
                 >
                     @php
-                        $bannerImg = Str::startsWith($banner->image, 'http') ? $banner->image : asset('storage/' . $banner->image);
-                        $bannerImgMobile = $banner->image_mobile ? (Str::startsWith($banner->image_mobile, 'http') ? $banner->image_mobile : asset('storage/' . $banner->image_mobile)) : null;
+                        $bannerImg = Str::startsWith($banner->image, ['http', '/']) ? $banner->image : asset('storage/' . $banner->image);
+                        $bannerImgMobile = $banner->image_mobile ? (Str::startsWith($banner->image_mobile, ['http', '/']) ? $banner->image_mobile : asset('storage/' . $banner->image_mobile)) : null;
                         $textColor = $banner->text_color ?? '#ffffff';
                         $mode = $banner->display_mode ?? 'overlay';
                     @endphp

@@ -11,6 +11,7 @@ use App\Models\Store\StoreBanner;
 use App\Support\ApiResponder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -64,6 +65,8 @@ final class StoreBannerController extends Controller
 
         $banner = StoreBanner::create($data);
 
+        Cache::forget("storefront:home:{$store->slug}");
+
         return $this->successResponse($banner)->setStatusCode(201);
     }
 
@@ -93,6 +96,8 @@ final class StoreBannerController extends Controller
 
         $banner->update($data);
 
+        Cache::forget("storefront:home:{$store->slug}");
+
         return $this->successResponse($banner);
     }
 
@@ -105,6 +110,8 @@ final class StoreBannerController extends Controller
 
         $banner = StoreBanner::where('store_id', $store->id)->findOrFail($bannerId);
         $banner->delete();
+
+        Cache::forget("storefront:home:{$store->slug}");
 
         return $this->successResponse(['message' => 'Баннер удалён']);
     }

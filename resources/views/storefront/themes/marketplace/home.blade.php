@@ -18,7 +18,7 @@
                 <div class="w-full flex-shrink-0">
                     <a href="{{ $banner->url ?? '#' }}" class="block relative">
                         <img
-                            src="{{ Str::startsWith($banner->image, 'http') ? $banner->image : asset('storage/' . $banner->image) }}"
+                            src="{{ Str::startsWith($banner->image, ['http', '/']) ? $banner->image : asset('storage/' . $banner->image) }}"
                             alt="{{ $banner->title }}"
                             class="w-full h-48 sm:h-64 md:h-80 lg:h-96 object-cover"
                         >

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="50%" style="stop-color:#8b5cf6"/>
+      <stop offset="100%" style="stop-color:#a78bfa"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="400" fill="url(#g1)"/>
+  <circle cx="1050" cy="80" r="120" fill="rgba(255,255,255,0.08)"/>
+  <circle cx="1100" cy="300" r="180" fill="rgba(255,255,255,0.05)"/>
+  <circle cx="150" cy="350" r="100" fill="rgba(255,255,255,0.06)"/>
+  <rect x="900" y="50" width="250" height="300" rx="20" fill="rgba(255,255,255,0.1)" transform="rotate(12, 1025, 200)"/>
+  <rect x="920" y="70" width="210" height="260" rx="16" fill="rgba(255,255,255,0.08)" transform="rotate(12, 1025, 200)"/>
+  <rect x="940" y="90" width="80" height="80" rx="12" fill="rgba(255,255,255,0.15)" transform="rotate(12, 980, 130)"/>
+  <rect x="940" y="185" width="170" height="12" rx="6" fill="rgba(255,255,255,0.12)" transform="rotate(12, 1025, 191)"/>
+  <rect x="940" y="210" width="120" height="10" rx="5" fill="rgba(255,255,255,0.08)" transform="rotate(12, 1000, 215)"/>
+  <rect x="940" y="250" width="170" height="40" rx="10" fill="rgba(255,255,255,0.15)" transform="rotate(12, 1025, 270)"/>
+</svg>
