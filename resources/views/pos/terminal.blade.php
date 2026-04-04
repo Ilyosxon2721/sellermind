@@ -125,11 +125,33 @@
                     <template x-for="(product, pIdx) in products" :key="pIdx">
                         <button @click="addToCart(product)"
                                 class="text-left bg-gray-50 hover:bg-blue-50 border-2 border-transparent hover:border-blue-300 rounded-xl p-3 transition-all active:scale-95">
-                            <p class="font-medium text-sm text-gray-900 line-clamp-2" x-text="product.name || product.product_name || 'Без названия'"></p>
-                            <p class="text-xs text-gray-500 mt-1" x-text="'SKU: ' + (product.sku || '-')"></p>
+                            {{-- Фото товара: миниатюра 48×48 или серый плейсхолдер --}}
+                            <div class="flex items-center gap-2 mb-2">
+                                <template x-if="product.image">
+                                    <img :src="'/storage/' + product.image"
+                                         :alt="product.name || product.product_name || ''"
+                                         class="w-12 h-12 object-cover rounded-lg flex-shrink-0 bg-gray-200">
+                                </template>
+                                <template x-if="!product.image">
+                                    <div class="w-12 h-12 flex-shrink-0 rounded-lg bg-gray-200 flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                  d="M20 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2zM16 3H8L6 7h12l-2-4z"/>
+                                        </svg>
+                                    </div>
+                                </template>
+                                <p class="font-medium text-sm text-gray-900 line-clamp-2 leading-tight" x-text="product.name || product.product_name || 'Без названия'"></p>
+                            </div>
+                            <p class="text-xs text-gray-500" x-text="'SKU: ' + (product.sku || '-')"></p>
                             <p class="text-xs text-gray-400" x-show="product.variant_name" x-text="product.variant_name"></p>
                             <div class="flex justify-between items-end mt-2">
-                                <span class="text-lg font-bold text-blue-600" x-text="formatMoney(product.price || product.price_default || 0)"></span>
+                                {{-- Если цена 0 — показываем серую метку вместо нуля --}}
+                                <template x-if="(product.price || product.price_default || 0) > 0">
+                                    <span class="text-base font-bold text-blue-600" x-text="formatMoney(product.price || product.price_default || 0)"></span>
+                                </template>
+                                <template x-if="(product.price || product.price_default || 0) === 0">
+                                    <span class="text-xs text-gray-400 italic">Цена не указана</span>
+                                </template>
                                 <span class="text-xs" :class="(product.stock ?? product.available_stock ?? 0) > 0 ? 'text-green-600' : 'text-red-500'"
                                       x-text="'Ост: ' + (product.stock ?? product.available_stock ?? 0)"></span>
                             </div>
@@ -170,9 +192,19 @@
                                 <input type="number" min="1" class="w-14 text-center border rounded-lg py-1 text-sm" x-model.number="item.quantity" @input="recalcItem(idx)">
                                 <button @click="changeQty(idx, 1)" class="w-8 h-8 bg-gray-100 rounded-lg text-lg font-bold hover:bg-gray-200">+</button>
                             </div>
+                            {{-- Редактируемая цена единицы товара --}}
                             <div class="text-right">
-                                <p class="text-xs text-gray-500" x-text="item.quantity + ' × ' + formatMoney(item.unit_price)"></p>
-                                <p class="font-bold" x-text="formatMoney(item.line_total)"></p>
+                                <div class="flex items-center justify-end gap-1 text-xs text-gray-500">
+                                    <span x-text="item.quantity + ' ×'"></span>
+                                    <input type="number"
+                                           min="0"
+                                           step="any"
+                                           class="w-24 text-right border border-gray-300 rounded-lg px-1 py-0.5 text-sm text-gray-700 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                                           x-model.number="item.unit_price"
+                                           @input="recalcItem(idx)"
+                                           @click.stop>
+                                </div>
+                                <p class="font-bold text-gray-900 mt-0.5" x-text="formatMoney(item.line_total)"></p>
                             </div>
                         </div>
                     </div>

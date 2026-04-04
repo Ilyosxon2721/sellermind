@@ -317,7 +317,7 @@ final class PosService
             ->where('is_active', true)
             ->with(['variants' => function ($q) {
                 $q->where('is_active', true);
-            }]);
+            }, 'mainImage']);
 
         if ($query && mb_strlen($query) >= 2) {
             $search = '%' . str_replace(['%', '_'], ['\%', '\_'], $query) . '%';
@@ -366,7 +366,7 @@ final class PosService
                         'price' => $variant->price_default ?? 0,
                         'cost_price' => $variant->purchase_price ?? 0,
                         'stock' => $stock,
-                        'image' => $product->image_url ?? null,
+                        'image' => $product->mainImage?->file_path ?? null,
                     ];
                 });
         })->values();
@@ -563,7 +563,7 @@ final class PosService
         $productsQuery = Product::where('company_id', $companyId)
             ->where('is_active', true)
             ->where('category_id', $categoryId)
-            ->with(['variants' => fn ($q) => $q->where('is_active', true)])
+            ->with(['variants' => fn ($q) => $q->where('is_active', true), 'mainImage'])
             ->orderBy('name')
             ->limit($limit)
             ->get();
@@ -589,6 +589,7 @@ final class PosService
                     'price' => $variant->price_default ?? 0,
                     'cost_price' => $variant->purchase_price ?? 0,
                     'stock' => $stock,
+                    'image' => $product->mainImage?->file_path ?? null,
                 ];
             });
         })->values();
