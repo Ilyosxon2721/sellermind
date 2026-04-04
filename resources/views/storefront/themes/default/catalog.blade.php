@@ -274,8 +274,8 @@
                             $oldPrice = $storeProduct->custom_old_price ?: (($storeProduct->custom_price && $product->variants->isNotEmpty()) ? $product->variants->first()?->price_default : null);
                             $hasDiscount = $oldPrice && (float)$oldPrice > $displayPrice;
                             $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
-                            $totalStock = $product->variants->sum('stock_default');
-                            $isOutOfStock = false; // Видимый товар считается в наличии (остатки управляются через is_visible)
+                            $warehouseStock = (int) $storeProduct->getWarehouseStock();
+                            $isOutOfStock = $warehouseStock <= 0;
                         @endphp
                         <div class="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
                             <a href="/store/{{ $store->slug }}/product/{{ $storeProduct->id }}" class="block">
@@ -358,6 +358,17 @@
                                         @endif
                                     @else
                                         <span class="text-sm text-gray-400">Цена по запросу</span>
+                                    @endif
+                                </div>
+
+                                {{-- Остатки --}}
+                                <div class="mt-1">
+                                    @if($warehouseStock > 0 && $warehouseStock <= 5)
+                                        <span class="text-xs font-medium text-amber-600">Осталось {{ $warehouseStock }} шт.</span>
+                                    @elseif($warehouseStock > 5)
+                                        <span class="text-xs font-medium text-green-600">В наличии · {{ $warehouseStock }} шт.</span>
+                                    @else
+                                        <span class="text-xs font-medium text-gray-400">Нет в наличии</span>
                                     @endif
                                 </div>
 

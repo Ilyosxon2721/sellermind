@@ -93,6 +93,9 @@ final class CatalogController extends Controller
 
         $products = $query->paginate($perPage)->withQueryString();
 
+        // Batch-загрузка складских остатков (1 SQL-запрос)
+        \App\Models\Store\StoreProduct::loadWarehouseStocks(collect($products->items()));
+
         $categories = Cache::remember(
             "storefront:categories:{$store->id}",
             300,
@@ -158,6 +161,9 @@ final class CatalogController extends Controller
                 ->limit(8)
                 ->get();
         }
+
+        // Batch-загрузка складских остатков
+        StoreProduct::loadWarehouseStocks($relatedProducts);
 
         // Отзывы на товар (первые 5 + статистика)
         $reviews = StoreReview::where('store_product_id', $storeProduct->id)

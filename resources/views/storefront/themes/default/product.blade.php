@@ -14,8 +14,9 @@
     $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
 
     // Вычисляем общий остаток по всем активным вариантам
-    // Видимый товар считается в наличии; stock_default может не отражать реальные складские остатки
-    $totalStock = max(1, $product->variants->sum('stock_default'));
+    // Складские остатки из warehouse системы
+    $totalStock = (int) $storeProduct->getWarehouseStock();
+    if ($totalStock <= 0) $totalStock = max(0, $product->variants->sum('stock_default'));
     $firstVariant = $product->variants->first();
     $firstVariantStock = $firstVariant?->stock_default ?? 0;
 
