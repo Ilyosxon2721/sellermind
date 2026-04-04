@@ -10,6 +10,7 @@ use App\Models\Finance\CashTransaction;
 use App\Models\OfflineSale;
 use App\Models\OfflineSaleItem;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\ProductVariant;
 use App\Models\Warehouse\Sku as WarehouseSku;
 use Illuminate\Support\Collection;
@@ -531,5 +532,65 @@ final class PosService
             'total_sales_amount' => $freshShift->total_sales_amount + $saleAmount,
             'total_sales_count' => $freshShift->total_sales_count + 1,
         ]);
+    }
+
+    /**
+     * Получить категории с количеством активных товаров
+     */
+    public function getCategories(int $companyId): Collection
+    {
+        return ProductCategory::where('company_id', $companyId)
+            ->where('is_active', true)
+            ->withCount(['products' => function ($q) {
+                $q->where('is_active', true);
+            }])
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (ProductCategory $cat) => [
+                'id' => $cat->id,
+                'name' => $cat->name,
+                'parent_id' => $cat->parent_id,
+                'products_count' => $cat->products_count,
+            ]);
+    }
+
+    /**
+     * Получить товары по категории
+     */
+    public function getProductsByCategory(int $companyId, int $categoryId, ?int $warehouseId = null, int $limit = 50): Collection
+    {
+        $productsQuery = Product::where('company_id', $companyId)
+            ->where('is_active', true)
+            ->where('category_id', $categoryId)
+            ->with(['variants' => fn ($q) => $q->where('is_active', true)])
+            ->orderBy('name')
+            ->limit($limit)
+            ->get();
+
+        return $productsQuery->flatMap(function (Product $product) use ($warehouseId) {
+            return $product->variants->where('is_active', true)->map(function (ProductVariant $variant) use ($product, $warehouseId) {
+                $stock = $variant->stock_default ?? 0;
+                if ($warehouseId) {
+                    $wSku = WarehouseSku::where('product_variant_id', $variant->id)->where('company_id', $product->company_id)->first();
+                    if ($wSku) {
+                        $stock = $wSku->stockLedger()->where('warehouse_id', $warehouseId)->sum('qty_delta');
+                    }
+                }
+
+                return [
+                    'product_id' => $product->id,
+                    'variant_id' => $variant->id,
+                    'sku_id' => WarehouseSku::where('product_variant_id', $variant->id)->where('company_id', $product->company_id)->value('id'),
+                    'name' => $product->name,
+                    'variant_name' => $variant->option_values_summary ?? $variant->sku,
+                    'sku' => $variant->sku,
+                    'barcode' => $variant->barcode,
+                    'price' => $variant->price_default ?? 0,
+                    'cost_price' => $variant->purchase_price ?? 0,
+                    'stock' => $stock,
+                ];
+            });
+        })->values();
     }
 }

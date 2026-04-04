@@ -107,6 +107,8 @@ Route::middleware(['web', 'auth.any'])->group(function () {
         Route::get('/shift/report', [\App\Http\Controllers\Api\PosController::class, 'shiftReport']);
         Route::post('/sell', [\App\Http\Controllers\Api\PosController::class, 'quickSell']);
         Route::get('/products', [\App\Http\Controllers\Api\PosController::class, 'getProducts']);
+        Route::get('/categories', [\App\Http\Controllers\Api\PosController::class, 'getCategories']);
+        Route::get('/categories/{categoryId}/products', [\App\Http\Controllers\Api\PosController::class, 'getProductsByCategory']);
         Route::post('/cash-in', [\App\Http\Controllers\Api\PosController::class, 'cashIn']);
         Route::post('/cash-out', [\App\Http\Controllers\Api\PosController::class, 'cashOut']);
         Route::get('/recent-sales', [\App\Http\Controllers\Api\PosController::class, 'recentSales']);
