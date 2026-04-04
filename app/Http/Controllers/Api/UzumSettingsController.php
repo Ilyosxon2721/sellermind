@@ -385,9 +385,8 @@ class UzumSettingsController extends Controller
             $response = $uzum->stocks()->get();
             $skuList = $response['skuAmountList'] ?? $response['payload']['skuAmountList'] ?? [];
 
-            $updated = 0;
+            $skuAmountList = [];
             $skipped = 0;
-            $failed  = 0;
 
             foreach ($skuList as $sku) {
                 $skuId = (int) ($sku['skuId'] ?? 0);
@@ -413,27 +412,40 @@ class UzumSettingsController extends Controller
                 $newFbs = $targetFbs !== null ? $targetFbs : (bool) ($sku['fbsLinked'] ?? false);
                 // Проверка разрешения FBS
                 if ($newFbs && ! $fbsAllowed) {
-                    $newFbs = (bool) ($sku['fbsLinked'] ?? false); // сброс
+                    $newFbs = (bool) ($sku['fbsLinked'] ?? false);
                 }
 
-                try {
-                    $result = $uzum->stocks()->updateOne(
-                        skuId: $skuId,
-                        amount: (int) ($sku['amount'] ?? 0),
-                        barcode: (string) ($sku['barcode'] ?? ''),
-                        skuTitle: (string) ($sku['skuTitle'] ?? ''),
-                        productTitle: (string) ($sku['productTitle'] ?? ''),
-                        fbs: $newFbs,
-                        dbs: $targetDbs,
-                    );
-                    $updatedRecords = $result['payload']['updatedRecords'] ?? $result['updatedRecords'] ?? 0;
-                    if ($updatedRecords > 0) {
-                        $updated++;
-                    } else {
-                        $skipped++;
+                $skuAmountList[] = [
+                    'skuId' => $skuId,
+                    'amount' => (int) ($sku['amount'] ?? 0),
+                    'barcode' => (string) ($sku['barcode'] ?? ''),
+                    'skuTitle' => (string) ($sku['skuTitle'] ?? ''),
+                    'productTitle' => (string) ($sku['productTitle'] ?? ''),
+                    'fbsLinked' => $newFbs,
+                    'dbsLinked' => $targetDbs,
+                ];
+            }
+
+            $updated = 0;
+            $failed = 0;
+
+            if (! empty($skuAmountList)) {
+                // Батч-обновление: отправляем пачками по 100 SKU
+                $chunks = array_chunk($skuAmountList, 100);
+                foreach ($chunks as $chunk) {
+                    try {
+                        $result = $uzum->stocks()->update($chunk);
+                        $updated += $result['payload']['updatedRecords']
+                            ?? $result['updatedRecords']
+                            ?? count($chunk);
+                    } catch (\Throwable $e) {
+                        Log::error('UzumSettings: bulk scheme update chunk failed', [
+                            'account_id' => $account->id,
+                            'chunk_size' => count($chunk),
+                            'error' => $e->getMessage(),
+                        ]);
+                        $failed += count($chunk);
                     }
-                } catch (\Throwable) {
-                    $failed++;
                 }
             }
 
