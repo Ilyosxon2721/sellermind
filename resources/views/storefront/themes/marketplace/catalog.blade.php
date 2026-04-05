@@ -9,7 +9,7 @@
     $slug = $store->slug;
 @endphp
 
-<div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6" x-data="mpCatalog()">
+<div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6" x-data="{ showFilters: false }">
 
     {{-- Хлебные крошки --}}
     <nav class="mb-4 text-sm text-gray-400 flex items-center gap-1.5">
@@ -113,12 +113,4 @@
     </div>
 </div>
 
-<script>
-function mpCatalog() {
-    return {
-        showFilters: false,
-    }
-}
-
-</script>
 @endsection
