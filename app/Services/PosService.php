@@ -366,7 +366,7 @@ final class PosService
                         'price' => $variant->price_default ?? 0,
                         'cost_price' => $variant->purchase_price ?? 0,
                         'stock' => $stock,
-                        'image' => $product->mainImage?->file_path ?? null,
+                        'image' => $product->mainImage?->url ?? null,
                     ];
                 });
         })->values();
@@ -589,7 +589,7 @@ final class PosService
                     'price' => $variant->price_default ?? 0,
                     'cost_price' => $variant->purchase_price ?? 0,
                     'stock' => $stock,
-                    'image' => $product->mainImage?->file_path ?? null,
+                    'image' => $product->mainImage?->url ?? null,
                 ];
             });
         })->values();
