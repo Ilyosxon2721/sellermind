@@ -16,27 +16,32 @@
 <div class="min-h-screen" x-data="posTerminal()" x-init="init()">
 
     {{-- Header --}}
-    <header class="bg-gray-900 text-white px-4 py-3 flex items-center justify-between">
-        <div class="flex items-center gap-3">
+    <header class="bg-gray-900 text-white px-3 md:px-4 py-2 md:py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2 md:gap-3">
             <a href="/sales" class="text-gray-400 hover:text-white">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
             </a>
-            <span class="text-lg font-bold">POS-Терминал</span>
+            <span class="text-base md:text-lg font-bold">POS-Терминал</span>
         </div>
-        <div class="flex items-center gap-4 text-sm" x-show="shift">
+        <div class="hidden md:flex items-center gap-4 text-sm" x-show="shift">
             <span class="text-gray-400">Смена #<span x-text="shift?.id"></span></span>
             <span class="text-gray-400">Кассир: <span class="text-white" x-text="shift?.opened_by_name || 'Вы'"></span></span>
             <span x-show="isOffline" class="px-2 py-1 bg-red-600 rounded-lg text-xs font-bold animate-pulse">ОФФЛАЙН</span>
             <span class="text-green-400 font-mono" x-text="clock"></span>
         </div>
-        <div class="flex items-center gap-2">
-            <button @click="showRecentModal = true" class="px-3 py-1.5 bg-gray-700 rounded-lg text-sm hover:bg-gray-600" title="История">
-                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                История
+        {{-- Мобильный: показываем только часы и оффлайн --}}
+        <div class="flex md:hidden items-center gap-2 text-xs" x-show="shift">
+            <span x-show="isOffline" class="px-2 py-1 bg-red-600 rounded-lg font-bold animate-pulse">ОФФЛАЙН</span>
+            <span class="text-green-400 font-mono" x-text="clock"></span>
+        </div>
+        <div class="flex items-center gap-1 md:gap-2">
+            <button @click="showRecentModal = true" class="px-2 md:px-3 py-1.5 bg-gray-700 rounded-lg text-sm hover:bg-gray-600" title="История">
+                <svg class="w-4 h-4 inline md:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span class="hidden md:inline">История</span>
             </button>
-            <button @click="showShiftReport = true" class="px-3 py-1.5 bg-gray-700 rounded-lg text-sm hover:bg-gray-600" title="Z-отчёт" x-show="shift">
-                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                Отчёт
+            <button @click="showShiftReport = true" class="px-2 md:px-3 py-1.5 bg-gray-700 rounded-lg text-sm hover:bg-gray-600" title="Z-отчёт" x-show="shift">
+                <svg class="w-4 h-4 inline md:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <span class="hidden md:inline">Отчёт</span>
             </button>
         </div>
     </header>
@@ -68,11 +73,27 @@
         </div>
     </div>
 
-    {{-- Main layout --}}
-    <div class="flex h-[calc(100vh-56px)]" x-show="shift">
+    {{-- Мобильный переключатель: Товары / Корзина --}}
+    <div class="md:hidden flex bg-white border-b" x-show="shift">
+        <button @click="mobileTab = 'products'"
+                class="flex-1 py-3 text-center text-sm font-semibold transition-colors"
+                :class="mobileTab === 'products' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'">
+            📦 Товары
+        </button>
+        <button @click="mobileTab = 'cart'"
+                class="flex-1 py-3 text-center text-sm font-semibold transition-colors relative"
+                :class="mobileTab === 'cart' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'">
+            🛒 Корзина
+            <span x-show="cart.length > 0" class="absolute -top-1 right-1/4 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center" x-text="cart.length"></span>
+        </button>
+    </div>
+
+    {{-- Main layout: на мобиле учитываем табы (44px) + тулбар (44px) + header (48px) --}}
+    <div class="flex h-[calc(100vh-180px)] md:h-[calc(100vh-100px)]" x-show="shift">
 
         {{-- LEFT: Categories + Product search --}}
-        <div class="w-3/5 flex flex-col border-r bg-white">
+        <div class="flex-col border-r bg-white"
+             :class="mobileTab === 'products' ? 'flex w-full md:w-3/5' : 'hidden md:flex md:w-3/5'">
             {{-- Search bar --}}
             <div class="p-3 border-b">
                 <div class="relative">
@@ -128,9 +149,10 @@
                             {{-- Фото товара: миниатюра 48×48 или серый плейсхолдер --}}
                             <div class="flex items-center gap-2 mb-2">
                                 <template x-if="product.image">
-                                    <img :src="'/storage/' + product.image"
+                                    <img :src="product.image"
                                          :alt="product.name || product.product_name || ''"
-                                         class="w-12 h-12 object-cover rounded-lg flex-shrink-0 bg-gray-200">
+                                         class="w-12 h-12 object-cover rounded-lg flex-shrink-0 bg-gray-200"
+                                         onerror="this.style.display='none'">
                                 </template>
                                 <template x-if="!product.image">
                                     <div class="w-12 h-12 flex-shrink-0 rounded-lg bg-gray-200 flex items-center justify-center">
@@ -147,7 +169,7 @@
                             <div class="flex justify-between items-end mt-2">
                                 {{-- Если цена 0 — показываем серую метку вместо нуля --}}
                                 <template x-if="(product.price || product.price_default || 0) > 0">
-                                    <span class="text-base font-bold text-blue-600" x-text="formatMoney(product.price || product.price_default || 0)"></span>
+                                    <span class="text-base font-bold text-blue-600" x-text="formatMoney(product.price || product.price_default || 0) + ' сум'"></span>
                                 </template>
                                 <template x-if="(product.price || product.price_default || 0) === 0">
                                     <span class="text-xs text-gray-400 italic">Цена не указана</span>
@@ -162,7 +184,8 @@
         </div>
 
         {{-- RIGHT: Cart --}}
-        <div class="w-2/5 flex flex-col bg-gray-50">
+        <div class="flex-col bg-gray-50"
+             :class="mobileTab === 'cart' ? 'flex w-full md:w-2/5' : 'hidden md:flex md:w-2/5'">
             {{-- Cart header --}}
             <div class="p-4 border-b bg-white flex items-center justify-between">
                 <h2 class="font-bold text-lg">
@@ -204,7 +227,7 @@
                                            @input="recalcItem(idx)"
                                            @click.stop>
                                 </div>
-                                <p class="font-bold text-gray-900 mt-0.5" x-text="formatMoney(item.line_total)"></p>
+                                <p class="font-bold text-gray-900 mt-0.5" x-text="formatMoney(item.line_total) + ' сум'"></p>
                             </div>
                         </div>
                     </div>
@@ -230,11 +253,11 @@
     </div>
 
     {{-- Bottom toolbar --}}
-    <div class="fixed bottom-0 left-0 right-0 bg-gray-800 text-white flex items-center justify-center gap-1 py-2 px-4 z-40" x-show="shift">
-        <button @click="cashOpType='in'; showCashOpModal=true" class="flex-1 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-sm text-center">💵 Внести</button>
-        <button @click="cashOpType='out'; showCashOpModal=true" class="flex-1 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-sm text-center">💸 Изъять</button>
-        <button @click="showShiftReport=true" class="flex-1 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-sm text-center">📊 X-отчёт</button>
-        <button @click="closeShiftModal=true" class="flex-1 py-2 rounded-lg bg-red-700 hover:bg-red-600 text-sm text-center">🔒 Закрыть</button>
+    <div class="fixed bottom-0 left-0 right-0 bg-gray-800 text-white flex items-center justify-center gap-1 py-2 px-2 md:px-4 z-40" x-show="shift">
+        <button @click="cashOpType='in'; showCashOpModal=true" class="flex-1 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-xs md:text-sm text-center">💵 Внести</button>
+        <button @click="cashOpType='out'; showCashOpModal=true" class="flex-1 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-xs md:text-sm text-center">💸 Изъять</button>
+        <button @click="showShiftReport=true" class="flex-1 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-xs md:text-sm text-center">📊 X-отчёт</button>
+        <button @click="closeShiftModal=true" class="flex-1 py-2 rounded-lg bg-red-700 hover:bg-red-600 text-xs md:text-sm text-center">🔒 Закрыть</button>
     </div>
 
     {{-- PAYMENT MODAL --}}
@@ -431,6 +454,7 @@ function posTerminal() {
         warehouses: [],
         clock: '',
         isOffline: !navigator.onLine,
+        mobileTab: 'products',
 
         // Modals
         paymentModal: false,
@@ -629,6 +653,7 @@ function posTerminal() {
                             price: v.price_default || 0,
                             cost_price: v.purchase_price || 0,
                             stock: v.available_stock ?? v.stock_default ?? 0,
+                            image: v.product?.main_image?.url || v.image || null,
                         }));
                     }
                 }
