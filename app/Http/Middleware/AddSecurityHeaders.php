@@ -49,8 +49,8 @@ class AddSecurityHeaders
             $csp = implode('; ', [
                 "default-src 'self'",
                 // Alpine.js requires unsafe-eval for x-data expressions
-                "script-src 'self' 'nonce-{$nonce}' 'unsafe-eval' https://cdn.jsdelivr.net",
-                "style-src 'self' 'unsafe-inline' https://fonts.bunny.net",
+                "script-src 'self' 'nonce-{$nonce}' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.tailwindcss.com",
+                "style-src 'self' 'unsafe-inline' https://fonts.bunny.net https://cdn.tailwindcss.com",
                 "img-src 'self' data: https:",
                 "font-src 'self' data: https://fonts.bunny.net",
                 "connect-src 'self' wss: ws: https:",

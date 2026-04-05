@@ -11,7 +11,14 @@
 
 {{-- Баннер-карусель (стиль Uzum/WB) --}}
 @if($store->activeBanners->isNotEmpty())
-<section x-data="mpBannerSlider()" x-init="start()" class="relative bg-gray-100">
+<section x-data="{
+    current: 0,
+    total: {{ $store->activeBanners->count() }},
+    interval: null,
+    start() { if (this.total <= 1) return; this.interval = setInterval(() => this.next(), 5000); },
+    next() { this.current = (this.current + 1) % this.total; },
+    prev() { this.current = (this.current - 1 + this.total) % this.total; }
+}" x-init="start()" class="relative bg-gray-100">
     <div class="overflow-hidden">
         <div class="flex transition-transform duration-500 ease-out" :style="`transform: translateX(-${current * 100}%)`">
             @foreach($store->activeBanners as $banner)
@@ -81,7 +88,7 @@
 
     {{-- Рекомендуемые товары --}}
     @if($store->featuredProducts->isNotEmpty())
-    <section class="py-6">
+    <section class="py-6" x-data>
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg sm:text-xl font-bold text-gray-900">Рекомендуем</h2>
             <a href="/store/{{ $slug }}/catalog?sort=popular" class="text-sm font-medium hover:underline" style="color: var(--primary);">Смотреть все</a>
@@ -96,7 +103,7 @@
 
     {{-- Все товары --}}
     @if($store->visibleProducts->isNotEmpty())
-    <section class="py-6 border-t border-gray-100">
+    <section class="py-6 border-t border-gray-100" x-data>
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg sm:text-xl font-bold text-gray-900">Все товары</h2>
             <a href="/store/{{ $slug }}/catalog" class="text-sm font-medium hover:underline" style="color: var(--primary);">В каталог</a>
@@ -111,17 +118,4 @@
 
 </div>
 
-<script>
-function mpBannerSlider() {
-    return {
-        current: 0,
-        total: {{ $store->activeBanners->count() }},
-        interval: null,
-        start() { this.interval = setInterval(() => this.next(), 5000); },
-        stop() { clearInterval(this.interval); },
-        next() { this.current = (this.current + 1) % this.total; },
-        prev() { this.current = (this.current - 1 + this.total) % this.total; },
-    }
-}
-</script>
 @endsection

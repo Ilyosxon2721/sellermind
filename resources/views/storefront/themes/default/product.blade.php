@@ -79,7 +79,12 @@
                 @if($images->isNotEmpty())
                     @foreach($images as $index => $image)
                         <img
-                            x-show="activeImage === {{ $index }}"
+                            @if($index === 0)
+                                x-show="activeImage === 0 || typeof activeImage === 'undefined'"
+                            @else
+                                x-show="activeImage === {{ $index }}"
+                                x-cloak
+                            @endif
                             x-transition:enter="transition ease-out duration-300"
                             x-transition:enter-start="opacity-0"
                             x-transition:enter-end="opacity-100"
