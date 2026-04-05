@@ -524,8 +524,8 @@
                     $relOldPrice = $related->custom_old_price ?: (($related->custom_price && $relProduct->variants->isNotEmpty()) ? $relProduct->variants->first()?->price_default : null);
                     $relHasDiscount = $relOldPrice && (float)$relOldPrice > $relDisplayPrice;
                     $relDiscountPercent = $relHasDiscount ? round((1 - $relDisplayPrice / (float)$relOldPrice) * 100) : 0;
-                    $relTotalStock = $relProduct->variants->sum('stock_default');
-                    $relIsOutOfStock = false; // Видимый товар считается в наличии
+                    $relTotalStock = (int) $related->getWarehouseStock();
+                    $relIsOutOfStock = $relTotalStock <= 0;
                 @endphp
                 <div class="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
                     <a href="/store/{{ $store->slug }}/product/{{ $related->id }}" class="block">
