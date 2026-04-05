@@ -157,7 +157,7 @@ final class PosController extends Controller
         $validator = Validator::make($request->all(), [
             'warehouse_id' => 'required|exists:warehouses,id',
             'items' => 'required|array|min:1',
-            'items.*.sku_id' => 'nullable|exists:warehouse_skus,id',
+            'items.*.sku_id' => 'nullable|exists:skus,id',
             'items.*.product_id' => 'nullable|exists:products,id',
             'items.*.product_name' => 'required|string',
             'items.*.quantity' => 'required|numeric|min:0.001',
