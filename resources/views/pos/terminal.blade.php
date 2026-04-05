@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>POS-Терминал — SellerMind</title>
     @vite(['resources/css/app.css'])
@@ -10,10 +10,14 @@
     <style nonce="{{ $cspNonce ?? '' }}">
         [x-cloak] { display: none !important; }
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        /* POS-терминал: запрет скролла и зума на мобиле */
+        html, body { overflow: hidden; height: 100%; position: fixed; width: 100%; touch-action: manipulation; }
+        /* Убрать зум при фокусе на input (iOS) */
+        input[type="number"], input[type="text"], select, textarea { font-size: 16px !important; }
     </style>
 </head>
-<body class="bg-gray-900">
-<div class="min-h-screen" x-data="posTerminal()" x-init="init()">
+<body class="bg-gray-900 overflow-hidden h-screen">
+<div class="h-screen flex flex-col" x-data="posTerminal()" x-init="init()">
 
     {{-- Header --}}
     <header class="bg-gray-900 text-white px-3 md:px-4 py-2 md:py-3 flex items-center justify-between">
@@ -88,8 +92,8 @@
         </button>
     </div>
 
-    {{-- Main layout: на мобиле учитываем табы (44px) + тулбар (44px) + header (48px) --}}
-    <div class="flex h-[calc(100vh-180px)] md:h-[calc(100vh-100px)]" x-show="shift">
+    {{-- Main layout --}}
+    <div class="flex flex-1 min-h-0 pb-12" x-show="shift">
 
         {{-- LEFT: Categories + Product search --}}
         <div class="flex-col border-r bg-white"
@@ -109,7 +113,7 @@
 
             {{-- Categories bar --}}
             <div class="flex gap-2 p-3 border-b overflow-x-auto flex-shrink-0" x-show="!searchQuery">
-                <button @click="activeCategory = null; products = []"
+                <button @click="loadAllProducts()"
                         class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all"
                         :class="!activeCategory ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">
                     Все
@@ -609,6 +613,23 @@ function posTerminal() {
             this.searching = false;
         },
 
+        async loadAllProducts() {
+            this.activeCategory = null;
+            this.searchQuery = '';
+            this.searching = true;
+            try {
+                const wid = this.shift?.warehouse_id || '';
+                const res = await fetch(`/api/pos/products?warehouse_id=${wid}&limit=50`, {
+                    credentials: 'same-origin', headers: getApiHeaders()
+                });
+                if (res.ok) {
+                    const d = await res.json();
+                    this.products = d.data || [];
+                }
+            } catch(e) { console.error('Load all products error:', e); }
+            this.searching = false;
+        },
+
         onSearchInput() {
             if (this.searchQuery && this.searchQuery.length >= 2) {
                 this.activeCategory = null;
@@ -664,10 +685,10 @@ function posTerminal() {
         addToCart(product) {
             const vid = product.variant_id || product.id;
             const existing = this.cart.find(i => i.variant_id === vid);
-            const price = product.price || product.price_default || 0;
+            const price = Number(product.price || product.price_default || 0);
             if (existing) {
                 existing.quantity++;
-                existing.line_total = existing.quantity * existing.unit_price;
+                existing.line_total = Number(existing.quantity) * Number(existing.unit_price);
             } else {
                 this.cart.push({
                     variant_id: vid,
@@ -677,7 +698,7 @@ function posTerminal() {
                     sku_code: product.sku || '',
                     quantity: 1,
                     unit_price: price,
-                    unit_cost: product.cost_price || product.purchase_price || 0,
+                    unit_cost: Number(product.cost_price || product.purchase_price || 0),
                     discount_percent: 0,
                     line_total: price,
                 });
@@ -695,13 +716,15 @@ function posTerminal() {
 
         recalcItem(idx) {
             const item = this.cart[idx];
-            const discount = item.unit_price * item.quantity * (item.discount_percent / 100);
-            item.line_total = item.unit_price * item.quantity - discount;
+            const price = Number(item.unit_price) || 0;
+            const qty = Number(item.quantity) || 1;
+            const discount = price * qty * (Number(item.discount_percent) / 100);
+            item.line_total = price * qty - discount;
         },
 
         clearCart() { if (confirm('Очистить корзину?')) this.cart = []; },
 
-        get cartSubtotal() { return this.cart.reduce((s, i) => s + i.line_total, 0); },
+        get cartSubtotal() { return this.cart.reduce((s, i) => s + (Number(i.line_total) || 0), 0); },
         get cartTotal() { return this.cartSubtotal; },
 
         openPaymentModal() {
