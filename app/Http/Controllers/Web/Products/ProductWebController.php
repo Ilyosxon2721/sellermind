@@ -89,16 +89,6 @@ class ProductWebController extends Controller
             });
         }
 
-        if ($filters['warehouse_id']) {
-            $query->whereExists(function ($q) use ($filters) {
-                $q->select(\Illuminate\Support\Facades\DB::raw(1))
-                    ->from('stock_ledger')
-                    ->join('skus', 'skus.id', '=', 'stock_ledger.sku_id')
-                    ->whereColumn('skus.product_id', 'products.id')
-                    ->where('stock_ledger.warehouse_id', $filters['warehouse_id']);
-            });
-        }
-
         if (! $filters['is_archived']) {
             $query->where('is_archived', false);
         }
@@ -113,10 +103,10 @@ class ProductWebController extends Controller
         $channels = Channel::orderBy('name')->get();
 
         $warehouses = Warehouse::query()
-            ->byCompany($companyId)
-            ->where('is_active', true)
+            ->where('company_id', $companyId)
+            ->orderByDesc('is_default')
             ->orderBy('name')
-            ->get();
+            ->get(['id', 'name']);
 
         return view('products.index', [
             'products' => $products,
