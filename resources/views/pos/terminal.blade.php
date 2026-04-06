@@ -740,14 +740,14 @@ function posTerminal() {
                 const payload = {
                     warehouse_id: this.shift.warehouse_id,
                     items: this.cart.map(i => ({
-                        sku_id: i.sku_id,
-                        product_id: i.product_id,
+                        sku_id: i.sku_id || null,
+                        product_id: i.product_id || null,
                         product_name: i.product_name,
                         sku_code: i.sku_code,
-                        quantity: i.quantity,
-                        unit_price: i.unit_price,
-                        unit_cost: i.unit_cost,
-                        discount_percent: i.discount_percent,
+                        quantity: Number(i.quantity) || 1,
+                        unit_price: Number(i.unit_price) || 0,
+                        unit_cost: Number(i.unit_cost) || 0,
+                        discount_percent: Number(i.discount_percent) || 0,
                     })),
                     payment_method: this.paymentMethod,
                     paid_amount: this.paymentMethod === 'cash' ? this.paidAmount : this.cartTotal,
@@ -778,7 +778,8 @@ function posTerminal() {
                     }
                 } else {
                     const err = await res.json().catch(() => ({}));
-                    alert('Ошибка продажи: ' + (err.error || err.message || 'Неизвестная ошибка'));
+                    const errMsg = err.errors?.[0]?.message || err.error || err.message || 'Неизвестная ошибка';
+                    alert('Ошибка продажи: ' + errMsg);
                 }
             } catch(e) {
                 if (!navigator.onLine) {
