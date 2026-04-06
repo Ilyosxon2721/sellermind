@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Risment\RismentClient;
 use App\Models\Warehouse\Warehouse;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +12,7 @@ class IntegrationLink extends Model
     protected $fillable = [
         'user_id',
         'company_id',
+        'risment_client_id',
         'external_system',
         'external_user_id',
         'link_token',
@@ -42,6 +44,11 @@ class IntegrationLink extends Model
         return $this->belongsTo(Warehouse::class);
     }
 
+    public function rismentClient(): BelongsTo
+    {
+        return $this->belongsTo(RismentClient::class, 'risment_client_id');
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
@@ -58,7 +65,7 @@ class IntegrationLink extends Model
     }
 
     /**
-     * Find active RISMENT link for a company
+     * Find active RISMENT link for a company (первый найденный)
      */
     public static function rismentForCompany(int $companyId): ?self
     {
@@ -66,5 +73,27 @@ class IntegrationLink extends Model
             ->where('external_system', 'risment')
             ->where('is_active', true)
             ->first();
+    }
+
+    /**
+     * Найти активную RISMENT связку для конкретного клиента
+     */
+    public static function rismentForClient(int $rismentClientId): ?self
+    {
+        return static::where('risment_client_id', $rismentClientId)
+            ->where('external_system', 'risment')
+            ->where('is_active', true)
+            ->first();
+    }
+
+    /**
+     * Все активные RISMENT связки для компании
+     */
+    public static function rismentLinksForCompany(int $companyId): \Illuminate\Database\Eloquent\Collection
+    {
+        return static::where('company_id', $companyId)
+            ->where('external_system', 'risment')
+            ->where('is_active', true)
+            ->get();
     }
 }

@@ -30,13 +30,15 @@ class IntegrationLinkController extends Controller
     }
 
     /**
-     * Store/update the RISMENT link token
+     * Store/update the RISMENT link token.
+     * Поддерживает как старый формат (без client_id), так и мульти-клиентский.
      */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'link_token' => 'required|string|min:8|max:128',
             'warehouse_id' => 'nullable|integer|exists:warehouses,id',
+            'risment_client_id' => 'nullable|integer|exists:risment_clients,id',
         ]);
 
         $user = $request->user();
@@ -49,11 +51,20 @@ class IntegrationLinkController extends Controller
             ], 422);
         }
 
-        // Деактивировать все старые RISMENT-связки этой компании
-        IntegrationLink::where('company_id', $company->id)
+        $clientId = $validated['risment_client_id'] ?? null;
+
+        // Деактивировать старые RISMENT-связки (для этого клиента или компании)
+        $deactivateQuery = IntegrationLink::where('company_id', $company->id)
             ->where('external_system', 'risment')
-            ->where('is_active', true)
-            ->update(['is_active' => false]);
+            ->where('is_active', true);
+
+        if ($clientId) {
+            $deactivateQuery->where('risment_client_id', $clientId);
+        } else {
+            $deactivateQuery->whereNull('risment_client_id');
+        }
+
+        $deactivateQuery->update(['is_active' => false]);
 
         // Создать или обновить запись по link_token (unique constraint)
         $link = IntegrationLink::updateOrCreate(
@@ -61,6 +72,7 @@ class IntegrationLinkController extends Controller
             [
                 'user_id' => $user->id,
                 'company_id' => $company->id,
+                'risment_client_id' => $clientId,
                 'external_system' => 'risment',
                 'warehouse_id' => $validated['warehouse_id'] ?? null,
                 'is_active' => true,

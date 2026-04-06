@@ -11,6 +11,7 @@ class RismentApiToken extends Model
 
     protected $fillable = [
         'company_id',
+        'risment_client_id',
         'name',
         'token',
         'scopes',
@@ -34,6 +35,11 @@ class RismentApiToken extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(\App\Models\Company::class);
+    }
+
+    public function rismentClient(): BelongsTo
+    {
+        return $this->belongsTo(RismentClient::class, 'risment_client_id');
     }
 
     public function isValid(): bool

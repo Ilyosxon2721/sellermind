@@ -636,6 +636,11 @@ class IntegrationController extends Controller
         return $request->attributes->get('risment_company');
     }
 
+    protected function getRismentClient(Request $request): ?\App\Models\Risment\RismentClient
+    {
+        return $request->attributes->get('risment_client');
+    }
+
     protected function formatOrder($order, string $marketplace): array
     {
         $orderNumber = match ($marketplace) {

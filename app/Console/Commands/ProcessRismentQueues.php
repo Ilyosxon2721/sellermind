@@ -114,6 +114,7 @@ class ProcessRismentQueues extends Command
         $linkToken = $message['link_token'] ?? null;
         $data = $message['data'] ?? [];
         $source = $message['source'] ?? 'risment';
+        $rismentClientId = $message['risment_client_id'] ?? null;
 
         // Нормализация названий событий: "create" → "product.created" и т.д.
         $event = $this->normalizeEvent($rawEvent, $queue);
@@ -123,6 +124,7 @@ class ProcessRismentQueues extends Command
             'raw_event' => $rawEvent,
             'normalized_event' => $event,
             'link_token' => $linkToken ? mb_substr($linkToken, 0, 8).'...' : null,
+            'risment_client_id' => $rismentClientId,
             'data_keys' => array_keys($data),
             'risment_product_id' => $message['risment_product_id'] ?? null,
         ]);
@@ -146,7 +148,8 @@ class ProcessRismentQueues extends Command
         }
 
         $companyId = $link->company_id;
-        $this->line("  Resolved company_id: {$companyId}".($link->warehouse_id ? ", warehouse_id: {$link->warehouse_id}" : ''));
+        $clientId = $link->risment_client_id ?? $rismentClientId;
+        $this->line("  Resolved company_id: {$companyId}".($clientId ? ", risment_client_id: {$clientId}" : '').($link->warehouse_id ? ", warehouse_id: {$link->warehouse_id}" : ''));
 
         // Передаём весь message для доступа к полям верхнего уровня (risment_product_id)
         match ($queue) {

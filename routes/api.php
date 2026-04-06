@@ -72,6 +72,17 @@ Route::middleware(['web', 'auth.any'])->prefix('integration')->group(function ()
     Route::post('link', [\App\Http\Controllers\Web\IntegrationLinkController::class, 'store']);
     Route::put('link', [\App\Http\Controllers\Web\IntegrationLinkController::class, 'update']);
     Route::delete('link', [\App\Http\Controllers\Web\IntegrationLinkController::class, 'destroy']);
+
+    // RISMENT Clients (мульти-клиент фулфилмента)
+    Route::prefix('risment-clients')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Web\RismentClientController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\Web\RismentClientController::class, 'store']);
+        Route::put('{id}', [\App\Http\Controllers\Web\RismentClientController::class, 'update']);
+        Route::delete('{id}', [\App\Http\Controllers\Web\RismentClientController::class, 'destroy']);
+        Route::post('{id}/link', [\App\Http\Controllers\Web\RismentClientController::class, 'link']);
+        Route::put('{id}/link', [\App\Http\Controllers\Web\RismentClientController::class, 'updateLink']);
+        Route::delete('{id}/link', [\App\Http\Controllers\Web\RismentClientController::class, 'unlink']);
+    });
 });
 
 // Sales API (uses web session auth)
