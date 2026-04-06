@@ -210,7 +210,7 @@ final class PosController extends Controller
             ]);
 
             return $this->errorResponse(
-                'Ошибка при оформлении продажи',
+                'Ошибка при оформлении продажи: ' . $e->getMessage(),
                 'internal_error',
                 null,
                 500
