@@ -9,6 +9,7 @@ use App\Models\Finance\FinanceSettings;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
+use App\Models\Warehouse\Warehouse;
 use App\Services\Products\ProductPublishService;
 use App\Services\Products\ProductService;
 use Illuminate\Http\RedirectResponse;
@@ -34,10 +35,12 @@ class ProductWebController extends Controller
                 'products' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15),
                 'categories' => collect(),
                 'channels' => collect(),
+                'warehouses' => collect(),
                 'filters' => [
                     'search' => '',
                     'category_id' => null,
                     'channel_id' => null,
+                    'warehouse_id' => null,
                     'is_archived' => false,
                 ],
             ]);
@@ -46,21 +49,27 @@ class ProductWebController extends Controller
             'search' => $request->string('search')->trim()->toString(),
             'category_id' => $request->input('category_id'),
             'channel_id' => $request->input('channel_id'),
+            'warehouse_id' => $request->input('warehouse_id'),
             'is_archived' => $request->boolean('is_archived', false),
         ];
+
+        $stockSubquery = \App\Models\Warehouse\StockLedger::query()
+            ->selectRaw('COALESCE(SUM(qty_delta), 0)')
+            ->whereIn('sku_id', function ($q) {
+                $q->select('id')
+                    ->from('skus')
+                    ->whereColumn('skus.product_id', 'products.id');
+            });
+
+        if ($filters['warehouse_id']) {
+            $stockSubquery->where('warehouse_id', $filters['warehouse_id']);
+        }
 
         $query = Product::query()
             ->forCompany($companyId)
             ->with(['mainImage', 'images', 'channelSettings.channel', 'variants:id,product_id,purchase_price,purchase_price_currency'])
             ->withCount('variants')
-            ->addSelect(['total_stock' => \App\Models\Warehouse\StockLedger::query()
-                ->selectRaw('COALESCE(SUM(qty_delta), 0)')
-                ->whereIn('sku_id', function ($q) {
-                    $q->select('id')
-                        ->from('skus')
-                        ->whereColumn('skus.product_id', 'products.id');
-                }),
-            ]);
+            ->addSelect(['total_stock' => $stockSubquery]);
 
         if ($filters['search']) {
             $escapedSearch = $this->escapeLike($filters['search']);
@@ -80,6 +89,16 @@ class ProductWebController extends Controller
             });
         }
 
+        if ($filters['warehouse_id']) {
+            $query->whereExists(function ($q) use ($filters) {
+                $q->select(\Illuminate\Support\Facades\DB::raw(1))
+                    ->from('stock_ledger')
+                    ->join('skus', 'skus.id', '=', 'stock_ledger.sku_id')
+                    ->whereColumn('skus.product_id', 'products.id')
+                    ->where('stock_ledger.warehouse_id', $filters['warehouse_id']);
+            });
+        }
+
         if (! $filters['is_archived']) {
             $query->where('is_archived', false);
         }
@@ -93,10 +112,17 @@ class ProductWebController extends Controller
 
         $channels = Channel::orderBy('name')->get();
 
+        $warehouses = Warehouse::query()
+            ->byCompany($companyId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
         return view('products.index', [
             'products' => $products,
             'categories' => $categories,
             'channels' => $channels,
+            'warehouses' => $warehouses,
             'filters' => $filters,
         ]);
     }

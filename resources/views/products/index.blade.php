@@ -88,7 +88,7 @@
         <main class="flex-1 overflow-y-auto px-6 py-6 space-y-6 pwa-content-padding pwa-top-padding"
               x-data="{ refreshPage() { window.location.reload(); } }"
               x-pull-to-refresh="refreshPage">
-            @include('products.partials.browser-content', ['products' => $products, 'categories' => $categories, 'channels' => $channels, 'filters' => $filters])
+            @include('products.partials.browser-content', ['products' => $products, 'categories' => $categories, 'channels' => $channels, 'warehouses' => $warehouses, 'filters' => $filters])
         </main>
     </div>
 </div>
@@ -176,6 +176,18 @@
                             @foreach($channels as $channel)
                                 <option value="{{ $channel->id }}" @selected(($filters['channel_id'] ?? null) == $channel->id)>
                                     {{ $channel->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="block">
+                        <span class="native-caption">Склад</span>
+                        <select name="warehouse_id" class="native-input mt-1" @change="$refs.filterForm.submit()">
+                            <option value="">Все склады</option>
+                            @foreach($warehouses as $warehouse)
+                                <option value="{{ $warehouse->id }}" @selected(($filters['warehouse_id'] ?? null) == $warehouse->id)>
+                                    {{ $warehouse->name }}
                                 </option>
                             @endforeach
                         </select>
@@ -289,6 +301,9 @@
     @endif
     @if($filters['channel_id'] ?? null)
         <input type="hidden" name="channel_id" value="{{ $filters['channel_id'] }}">
+    @endif
+    @if($filters['warehouse_id'] ?? null)
+        <input type="hidden" name="warehouse_id" value="{{ $filters['warehouse_id'] }}">
     @endif
     @if(!($filters['is_archived'] ?? false))
         <input type="hidden" name="include_archived" value="0">
