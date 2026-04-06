@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Models\Company;
+use App\Models\OfflineSale;
 use App\Models\OzonOrder;
 use App\Models\Sale;
 use App\Models\UzumOrder;
@@ -74,6 +75,7 @@ final class OrderPrintController extends Controller
             'ozon' => $this->loadOzonOrder($orderId, $companyId),
             'ym' => $this->loadYandexMarketOrder($orderId, $companyId),
             'sale' => $this->loadSaleOrder($orderId, $companyId),
+            'pos' => $this->loadPosOrder($orderId, $companyId),
             default => abort(404, 'Неизвестный маркетплейс: ' . $marketplace),
         };
 
@@ -325,6 +327,50 @@ final class OrderPrintController extends Controller
             'delivery_address' => $sale->counterparty?->address,
             'total_amount' => (float) $sale->total_amount,
             'currency' => $sale->currency ?? 'UZS',
+            'items' => $items,
+            'account_name' => null,
+            'notes' => $sale->notes,
+        ];
+    }
+
+    /**
+     * Загрузить и нормализовать POS-продажу (OfflineSale)
+     *
+     * @return array<string, mixed>
+     */
+    private function loadPosOrder(string $orderId, int $companyId): array
+    {
+        $sale = OfflineSale::with(['items'])
+            ->where('company_id', $companyId)
+            ->findOrFail($orderId);
+
+        $items = $sale->items->map(fn ($item) => [
+            'name' => $item->product_name,
+            'sku' => $item->sku_code ?? '',
+            'quantity' => (int) $item->quantity,
+            'price' => (float) $item->unit_price,
+            'total' => (float) $item->line_total,
+        ])->values()->toArray();
+
+        $paymentLabel = match ($sale->payment_method) {
+            'cash' => 'Наличные',
+            'card' => 'Карта',
+            'transfer' => 'Перевод',
+            'mixed' => 'Смешанная',
+            default => $sale->payment_method,
+        };
+
+        return [
+            'order_number' => $sale->sale_number,
+            'marketplace' => 'pos',
+            'marketplace_label' => 'POS-продажа',
+            'date' => $sale->sale_date ?? $sale->created_at,
+            'status' => $paymentLabel,
+            'customer_name' => $sale->customer_name,
+            'customer_phone' => $sale->customer_phone,
+            'delivery_address' => null,
+            'total_amount' => (float) $sale->total_amount,
+            'currency' => $sale->currency_code ?? 'UZS',
             'items' => $items,
             'account_name' => null,
             'notes' => $sale->notes,

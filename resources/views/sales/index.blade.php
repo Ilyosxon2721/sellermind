@@ -391,6 +391,7 @@
                             <option value="ozon">Ozon</option>
                             <option value="ym">Yandex Market</option>
                             <option value="manual">Ручные</option>
+                            <option value="pos">POS-Касса</option>
                         </select>
                     </div>
                     <div>
@@ -1258,7 +1259,8 @@ function salesPage() {
                 wb: 'WB',
                 ozon: 'Ozon',
                 ym: 'YM',
-                manual: 'Ручная'
+                manual: 'Ручная',
+                pos: 'POS'
             };
             return names[marketplace] || marketplace;
         },
@@ -1327,7 +1329,8 @@ function salesPage() {
                 wb: 'bg-purple-500 text-white',
                 ozon: 'bg-blue-600 text-white',
                 ym: 'bg-red-500 text-white',
-                manual: 'bg-gray-500 text-white'
+                manual: 'bg-gray-500 text-white',
+                pos: 'bg-green-600 text-white'
             };
             return classes[marketplace] || 'bg-gray-500 text-white';
         },
@@ -1338,7 +1341,8 @@ function salesPage() {
                 wb: 'WB',
                 ozon: 'OZ',
                 ym: 'YM',
-                manual: 'М'
+                manual: 'М',
+                pos: 'POS'
             };
             return shorts[marketplace] || marketplace?.substring(0, 2).toUpperCase();
         }

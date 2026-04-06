@@ -181,7 +181,7 @@ final class PosService
             $this->createSaleTransaction($shift, $sale);
 
             // 8. Обновляем счётчики смены
-            $this->updateShiftCounters($shift, $totalAmount);
+            $this->updateShiftCounters($shift, $totalAmount, $data['payment_method']);
 
             Log::info('POS: Быстрая продажа совершена', [
                 'shift_id' => $shift->id,
@@ -524,14 +524,24 @@ final class PosService
     /**
      * Обновить счётчики кассовой смены после продажи
      */
-    protected function updateShiftCounters(CashShift $shift, float $saleAmount): void
+    protected function updateShiftCounters(CashShift $shift, float $saleAmount, string $paymentMethod = 'cash'): void
     {
         $freshShift = CashShift::lockForUpdate()->find($shift->id);
 
-        $freshShift->update([
+        $updates = [
             'total_sales_amount' => $freshShift->total_sales_amount + $saleAmount,
             'total_sales_count' => $freshShift->total_sales_count + 1,
-        ]);
+        ];
+
+        // Обновляем счётчик по типу оплаты
+        match ($paymentMethod) {
+            'cash' => $updates['total_cash_received'] = $freshShift->total_cash_received + $saleAmount,
+            'card' => $updates['total_card_received'] = $freshShift->total_card_received + $saleAmount,
+            'transfer' => $updates['total_transfer_received'] = $freshShift->total_transfer_received + $saleAmount,
+            default => null,
+        };
+
+        $freshShift->update($updates);
     }
 
     /**

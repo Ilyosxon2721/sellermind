@@ -47,6 +47,7 @@
         .marketplace-ozon { background: #005BFF; }
         .marketplace-ym { background: #FFCC00; color: #000; }
         .marketplace-sale { background: #666; }
+        .marketplace-pos { background: #059669; }
         .account-name {
             font-size: 10px;
             color: #555;
