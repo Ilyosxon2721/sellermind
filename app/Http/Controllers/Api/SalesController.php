@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Models\Company;
 use App\Models\MarketplaceAccount;
+use App\Models\OfflineSale;
 use App\Models\OzonOrder;
 use App\Models\UzumFinanceOrder;
 use App\Models\UzumOrder;
@@ -77,6 +78,7 @@ class SalesController extends Controller
             'ozon' => fn () => $this->getOzonOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode),
             'ym' => fn () => $this->getYandexMarketOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode),
             'manual' => fn () => $this->getManualOrders($companyId, $dateFrom, $dateTo, $status, $search),
+            'pos' => fn () => $this->getPosOrders($companyId, $dateFrom, $dateTo, $status, $search),
         ];
 
         foreach ($sources as $source => $fetcher) {
@@ -1217,6 +1219,55 @@ class SalesController extends Controller
     /**
      * Get manual/channel orders (from both channel_orders and sales tables)
      */
+    /**
+     * POS-продажи (OfflineSale)
+     */
+    private function getPosOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
+    {
+        if (! $companyId) {
+            return collect();
+        }
+
+        try {
+            $query = OfflineSale::where('company_id', $companyId)
+                ->whereDate('sale_date', '>=', $dateFrom)
+                ->whereDate('sale_date', '<=', $dateTo);
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('sale_number', 'like', "%{$search}%")
+                        ->orWhere('customer_name', 'like', "%{$search}%");
+                });
+            }
+
+            $paymentLabels = [
+                'cash' => 'Наличные',
+                'card' => 'Карта',
+                'transfer' => 'Перевод',
+                'mixed' => 'Смешанная',
+            ];
+
+            return $query->get()->map(fn (OfflineSale $sale) => [
+                'id' => 'pos_' . $sale->id,
+                'order_number' => $sale->sale_number,
+                'created_at' => ($sale->sale_date ?? $sale->created_at)?->toIso8601String(),
+                'marketplace' => 'pos',
+                'account_name' => 'POS-Касса',
+                'customer_name' => $sale->customer_name,
+                'total_amount' => (float) $sale->total_amount,
+                'currency' => $sale->currency_code ?? 'UZS',
+                'status' => $sale->status === OfflineSale::STATUS_DELIVERED ? 'delivered' : $sale->status,
+                'status_label' => $paymentLabels[$sale->payment_method] ?? 'Оплачено',
+                'is_revenue' => true,
+                'raw_status' => $sale->status,
+            ]);
+        } catch (\Exception $e) {
+            \Log::warning('POS orders fetch skipped: ' . $e->getMessage());
+
+            return collect();
+        }
+    }
+
     private function getManualOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
     {
         if (! $companyId) {

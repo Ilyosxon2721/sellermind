@@ -30,11 +30,13 @@
         <div class="hidden md:flex items-center gap-4 text-sm" x-show="shift">
             <span class="text-gray-400">Смена #<span x-text="shift?.id"></span></span>
             <span class="text-gray-400">Кассир: <span class="text-white" x-text="shift?.opened_by_name || 'Вы'"></span></span>
+            <span class="px-2 py-1 bg-gray-700 rounded-lg text-yellow-400 font-semibold" x-text="'Касса: ' + formatMoney(shift?.expected_balance || shift?.opening_balance || 0) + ' сум'"></span>
             <span x-show="isOffline" class="px-2 py-1 bg-red-600 rounded-lg text-xs font-bold animate-pulse">ОФФЛАЙН</span>
             <span class="text-green-400 font-mono" x-text="clock"></span>
         </div>
-        {{-- Мобильный: показываем только часы и оффлайн --}}
+        {{-- Мобильный: баланс + часы --}}
         <div class="flex md:hidden items-center gap-2 text-xs" x-show="shift">
+            <span class="px-1.5 py-0.5 bg-gray-700 rounded text-yellow-400 font-semibold" x-text="formatMoney(shift?.expected_balance || shift?.opening_balance || 0)"></span>
             <span x-show="isOffline" class="px-2 py-1 bg-red-600 rounded-lg font-bold animate-pulse">ОФФЛАЙН</span>
             <span class="text-green-400 font-mono" x-text="clock"></span>
         </div>
@@ -292,9 +294,25 @@
                     Сдача: <span class="text-green-600" x-text="formatMoney(paidAmount - cartTotal) + ' UZS'"></span>
                 </p>
             </div>
-            <div class="mb-4">
-                <label class="block text-sm text-gray-600 mb-1">Покупатель (опционально)</label>
-                <input type="text" class="w-full border rounded-xl px-4 py-2" x-model="customerName" placeholder="Имя покупателя">
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">Покупатель</label>
+                    <input type="text" class="w-full border rounded-xl px-4 py-2" x-model="customerName" placeholder="Имя">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">Телефон</label>
+                    <input type="tel" class="w-full border rounded-xl px-4 py-2" x-model="customerPhone" placeholder="+998...">
+                </div>
+            </div>
+            {{-- Автопечать чека --}}
+            <div class="flex items-center justify-between mb-4 text-sm">
+                <span class="text-gray-600">Автопечать чека</span>
+                <button @click="autoPrint = !autoPrint; localStorage.setItem('pos_auto_print', JSON.stringify(autoPrint))"
+                        class="relative w-10 h-5 rounded-full transition-colors"
+                        :class="autoPrint ? 'bg-green-500' : 'bg-gray-300'">
+                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform"
+                          :class="autoPrint ? 'translate-x-5' : ''"></span>
+                </button>
             </div>
             <div class="flex gap-2">
                 <button @click="paymentModal = false" class="flex-1 py-3 bg-gray-200 rounded-xl font-medium hover:bg-gray-300">Отмена</button>
@@ -368,11 +386,18 @@
                             <p class="font-medium text-sm" x-text="sale.sale_number"></p>
                             <p class="text-xs text-gray-500" x-text="sale.customer_name || 'Розничный покупатель'"></p>
                         </div>
-                        <div class="text-right">
-                            <p class="font-bold" x-text="formatMoney(sale.total_amount)"></p>
-                            <span class="text-xs px-2 py-0.5 rounded-full"
-                                  :class="sale.payment_method === 'cash' ? 'bg-green-100 text-green-700' : sale.payment_method === 'card' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'"
-                                  x-text="{'cash':'Наличные','card':'Карта','transfer':'Перевод'}[sale.payment_method] || sale.payment_method"></span>
+                        <div class="flex items-center gap-2">
+                            <div class="text-right">
+                                <p class="font-bold" x-text="formatMoney(sale.total_amount) + ' сум'"></p>
+                                <span class="text-xs px-2 py-0.5 rounded-full"
+                                      :class="sale.payment_method === 'cash' ? 'bg-green-100 text-green-700' : sale.payment_method === 'card' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'"
+                                      x-text="{'cash':'Наличные','card':'Карта','transfer':'Перевод'}[sale.payment_method] || sale.payment_method"></span>
+                            </div>
+                            {{-- Кнопка печати чека --}}
+                            <button @click="window.open('/orders/pos_' + sale.id + '/print/receipt', '_blank')"
+                                    class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg" title="Печать чека">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                            </button>
                         </div>
                     </div>
                 </template>
@@ -459,6 +484,7 @@ function posTerminal() {
         clock: '',
         isOffline: !navigator.onLine,
         mobileTab: 'products',
+        autoPrint: JSON.parse(localStorage.getItem('pos_auto_print') || 'true'),
 
         // Modals
         paymentModal: false,
@@ -471,6 +497,7 @@ function posTerminal() {
         paymentMethod: 'cash',
         paidAmount: 0,
         customerName: '',
+        customerPhone: '',
 
         // Cash op
         cashOpType: 'in',
@@ -741,6 +768,7 @@ function posTerminal() {
             this.paymentMethod = 'cash';
             this.paidAmount = this.cartTotal;
             this.customerName = '';
+            this.customerPhone = '';
             this.paymentModal = true;
         },
 
@@ -762,6 +790,7 @@ function posTerminal() {
                     payment_method: this.paymentMethod,
                     paid_amount: this.paymentMethod === 'cash' ? this.paidAmount : this.cartTotal,
                     customer_name: this.customerName || null,
+                    customer_phone: this.customerPhone || null,
                 };
 
                 const res = await fetch('/api/pos/sell', {
@@ -781,10 +810,10 @@ function posTerminal() {
 
                     this.showSuccess('Продажа оформлена! #' + (d.data?.sale_number || ''));
 
-                    // Offer to print receipt
-                    if (confirm('Напечатать чек?')) {
+                    // Автопечать чека (если включена)
+                    if (this.autoPrint) {
                         const saleId = d.data?.id;
-                        if (saleId) window.open('/orders/sale_' + saleId + '/print/receipt', '_blank');
+                        if (saleId) window.open('/orders/pos_' + saleId + '/print/receipt', '_blank');
                     }
                 } else {
                     const err = await res.json().catch(() => ({}));
