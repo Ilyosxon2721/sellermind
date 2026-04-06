@@ -71,6 +71,18 @@ class ProductWebController extends Controller
             ->withCount('variants')
             ->addSelect(['total_stock' => $stockSubquery]);
 
+        // Фильтр по складу: показываем товары, у которых есть остатки на данном складе (через stock_ledger)
+        if ($filters['warehouse_id']) {
+            $warehouseId = (int) $filters['warehouse_id'];
+            $query->whereExists(function ($q) use ($warehouseId) {
+                $q->select(\Illuminate\Support\Facades\DB::raw(1))
+                    ->from('stock_ledger')
+                    ->join('skus', 'skus.id', '=', 'stock_ledger.sku_id')
+                    ->whereColumn('skus.product_id', 'products.id')
+                    ->where('stock_ledger.warehouse_id', $warehouseId);
+            });
+        }
+
         if ($filters['search']) {
             $escapedSearch = $this->escapeLike($filters['search']);
             $query->where(function ($q) use ($escapedSearch) {
