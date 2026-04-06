@@ -10,13 +10,20 @@ use Illuminate\Support\Facades\Log;
 class RismentWebhookService
 {
     /**
-     * Dispatch a webhook event to all active endpoints for the company
+     * Dispatch a webhook event to active endpoints.
+     * Если указан rismentClientId — отправляем только в эндпоинты этого клиента.
+     * Если нет — отправляем во все эндпоинты компании.
      */
-    public function dispatch(int $companyId, string $event, array $data): void
+    public function dispatch(int $companyId, string $event, array $data, ?int $rismentClientId = null): void
     {
-        $endpoints = RismentWebhookEndpoint::where('company_id', $companyId)
-            ->where('is_active', true)
-            ->get();
+        $query = RismentWebhookEndpoint::where('company_id', $companyId)
+            ->where('is_active', true);
+
+        if ($rismentClientId !== null) {
+            $query->where('risment_client_id', $rismentClientId);
+        }
+
+        $endpoints = $query->get();
 
         foreach ($endpoints as $endpoint) {
             if (! $endpoint->listensTo($event)) {

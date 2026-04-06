@@ -27,6 +27,7 @@ class SendOrderToRisment implements ShouldQueue
         protected int $companyId,
         protected string $event,
         protected array $orderData,
+        protected ?int $rismentClientId = null,
     ) {
         $this->connection = 'risment-integration';
         $this->queue = 'risment:orders';
@@ -34,30 +35,50 @@ class SendOrderToRisment implements ShouldQueue
 
     public function handle(): void
     {
-        $link = IntegrationLink::rismentForCompany($this->companyId);
+        // Если указан клиент — отправляем только для его связки
+        $links = $this->resolveLinks();
 
-        if (! $link) {
-            Log::debug('SendOrderToRisment: No active RISMENT link for company', [
+        if ($links->isEmpty()) {
+            Log::debug('SendOrderToRisment: No active RISMENT links', [
                 'company_id' => $this->companyId,
+                'risment_client_id' => $this->rismentClientId,
             ]);
 
             return;
         }
 
-        $message = json_encode([
-            'event' => $this->event,
-            'timestamp' => now()->toIso8601String(),
-            'source' => 'sellermind',
-            'link_token' => $link->link_token,
-            'data' => $this->orderData,
-        ], JSON_UNESCAPED_UNICODE);
+        foreach ($links as $link) {
+            $message = json_encode([
+                'event' => $this->event,
+                'timestamp' => now()->toIso8601String(),
+                'source' => 'sellermind',
+                'link_token' => $link->link_token,
+                'risment_client_id' => $link->risment_client_id,
+                'data' => $this->orderData,
+            ], JSON_UNESCAPED_UNICODE);
 
-        Redis::connection('integration')->rpush('risment:orders', $message);
+            Redis::connection('integration')->rpush('risment:orders', $message);
 
-        Log::info('SendOrderToRisment: Pushed to risment:orders', [
-            'company_id' => $this->companyId,
-            'event' => $this->event,
-            'order_id' => $this->orderData['order_id'] ?? null,
-        ]);
+            Log::info('SendOrderToRisment: Pushed to risment:orders', [
+                'company_id' => $this->companyId,
+                'risment_client_id' => $link->risment_client_id,
+                'event' => $this->event,
+                'order_id' => $this->orderData['order_id'] ?? null,
+            ]);
+        }
+    }
+
+    /**
+     * Получить все активные связки для отправки
+     */
+    protected function resolveLinks(): \Illuminate\Support\Collection
+    {
+        if ($this->rismentClientId) {
+            $link = IntegrationLink::rismentForClient($this->rismentClientId);
+
+            return $link ? collect([$link]) : collect();
+        }
+
+        return IntegrationLink::rismentLinksForCompany($this->companyId);
     }
 }

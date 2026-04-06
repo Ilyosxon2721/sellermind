@@ -18,6 +18,7 @@ class TokenController extends Controller
     {
         $validated = $request->validate([
             'company_id' => 'required|integer|exists:companies,id',
+            'risment_client_id' => 'nullable|integer|exists:risment_clients,id',
             'name' => 'required|string|max:255',
             'scopes' => 'nullable|array',
             'scopes.*' => 'string|in:products,stock,orders,webhooks',
@@ -33,6 +34,20 @@ class TokenController extends Controller
             ], 403);
         }
 
+        // Validate that risment_client belongs to the company
+        if (isset($validated['risment_client_id'])) {
+            $clientExists = \App\Models\Risment\RismentClient::where('id', $validated['risment_client_id'])
+                ->where('company_id', $validated['company_id'])
+                ->exists();
+
+            if (! $clientExists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'RISMENT client not found in this company.',
+                ], 404);
+            }
+        }
+
         // Generate token
         $plainToken = Str::random(48);
         $tokenHash = hash('sha256', $plainToken);
@@ -43,6 +58,7 @@ class TokenController extends Controller
 
         $apiToken = RismentApiToken::create([
             'company_id' => $validated['company_id'],
+            'risment_client_id' => $validated['risment_client_id'] ?? null,
             'name' => $validated['name'],
             'token' => $tokenHash,
             'scopes' => $validated['scopes'] ?? null,
@@ -84,12 +100,21 @@ class TokenController extends Controller
             ], 403);
         }
 
-        $tokens = RismentApiToken::where('company_id', $companyId)
+        $query = RismentApiToken::where('company_id', $companyId);
+
+        // Фильтр по клиенту
+        if ($request->has('risment_client_id')) {
+            $query->where('risment_client_id', $request->integer('risment_client_id'));
+        }
+
+        $tokens = $query->with('rismentClient:id,name')
             ->orderByDesc('created_at')
             ->get()
             ->map(fn ($t) => [
                 'id' => $t->id,
                 'name' => $t->name,
+                'risment_client_id' => $t->risment_client_id,
+                'risment_client_name' => $t->rismentClient?->name,
                 'scopes' => $t->scopes,
                 'is_active' => $t->is_active,
                 'last_used_at' => $t->last_used_at,

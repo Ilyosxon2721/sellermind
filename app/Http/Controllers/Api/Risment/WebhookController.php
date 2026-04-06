@@ -35,8 +35,12 @@ class WebhookController extends Controller
 
         $secret = Str::random(32);
 
+        // Привязка к клиенту через токен авторизации
+        $rismentClient = $request->attributes->get('risment_client');
+
         $endpoint = RismentWebhookEndpoint::create([
             'company_id' => $company->id,
+            'risment_client_id' => $rismentClient?->id,
             'url' => $validated['url'],
             'secret' => $secret,
             'events' => $validated['events'],
@@ -66,11 +70,20 @@ class WebhookController extends Controller
     {
         $company = $request->attributes->get('risment_company');
 
-        $endpoints = RismentWebhookEndpoint::where('company_id', $company->id)
-            ->orderByDesc('created_at')
+        $rismentClient = $request->attributes->get('risment_client');
+
+        $query = RismentWebhookEndpoint::where('company_id', $company->id);
+
+        // Если токен привязан к клиенту — показываем только его вебхуки
+        if ($rismentClient) {
+            $query->where('risment_client_id', $rismentClient->id);
+        }
+
+        $endpoints = $query->orderByDesc('created_at')
             ->get()
             ->map(fn ($e) => [
                 'id' => $e->id,
+                'risment_client_id' => $e->risment_client_id,
                 'url' => $e->url,
                 'events' => $e->events,
                 'is_active' => $e->is_active,

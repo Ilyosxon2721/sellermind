@@ -40,9 +40,10 @@ class AuthenticateRisment
             ], 403);
         }
 
-        // Attach company and token to request for controllers
+        // Attach company, token and client to request for controllers
         $request->attributes->set('risment_company', $apiToken->company);
         $request->attributes->set('risment_token', $apiToken);
+        $request->attributes->set('risment_client', $apiToken->rismentClient);
 
         // Update last_used_at (throttled to once per minute)
         if (! $apiToken->last_used_at || $apiToken->last_used_at->diffInMinutes(now()) >= 1) {

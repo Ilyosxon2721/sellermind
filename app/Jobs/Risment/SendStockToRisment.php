@@ -27,6 +27,7 @@ class SendStockToRisment implements ShouldQueue
         protected int $companyId,
         protected string $event,
         protected array $stockData,
+        protected ?int $rismentClientId = null,
     ) {
         $this->connection = 'risment-integration';
         $this->queue = 'risment:stock';
@@ -34,25 +35,40 @@ class SendStockToRisment implements ShouldQueue
 
     public function handle(): void
     {
-        $link = IntegrationLink::rismentForCompany($this->companyId);
+        $links = $this->resolveLinks();
 
-        if (! $link) {
+        if ($links->isEmpty()) {
             return;
         }
 
-        $message = json_encode([
-            'event' => $this->event,
-            'timestamp' => now()->toIso8601String(),
-            'source' => 'sellermind',
-            'link_token' => $link->link_token,
-            'data' => $this->stockData,
-        ], JSON_UNESCAPED_UNICODE);
+        foreach ($links as $link) {
+            $message = json_encode([
+                'event' => $this->event,
+                'timestamp' => now()->toIso8601String(),
+                'source' => 'sellermind',
+                'link_token' => $link->link_token,
+                'risment_client_id' => $link->risment_client_id,
+                'data' => $this->stockData,
+            ], JSON_UNESCAPED_UNICODE);
 
-        Redis::connection('integration')->rpush('risment:stock', $message);
+            Redis::connection('integration')->rpush('risment:stock', $message);
 
-        Log::info('SendStockToRisment: Pushed to risment:stock', [
-            'company_id' => $this->companyId,
-            'event' => $this->event,
-        ]);
+            Log::info('SendStockToRisment: Pushed to risment:stock', [
+                'company_id' => $this->companyId,
+                'risment_client_id' => $link->risment_client_id,
+                'event' => $this->event,
+            ]);
+        }
+    }
+
+    protected function resolveLinks(): \Illuminate\Support\Collection
+    {
+        if ($this->rismentClientId) {
+            $link = IntegrationLink::rismentForClient($this->rismentClientId);
+
+            return $link ? collect([$link]) : collect();
+        }
+
+        return IntegrationLink::rismentLinksForCompany($this->companyId);
     }
 }
