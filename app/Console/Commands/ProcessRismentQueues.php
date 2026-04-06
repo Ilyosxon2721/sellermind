@@ -48,6 +48,11 @@ class ProcessRismentQueues extends Command
 
         $redis = Redis::connection('integration');
         $processed = 0;
+        $invalidJson = 0;
+        $noEvent = 0;
+        $noLinkToken = 0;
+        $errors = 0;
+        $successByQueue = [];
 
         while ((time() - $startTime) < $timeout) {
             $hadWork = false;
@@ -61,11 +66,13 @@ class ProcessRismentQueues extends Command
 
                 $hadWork = true;
                 $processed++;
+                $successByQueue[$queue] = ($successByQueue[$queue] ?? 0) + 1;
 
                 try {
                     $message = json_decode($raw, true);
 
                     if (! $message) {
+                        $invalidJson++;
                         Log::warning('ProcessRisment: Invalid JSON', [
                             'queue' => $queue,
                             'raw' => mb_substr($raw, 0, 500),
@@ -76,6 +83,7 @@ class ProcessRismentQueues extends Command
 
                     // Принимаем как 'event', так и 'action' от RISMENT
                     if (! isset($message['event']) && ! isset($message['action'])) {
+                        $noEvent++;
                         Log::warning('ProcessRisment: No event/action in message', [
                             'queue' => $queue,
                             'keys' => array_keys($message),
@@ -88,6 +96,7 @@ class ProcessRismentQueues extends Command
                     $this->processMessage($queue, $message);
 
                 } catch (\Exception $e) {
+                    $errors++;
                     Log::error('ProcessRisment: Failed to process message', [
                         'queue' => $queue,
                         'error' => $e->getMessage(),
@@ -103,6 +112,8 @@ class ProcessRismentQueues extends Command
         }
 
         $this->info("Processed {$processed} messages. Exiting.");
+        $this->info("  By queue: ".json_encode($successByQueue));
+        $this->info("  Invalid JSON: {$invalidJson}, No event: {$noEvent}, Errors: {$errors}");
 
         return self::SUCCESS;
     }
@@ -137,12 +148,16 @@ class ProcessRismentQueues extends Command
             : null;
 
         if (! $link) {
+            $existingLink = IntegrationLink::where('link_token', $linkToken)->first();
             Log::warning('ProcessRisment: Unknown or inactive link_token', [
                 'event' => $event,
                 'link_token' => $linkToken,
-                'active_links_count' => IntegrationLink::where('link_token', $linkToken)->count(),
+                'link_exists' => (bool) $existingLink,
+                'link_is_active' => $existingLink?->is_active,
+                'link_company_id' => $existingLink?->company_id,
+                'link_risment_client_id' => $existingLink?->risment_client_id,
             ]);
-            $this->warn("  Unknown link_token: {$linkToken}");
+            $this->warn("  Unknown link_token: {$linkToken} (exists=".($existingLink ? 'yes' : 'no').', active='.($existingLink?->is_active ? 'yes' : 'no').')');
 
             return;
         }
