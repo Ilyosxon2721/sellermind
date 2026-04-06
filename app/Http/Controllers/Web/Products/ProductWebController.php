@@ -46,6 +46,7 @@ class ProductWebController extends Controller
             'search' => $request->string('search')->trim()->toString(),
             'category_id' => $request->input('category_id'),
             'channel_id' => $request->input('channel_id'),
+            'warehouse_id' => $request->input('warehouse_id'),
             'is_archived' => $request->boolean('is_archived', false),
         ];
 
@@ -59,8 +60,23 @@ class ProductWebController extends Controller
                     $q->select('id')
                         ->from('skus')
                         ->whereColumn('skus.product_id', 'products.id');
+                })
+                ->when($filters['warehouse_id'], function ($q) use ($filters) {
+                    $q->where('warehouse_id', $filters['warehouse_id']);
                 }),
             ]);
+
+        // Фильтр по складу: показываем товары, у которых есть остатки на данном складе (через stock_ledger)
+        if ($filters['warehouse_id']) {
+            $warehouseId = (int) $filters['warehouse_id'];
+            $query->whereExists(function ($q) use ($warehouseId) {
+                $q->select(\Illuminate\Support\Facades\DB::raw(1))
+                    ->from('stock_ledger')
+                    ->join('skus', 'skus.id', '=', 'stock_ledger.sku_id')
+                    ->whereColumn('skus.product_id', 'products.id')
+                    ->where('stock_ledger.warehouse_id', $warehouseId);
+            });
+        }
 
         if ($filters['search']) {
             $escapedSearch = $this->escapeLike($filters['search']);
@@ -93,10 +109,16 @@ class ProductWebController extends Controller
 
         $channels = Channel::orderBy('name')->get();
 
+        $warehouses = \App\Models\Warehouse\Warehouse::where('company_id', $companyId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return view('products.index', [
             'products' => $products,
             'categories' => $categories,
             'channels' => $channels,
+            'warehouses' => $warehouses,
             'filters' => $filters,
         ]);
     }
