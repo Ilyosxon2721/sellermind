@@ -528,7 +528,17 @@ function posTerminal() {
                 const res = await fetch('/api/pos/shift/current', { credentials: 'same-origin', headers: getApiHeaders() });
                 if (res.ok) {
                     const d = await res.json();
-                    this.shift = d.data || d.shift || null;
+                    const shiftData = d.data?.shift || d.data || d.shift || null;
+                    const summary = d.data?.summary || {};
+                    // Мержим сводку в shift для отображения в отчётах
+                    if (shiftData && summary) {
+                        shiftData.total_sales_count = summary.sales_count ?? shiftData.total_sales_count ?? 0;
+                        shiftData.total_sales_amount = summary.total_sales ?? shiftData.total_sales_amount ?? 0;
+                        shiftData.total_cash_received = summary.cash_sales ?? shiftData.total_cash_received ?? 0;
+                        shiftData.total_card_received = summary.card_sales ?? shiftData.total_card_received ?? 0;
+                        shiftData.total_transfer_received = summary.transfer_sales ?? shiftData.total_transfer_received ?? 0;
+                    }
+                    this.shift = shiftData;
                     if (this.shift) await this.loadRecentSales();
                 }
             } catch(e) { console.error('Load shift error:', e); }
