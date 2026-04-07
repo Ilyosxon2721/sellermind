@@ -102,6 +102,16 @@ final class UzumApi
         $status = $response->status();
         $rawBody = $response->body();
 
+        // TEMP DEBUG: логируем ответ на error уровне (LOG_LEVEL=error на проде)
+        if (str_contains($url, 'stocks')) {
+            Log::error('DEBUG Uzum stock response', [
+                'account_id' => $this->account->id,
+                'url' => $url,
+                'status' => $status,
+                'body' => mb_substr($rawBody, 0, 1000),
+            ]);
+        }
+
         Log::info('Uzum API response', [
             'account_id' => $this->account->id,
             'url' => $url,
