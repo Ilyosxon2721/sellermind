@@ -120,15 +120,26 @@ class Store extends Model
     /**
      * Get the URL for the store
      */
+    /**
+     * URL магазина — приоритет: кастомный домен → поддомен → путь
+     */
     public function getUrlAttribute(): string
     {
+        // 1. Кастомный домен (если верифицирован)
         if ($this->custom_domain && $this->domain_verified) {
             $protocol = $this->ssl_enabled ? 'https' : 'http';
 
             return "{$protocol}://{$this->custom_domain}";
         }
 
-        return config('app.url').'/store/'.$this->slug;
+        // 2. Бесплатный поддомен (slug.sellermind.uz)
+        $baseDomain = config('app.store_base_domain');
+        if ($baseDomain) {
+            return 'https://' . $this->slug . '.' . $baseDomain;
+        }
+
+        // 3. Fallback — путь
+        return config('app.url') . '/store/' . $this->slug;
     }
 
     /**

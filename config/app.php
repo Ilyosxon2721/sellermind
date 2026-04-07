@@ -54,6 +54,12 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // Базовый домен для поддоменов магазинов (*.sellermind.uz)
+    'store_base_domain' => env('STORE_BASE_DOMAIN', 'sellermind.uz'),
+
+    // IP сервера для DNS-верификации кастомных доменов
+    'server_ip' => env('SERVER_IP', ''),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

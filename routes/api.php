@@ -1092,6 +1092,11 @@ Route::middleware('auth.any')->group(function () {
         // Analytics
         Route::get('stores/{storeId}/analytics', [\App\Http\Controllers\Store\StoreAnalyticsController::class, 'index']);
 
+        // Domain
+        Route::get('stores/{storeId}/domain', [\App\Http\Controllers\Store\StoreDomainController::class, 'show']);
+        Route::put('stores/{storeId}/domain', [\App\Http\Controllers\Store\StoreDomainController::class, 'update']);
+        Route::post('stores/{storeId}/domain/verify', [\App\Http\Controllers\Store\StoreDomainController::class, 'verify']);
+
         // Customers
         Route::get('stores/{storeId}/customers', [\App\Http\Controllers\Store\StoreCustomerController::class, 'index']);
         Route::get('stores/{storeId}/customers/stats', [\App\Http\Controllers\Store\StoreCustomerController::class, 'stats']);
