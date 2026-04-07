@@ -637,11 +637,11 @@ class StockSyncService
             if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
                 $barcode = $barcode ?? (isset($sku['barcode']) ? (string) $sku['barcode'] : null);
                 $skuTitle = $skuTitle ?? ($sku['skuTitle'] ?? null);
-                $fbsAllowed = isset($sku['fbsAllowed']) ? (bool) $sku['fbsAllowed'] : null;
-                $dbsAllowed = isset($sku['dbsAllowed']) ? (bool) $sku['dbsAllowed'] : null;
-                if ($fbsAllowed !== null || $dbsAllowed !== null) {
-                    $fbsLinked = $fbsAllowed ?? true;
-                    $dbsLinked = $dbsAllowed ?? true;
+                // Используем fbsLinked/dbsLinked (подключена ли схема), НЕ fbsAllowed/dbsAllowed (доступна ли)
+                // Если отправить dbsLinked=true когда реально false — Uzum вернёт updatedRecords=0
+                if (isset($sku['fbsLinked']) || isset($sku['dbsLinked'])) {
+                    $fbsLinked = isset($sku['fbsLinked']) ? (bool) $sku['fbsLinked'] : $fbsLinked;
+                    $dbsLinked = isset($sku['dbsLinked']) ? (bool) $sku['dbsLinked'] : $dbsLinked;
                 }
 
                 return true;
