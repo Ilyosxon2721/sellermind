@@ -96,13 +96,20 @@ class VariantMarketplaceLink extends Model
             return $variant?->stock_default ?? 0;
         }
 
-        // Try to find SKU in warehouse system
+        // Primary: find SKU by product_variant_id (reliable FK lookup)
         $skuId = \DB::table('skus')
-            ->where('company_id', $companyId)
-            ->where('sku_code', $variantSku)
+            ->where('product_variant_id', $variant->id)
             ->value('id');
 
-        // If no SKU in warehouse system, try by barcode
+        // Fallback: find by sku_code text match
+        if (! $skuId) {
+            $skuId = \DB::table('skus')
+                ->where('company_id', $companyId)
+                ->where('sku_code', $variantSku)
+                ->value('id');
+        }
+
+        // Fallback: find by barcode
         if (! $skuId && $variant?->barcode) {
             $skuId = \DB::table('skus')
                 ->where('company_id', $companyId)
