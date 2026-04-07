@@ -250,15 +250,32 @@ class VariantLinkController extends Controller
         $links = VariantMarketplaceLink::where('marketplace_product_id', $marketplaceProductId)
             ->where('marketplace_account_id', $account->id)
             ->where('is_active', true)
-            ->where('sync_stock_enabled', true)
             ->with(['variant', 'marketplaceProduct', 'account'])
             ->get();
 
         if ($links->isEmpty()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Нет активной связи для синхронизации',
+                'message' => 'Нет активной связи для синхронизации. Привяжите товар к варианту.',
             ], 404);
+        }
+
+        // Ручная синхронизация: включаем sync_stock_enabled для всех связей,
+        // которые были автоматически отключены из-за устаревшего кэша API
+        $reEnabled = $links->where('sync_stock_enabled', false)->count();
+        if ($reEnabled > 0) {
+            VariantMarketplaceLink::where('marketplace_product_id', $marketplaceProductId)
+                ->where('marketplace_account_id', $account->id)
+                ->where('is_active', true)
+                ->where('sync_stock_enabled', false)
+                ->update(['sync_stock_enabled' => true]);
+
+            // Перечитываем после обновления
+            $links = VariantMarketplaceLink::where('marketplace_product_id', $marketplaceProductId)
+                ->where('marketplace_account_id', $account->id)
+                ->where('is_active', true)
+                ->with(['variant', 'marketplaceProduct', 'account'])
+                ->get();
         }
 
         $synced  = 0;
@@ -311,6 +328,12 @@ class VariantLinkController extends Controller
         $this->authorizeAccount($request, $account);
 
         try {
+            // Ручная синхронизация: переактивировать связи, отключённые из-за устаревшего кэша
+            VariantMarketplaceLink::where('marketplace_account_id', $account->id)
+                ->where('is_active', true)
+                ->where('sync_stock_enabled', false)
+                ->update(['sync_stock_enabled' => true]);
+
             $result = $this->stockSyncService->syncAllStocksForAccount($account);
 
             return response()->json([
