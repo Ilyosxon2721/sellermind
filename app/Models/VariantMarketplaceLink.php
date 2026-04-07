@@ -96,13 +96,20 @@ class VariantMarketplaceLink extends Model
             return $variant?->stock_default ?? 0;
         }
 
-        // Try to find SKU in warehouse system
+        // Primary: find SKU by product_variant_id (reliable FK lookup)
         $skuId = \DB::table('skus')
-            ->where('company_id', $companyId)
-            ->where('sku_code', $variantSku)
+            ->where('product_variant_id', $variant->id)
             ->value('id');
 
-        // If no SKU in warehouse system, try by barcode
+        // Fallback: find by sku_code text match
+        if (! $skuId) {
+            $skuId = \DB::table('skus')
+                ->where('company_id', $companyId)
+                ->where('sku_code', $variantSku)
+                ->value('id');
+        }
+
+        // Fallback: find by barcode
         if (! $skuId && $variant?->barcode) {
             $skuId = \DB::table('skus')
                 ->where('company_id', $companyId)
@@ -112,13 +119,17 @@ class VariantMarketplaceLink extends Model
 
         // If still no SKU, fallback to stock_default
         if (! $skuId) {
-            \Log::debug('No SKU in warehouse system, using stock_default', [
-                'variant_sku' => $variantSku,
+            $fallbackStock = $variant?->stock_default ?? 0;
+            \Log::warning('getCurrentStock: SKU не найден в складской системе — используем stock_default', [
+                'link_id' => $this->id,
                 'variant_id' => $variant?->id,
-                'stock_default' => $variant?->stock_default,
+                'variant_sku' => $variantSku,
+                'variant_barcode' => $variant?->barcode,
+                'stock_default' => $fallbackStock,
+                'company_id' => $companyId,
             ]);
 
-            return $variant?->stock_default ?? 0;
+            return $fallbackStock;
         }
 
         if ($syncMode === 'aggregated') {

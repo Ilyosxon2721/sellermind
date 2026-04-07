@@ -310,6 +310,16 @@ class StockSyncService
         $productTitle = $mpProduct->title ?? '';
         $skuTitle = $skuTitle ?? $productTitle;
 
+        Log::info('Uzum syncToUzum: отправляем остаток', [
+            'link_id' => $link->id,
+            'sku_id' => $skuId,
+            'stock' => $stock,
+            'barcode' => $barcode,
+            'fbs_linked' => $fbsLinked,
+            'dbs_linked' => $dbsLinked,
+            'sku_title' => $skuTitle,
+        ]);
+
         $result = $uzum->stocks()->updateOne((int) $skuId, $stock, $barcode, $skuTitle, $productTitle, $fbsLinked, $dbsLinked);
         $updatedRecords = $result['payload']['updatedRecords'] ?? $result['updatedRecords'] ?? 0;
 
