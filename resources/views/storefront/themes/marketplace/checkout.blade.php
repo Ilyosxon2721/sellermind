@@ -2,6 +2,10 @@
 
 @section('page_title', 'Оформление заказа — ' . $store->name)
 
+@section('meta')
+<script nonce="{{ $cspNonce ?? '' }}" src="https://api-maps.yandex.ru/2.1/?apikey={{ config('services.yandex_maps.api_key', '') }}&lang=ru_RU"></script>
+@endsection
+
 @section('content')
 @php $slug = $store->slug; $currency = $store->currency ?? 'сум'; @endphp
 
@@ -47,9 +51,51 @@
                         </label>
                     </template>
                 </div>
-                <div>
+                {{-- Адрес доставки с Яндекс.Картой --}}
+                <div x-data="addressPicker()" x-init="initMap()">
                     <label class="block text-sm text-gray-600 mb-1">Адрес доставки</label>
-                    <input type="text" x-model="form.delivery_address" placeholder="Город, улица, дом, квартира" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent" style="--tw-ring-color: var(--primary);">
+                    <div class="relative">
+                        <input type="text"
+                               x-model="addressQuery"
+                               @input.debounce.400ms="searchAddress()"
+                               @focus="showSuggestions = suggestions.length > 0"
+                               placeholder="Введите адрес или укажите на карте"
+                               class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent pr-10"
+                               style="--tw-ring-color: var(--primary);">
+                        <svg class="absolute right-3 top-3 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+
+                        {{-- Подсказки адресов --}}
+                        <div x-show="showSuggestions && suggestions.length > 0"
+                             @click.away="showSuggestions = false"
+                             x-cloak
+                             class="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                            <template x-for="(s, i) in suggestions" :key="i">
+                                <button @click="selectSuggestion(s)"
+                                        class="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 border-b border-gray-50 last:border-0 flex items-start gap-2">
+                                    <svg class="w-4 h-4 text-gray-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                    </svg>
+                                    <span class="text-gray-700" x-text="s.name"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    {{-- Карта --}}
+                    <div id="delivery-map"
+                         class="mt-3 rounded-xl overflow-hidden border border-gray-200"
+                         style="height: 250px; background: #f3f4f6;">
+                        <div class="w-full h-full flex items-center justify-center text-gray-400 text-sm" x-show="!mapReady">
+                            Загрузка карты...
+                        </div>
+                    </div>
+                    <p class="mt-1.5 text-xs text-gray-400">Нажмите на карту чтобы указать точку доставки</p>
+
+                    {{-- Город (извлекается автоматически) --}}
+                    <input type="hidden" x-model="city">
                 </div>
             </div>
 
@@ -119,7 +165,18 @@ function mpCheckout(slug, cartItems, deliveryMethods, paymentMethods) {
             delivery_method_id: deliveryMethods[0]?.id || '',
             payment_method_id: paymentMethods[0]?.id || '',
             delivery_address: '',
+            delivery_city: '',
             customer_note: '',
+        },
+
+        init() {
+            // Слушаем выбор адреса из карты
+            window.addEventListener('address-selected', (e) => {
+                if (e.detail) {
+                    this.form.delivery_address = e.detail.address || '';
+                    this.form.delivery_city = e.detail.city || '';
+                }
+            });
         },
         get subtotal() { return this.cartItems.reduce((s, i) => s + i.price * i.quantity, 0); },
         get deliveryPrice() {
@@ -149,6 +206,129 @@ function mpCheckout(slug, cartItems, deliveryMethods, paymentMethods) {
                 this.error = 'Ошибка сети';
             }
             this.submitting = false;
+        }
+    }
+}
+
+function addressPicker() {
+    return {
+        addressQuery: '',
+        suggestions: [],
+        showSuggestions: false,
+        city: '',
+        map: null,
+        placemark: null,
+        mapReady: false,
+
+        initMap() {
+            if (typeof ymaps === 'undefined') {
+                // Яндекс.Карты не загружены — fallback без карты
+                console.log('Yandex Maps API not loaded');
+                return;
+            }
+
+            ymaps.ready(() => {
+                // Ташкент по умолчанию
+                this.map = new ymaps.Map('delivery-map', {
+                    center: [41.2995, 69.2401],
+                    zoom: 12,
+                    controls: ['zoomControl', 'geolocationControl']
+                });
+
+                this.mapReady = true;
+
+                // Клик по карте — установить маркер
+                this.map.events.add('click', (e) => {
+                    const coords = e.get('coords');
+                    this.setMarker(coords);
+                    this.reverseGeocode(coords);
+                });
+
+                // Геолокация пользователя
+                const geolocation = ymaps.geolocation;
+                geolocation.get({ provider: 'browser', mapStateAutoApply: false }).then((result) => {
+                    const coords = result.geoObjects.get(0).geometry.getCoordinates();
+                    this.map.setCenter(coords, 14);
+                });
+            });
+        },
+
+        setMarker(coords) {
+            if (this.placemark) {
+                this.placemark.geometry.setCoordinates(coords);
+            } else {
+                this.placemark = new ymaps.Placemark(coords, {}, {
+                    preset: 'islands#redDotIcon',
+                    draggable: true,
+                });
+                this.placemark.events.add('dragend', () => {
+                    const newCoords = this.placemark.geometry.getCoordinates();
+                    this.reverseGeocode(newCoords);
+                });
+                this.map.geoObjects.add(this.placemark);
+            }
+        },
+
+        reverseGeocode(coords) {
+            ymaps.geocode(coords).then((res) => {
+                const firstGeoObject = res.geoObjects.get(0);
+                if (firstGeoObject) {
+                    const address = firstGeoObject.getAddressLine();
+                    const city = firstGeoObject.getLocalities().join(', ') ||
+                                 firstGeoObject.getAdministrativeAreas().join(', ');
+
+                    this.addressQuery = address;
+                    this.city = city;
+
+                    // Обновить форму чекаута
+                    this.syncToForm(address, city);
+                }
+            });
+        },
+
+        searchAddress() {
+            if (this.addressQuery.length < 3) {
+                this.suggestions = [];
+                return;
+            }
+
+            if (typeof ymaps === 'undefined') return;
+
+            ymaps.geocode(this.addressQuery, { results: 5 }).then((res) => {
+                this.suggestions = [];
+                res.geoObjects.each((obj) => {
+                    this.suggestions.push({
+                        name: obj.getAddressLine(),
+                        coords: obj.geometry.getCoordinates(),
+                        city: obj.getLocalities().join(', ') || obj.getAdministrativeAreas().join(', '),
+                    });
+                });
+                this.showSuggestions = this.suggestions.length > 0;
+            });
+        },
+
+        selectSuggestion(s) {
+            this.addressQuery = s.name;
+            this.city = s.city;
+            this.showSuggestions = false;
+
+            if (this.map) {
+                this.map.setCenter(s.coords, 16);
+                this.setMarker(s.coords);
+            }
+
+            this.syncToForm(s.name, s.city);
+        },
+
+        syncToForm(address, city) {
+            // Обновляем форму mpCheckout через DOM
+            const el = document.querySelector('[x-data*="mpCheckout"]');
+            if (el && el.__x) {
+                el.__x.$data.form.delivery_address = address;
+                el.__x.$data.form.delivery_city = city;
+            }
+            // Также через Alpine.$data если доступен
+            this.$dispatch('address-selected', { address, city });
         }
     }
 }
