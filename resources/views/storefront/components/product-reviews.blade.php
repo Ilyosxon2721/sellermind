@@ -35,7 +35,7 @@
     </div>
 
     {{-- Форма отзыва --}}
-    <div x-show="showForm" x-collapse class="mb-8">
+    <div x-show="showForm" x-transition class="mb-8">
         <form @submit.prevent="submitReview" class="bg-gray-50 rounded-xl p-6 space-y-4">
             {{-- Рейтинг --}}
             <div>
@@ -161,7 +161,7 @@
     @endif
 </section>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function productReviews() {
     return {
         showForm: false,

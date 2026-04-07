@@ -69,7 +69,7 @@
     </template>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function mpCart(slug, initialItems) {
     return {
         items: initialItems,

@@ -92,7 +92,7 @@
     </template>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function mpAuth(slug) {
     return {
         mode: 'login',
