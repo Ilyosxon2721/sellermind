@@ -314,19 +314,11 @@ class StockSyncService
         $updatedRecords = $result['payload']['updatedRecords'] ?? $result['updatedRecords'] ?? 0;
 
         if ($updatedRecords === 0) {
-            Log::warning('Uzum syncToUzum: updatedRecords=0 (товар заблокирован/архивирован) — отключаем sync_stock_enabled', [
+            Log::info('Uzum syncToUzum: updatedRecords=0 (остаток не изменился или SKU заблокирован)', [
                 'link_id' => $link->id,
                 'sku_id'  => $skuId,
+                'stock'   => $stock,
             ]);
-            $link->update(['sync_stock_enabled' => false]);
-
-            return [
-                'success'  => false,
-                'skipped'  => true,
-                'sku_id'   => $skuId,
-                'reason'   => 'archived',
-                'message'  => "SKU {$skuId} заблокирован или архивирован в Uzum. Синхронизация отключена.",
-            ];
         }
 
         return ['success' => true, 'sku_id' => $skuId, 'stock' => $stock, 'updated_records' => $updatedRecords, 'response' => $result];
