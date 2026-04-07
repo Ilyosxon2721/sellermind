@@ -280,28 +280,8 @@ class StockSyncService
         // GET текущих остатков от Uzum — получаем fbsAllowed/dbsAllowed и проверяем регистрацию SKU
         $skuFoundInApi = false;
         try {
-            $currentStocks = $uzum->stocks()->getFresh();
-            $skuListFromApi = $currentStocks['skuAmountList']
-                ?? $currentStocks['payload']['skuAmountList']
-                ?? [];
-            if (is_array($skuListFromApi)) {
-                foreach ($skuListFromApi as $sku) {
-                    if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
-                        $skuFoundInApi = true;
-                        $barcode = $barcode ?? (isset($sku['barcode']) ? (string) $sku['barcode'] : null);
-                        $skuTitle = $skuTitle ?? ($sku['skuTitle'] ?? null);
-                        // fbsAllowed/dbsAllowed — что разрешено для товара (FBS или DBS)
-                        // Используем Allowed, а не Linked: Linked может быть false даже если Allowed=true
-                        $fbsAllowed = isset($sku['fbsAllowed']) ? (bool) $sku['fbsAllowed'] : null;
-                        $dbsAllowed = isset($sku['dbsAllowed']) ? (bool) $sku['dbsAllowed'] : null;
-                        if ($fbsAllowed !== null || $dbsAllowed !== null) {
-                            $fbsLinked = $fbsAllowed ?? true;
-                            $dbsLinked = $dbsAllowed ?? true;
-                        }
-                        break;
-                    }
-                }
-            }
+            $skuListFromApi = $this->getUzumStockList($uzum, $skuId);
+            $skuFoundInApi = $this->findSkuInList($skuListFromApi, $skuId, $barcode, $skuTitle, $fbsLinked, $dbsLinked);
         } catch (\Exception $e) {
             Log::warning('Uzum GET stocks failed', ['error' => $e->getMessage()]);
         }
@@ -614,5 +594,58 @@ class StockSyncService
 
         // Уменьшить остаток в системе (это автоматически вызовет событие StockUpdated)
         $link->variant->decrementStock($quantity);
+    }
+
+    /**
+     * Получить список SKU из Uzum API (кэш → сброс кэша → свежий запрос).
+     * Один свежий запрос обновляет кэш для всех последующих вызовов.
+     */
+    protected function getUzumStockList(UzumApiManager $uzum, string $skuId): array
+    {
+        // 1. Пробуем кэшированный ответ (мгновенно)
+        $response = $uzum->stocks()->get();
+        $list = $response['skuAmountList'] ?? $response['payload']['skuAmountList'] ?? [];
+
+        if (is_array($list)) {
+            foreach ($list as $sku) {
+                if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
+                    return $list; // SKU найден в кэше
+                }
+            }
+        }
+
+        // 2. SKU не в кэше — сбрасываем кэш и получаем свежий список.
+        //    get() повторно кэширует результат, так что следующие SKU будут мгновенно.
+        $uzum->stocks()->clearCache();
+        $freshResponse = $uzum->stocks()->get();
+
+        return $freshResponse['skuAmountList'] ?? $freshResponse['payload']['skuAmountList'] ?? [];
+    }
+
+    /**
+     * Найти SKU в списке и обновить переменные по ссылке
+     */
+    protected function findSkuInList(array $skuList, string $skuId, ?string &$barcode, ?string &$skuTitle, bool &$fbsLinked, bool &$dbsLinked): bool
+    {
+        if (! is_array($skuList)) {
+            return false;
+        }
+
+        foreach ($skuList as $sku) {
+            if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
+                $barcode = $barcode ?? (isset($sku['barcode']) ? (string) $sku['barcode'] : null);
+                $skuTitle = $skuTitle ?? ($sku['skuTitle'] ?? null);
+                $fbsAllowed = isset($sku['fbsAllowed']) ? (bool) $sku['fbsAllowed'] : null;
+                $dbsAllowed = isset($sku['dbsAllowed']) ? (bool) $sku['dbsAllowed'] : null;
+                if ($fbsAllowed !== null || $dbsAllowed !== null) {
+                    $fbsLinked = $fbsAllowed ?? true;
+                    $dbsLinked = $dbsAllowed ?? true;
+                }
+
+                return true;
+            }
+        }
+
+        return false;
     }
 }

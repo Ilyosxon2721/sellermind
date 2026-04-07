@@ -246,12 +246,18 @@ class VariantLinkController extends Controller
     {
         $this->authorizeAccount($request, $account);
 
-        // Загружаем ВСЕ активные связи для продукта (Uzum может иметь несколько SKU)
-        $links = VariantMarketplaceLink::where('marketplace_product_id', $marketplaceProductId)
+        $skuId = $request->input('sku_id');
+
+        $query = VariantMarketplaceLink::where('marketplace_product_id', $marketplaceProductId)
             ->where('marketplace_account_id', $account->id)
-            ->where('is_active', true)
-            ->with(['variant', 'marketplaceProduct', 'account'])
-            ->get();
+            ->where('is_active', true);
+
+        // Если передан sku_id — синхронизируем только этот конкретный SKU
+        if ($skuId) {
+            $query->where('external_sku_id', $skuId);
+        }
+
+        $links = $query->with(['variant', 'marketplaceProduct', 'account'])->get();
 
         if ($links->isEmpty()) {
             return response()->json([
@@ -260,22 +266,12 @@ class VariantLinkController extends Controller
             ], 404);
         }
 
-        // Ручная синхронизация: включаем sync_stock_enabled для всех связей,
-        // которые были автоматически отключены из-за устаревшего кэша API
-        $reEnabled = $links->where('sync_stock_enabled', false)->count();
-        if ($reEnabled > 0) {
-            VariantMarketplaceLink::where('marketplace_product_id', $marketplaceProductId)
-                ->where('marketplace_account_id', $account->id)
-                ->where('is_active', true)
-                ->where('sync_stock_enabled', false)
+        // Ручная синхронизация: переактивировать связи, отключённые из-за устаревшего кэша
+        $disabled = $links->where('sync_stock_enabled', false);
+        if ($disabled->isNotEmpty()) {
+            VariantMarketplaceLink::whereIn('id', $disabled->pluck('id'))
                 ->update(['sync_stock_enabled' => true]);
-
-            // Перечитываем после обновления
-            $links = VariantMarketplaceLink::where('marketplace_product_id', $marketplaceProductId)
-                ->where('marketplace_account_id', $account->id)
-                ->where('is_active', true)
-                ->with(['variant', 'marketplaceProduct', 'account'])
-                ->get();
+            $links->each(fn ($l) => $l->sync_stock_enabled = true);
         }
 
         $synced  = 0;

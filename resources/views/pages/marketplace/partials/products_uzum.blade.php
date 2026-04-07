@@ -1753,7 +1753,7 @@ function uzumProducts(accountId) {
         async syncSkuStock(skuId) {
             if (!this.selected?.id) return; this.syncingStock = skuId;
             try {
-                const r = await fetch(`/api/marketplace/variant-links/accounts/${this.accountId}/products/${this.selected.id}/sync-stock`, { method: 'POST', headers: this.getHeaders(), credentials: 'include' });
+                const r = await fetch(`/api/marketplace/variant-links/accounts/${this.accountId}/products/${this.selected.id}/sync-stock`, { method: 'POST', headers: this.getHeaders(), credentials: 'include', body: JSON.stringify({ sku_id: String(skuId) }) });
                 const data = await r.json(); if (r.ok) { alert(data.message || 'Остатки синхронизированы'); await this.loadProductLinks(); } else { alert(data.message || 'Ошибка синхронизации'); }
             } catch { alert('Ошибка синхронизации'); } finally { this.syncingStock = null; }
         },
