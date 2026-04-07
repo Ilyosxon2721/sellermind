@@ -267,8 +267,8 @@ class StockSyncService
         // Ищем barcode, skuTitle и fbsLinked/dbsLinked из raw_payload
         $barcode = null;
         $skuTitle = null;
-        $fbsLinked = true;
-        $dbsLinked = true;
+        $fbsLinked = false;
+        $dbsLinked = false;
         foreach ($mpProduct->raw_payload['skuList'] ?? [] as $sku) {
             if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
                 $barcode = isset($sku['barcode']) ? (string) $sku['barcode'] : null;
@@ -277,18 +277,31 @@ class StockSyncService
             }
         }
 
-        // GET текущих остатков от Uzum — получаем fbsAllowed/dbsAllowed и проверяем регистрацию SKU
+        // GET текущих остатков от Uzum — получаем fbsLinked/dbsLinked и проверяем регистрацию SKU
         $skuFoundInApi = false;
+        $apiCallFailed = false;
         try {
             $skuListFromApi = $this->getUzumStockList($uzum, $skuId);
             $skuFoundInApi = $this->findSkuInList($skuListFromApi, $skuId, $barcode, $skuTitle, $fbsLinked, $dbsLinked);
         } catch (\Exception $e) {
-            Log::warning('Uzum GET stocks failed', ['error' => $e->getMessage()]);
+            Log::error('Uzum GET stocks failed', ['error' => $e->getMessage(), 'link_id' => $link->id]);
+            $apiCallFailed = true;
+        }
+
+        // Если API недоступен — не отключаем sync, просто пропускаем
+        if ($apiCallFailed) {
+            return [
+                'success' => false,
+                'skipped' => true,
+                'sku_id'  => $skuId,
+                'reason'  => 'api_error',
+                'message' => "Uzum API недоступен, пропускаем SKU {$skuId}.",
+            ];
         }
 
         // SKU не найден в FBS/DBS системе — отключаем синхронизацию для этого SKU
         if (! $skuFoundInApi) {
-            Log::warning('Uzum syncToUzum: SKU не в FBS/DBS — отключаем sync_stock_enabled', [
+            Log::error('Uzum syncToUzum: SKU не в FBS/DBS — отключаем sync_stock_enabled', [
                 'link_id' => $link->id,
                 'sku_id'  => $skuId,
             ]);
@@ -637,11 +650,11 @@ class StockSyncService
             if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
                 $barcode = $barcode ?? (isset($sku['barcode']) ? (string) $sku['barcode'] : null);
                 $skuTitle = $skuTitle ?? ($sku['skuTitle'] ?? null);
-                $fbsAllowed = isset($sku['fbsAllowed']) ? (bool) $sku['fbsAllowed'] : null;
-                $dbsAllowed = isset($sku['dbsAllowed']) ? (bool) $sku['dbsAllowed'] : null;
-                if ($fbsAllowed !== null || $dbsAllowed !== null) {
-                    $fbsLinked = $fbsAllowed ?? true;
-                    $dbsLinked = $dbsAllowed ?? true;
+                // Используем fbsLinked/dbsLinked (подключена ли схема), НЕ fbsAllowed/dbsAllowed (доступна ли)
+                // Если отправить dbsLinked=true когда реально false — Uzum вернёт updatedRecords=0
+                if (isset($sku['fbsLinked']) || isset($sku['dbsLinked'])) {
+                    $fbsLinked = isset($sku['fbsLinked']) ? (bool) $sku['fbsLinked'] : $fbsLinked;
+                    $dbsLinked = isset($sku['dbsLinked']) ? (bool) $sku['dbsLinked'] : $dbsLinked;
                 }
 
                 return true;

@@ -132,15 +132,8 @@ class VariantMarketplaceLink extends Model
             return $fallbackStock;
         }
 
-        // Для сравнения: сырой остаток (как UI считает через getTotalWarehouseStock)
-        $rawTotal = (int) \DB::table('stock_ledger')->where('sku_id', $skuId)->sum('qty_delta');
-
         if ($syncMode === 'aggregated') {
-            $result = $this->getAggregatedStock($companyId, $skuId, $account);
-            \Log::info('getCurrentStock: aggregated', [
-                'link_id' => $this->id, 'sku_id' => $skuId, 'raw_total' => $rawTotal, 'result' => $result,
-            ]);
-            return $result;
+            return $this->getAggregatedStock($companyId, $skuId, $account);
         } else {
             // Базовый режим: остаток со склада из настроек или общий
             // ВАЖНО: local_warehouse_id - это ЛОКАЛЬНЫЙ склад для расчёта остатков
@@ -159,18 +152,7 @@ class VariantMarketplaceLink extends Model
                 }
             }
 
-            $result = $this->getBasicStock($companyId, $skuId, $localWarehouseId);
-            \Log::info('getCurrentStock: basic', [
-                'link_id' => $this->id,
-                'variant_id' => $variant->id,
-                'sku_id' => $skuId,
-                'company_id' => $companyId,
-                'local_warehouse_id' => $localWarehouseId,
-                'sync_mode' => $syncMode,
-                'raw_total_no_filter' => $rawTotal,
-                'result_after_reserves' => $result,
-            ]);
-            return $result;
+            return $this->getBasicStock($companyId, $skuId, $localWarehouseId);
         }
     }
 

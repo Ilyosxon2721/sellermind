@@ -136,7 +136,7 @@ final class PollUzumOrdersJob implements ShouldQueue
                     throw new \RuntimeException("Uzum API error: {$response->status()} for status {$status}");
                 }
 
-                $orders = $response->json('payload.orders', $response->json('orders', []));
+                $orders = $response->json('payload.orderList', $response->json('orderList', []));
 
                 foreach ($orders as $order) {
                     $orderId    = (string) ($order['id'] ?? $order['orderId'] ?? uniqid());
