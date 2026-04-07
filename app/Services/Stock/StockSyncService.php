@@ -280,7 +280,7 @@ class StockSyncService
         // GET текущих остатков от Uzum — получаем fbsAllowed/dbsAllowed и проверяем регистрацию SKU
         $skuFoundInApi = false;
         try {
-            $currentStocks = $uzum->stocks()->get();
+            $currentStocks = $uzum->stocks()->getFresh();
             $skuListFromApi = $currentStocks['skuAmountList']
                 ?? $currentStocks['payload']['skuAmountList']
                 ?? [];
