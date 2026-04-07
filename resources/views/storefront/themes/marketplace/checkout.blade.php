@@ -41,8 +41,8 @@
                 <div class="space-y-2">
                     <template x-for="dm in deliveryMethods" :key="dm.id">
                         <label class="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all"
-                               :class="form.delivery_method_id == dm.id ? 'border-purple-500 bg-purple-50' : 'border-gray-100 hover:border-gray-200'">
-                            <input type="radio" :value="dm.id" x-model.number="form.delivery_method_id" class="accent-purple-600">
+                               :class="form.delivery_method_id == dm.id ? 'border-primary bg-primary/10' : 'border-gray-100 hover:border-gray-200'">
+                            <input type="radio" :value="dm.id" x-model.number="form.delivery_method_id" class="accent-primary">
                             <div class="flex-1">
                                 <span class="text-sm font-medium text-gray-900" x-text="dm.name"></span>
                                 <span x-show="dm.price > 0" class="ml-2 text-sm text-gray-500" x-text="formatPrice(dm.price) + ' {{ $currency }}'"></span>
@@ -105,8 +105,8 @@
                 <div class="space-y-2">
                     <template x-for="pm in paymentMethods" :key="pm.id">
                         <label class="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all"
-                               :class="form.payment_method_id == pm.id ? 'border-purple-500 bg-purple-50' : 'border-gray-100 hover:border-gray-200'">
-                            <input type="radio" :value="pm.id" x-model.number="form.payment_method_id" class="accent-purple-600">
+                               :class="form.payment_method_id == pm.id ? 'border-primary bg-primary/10' : 'border-gray-100 hover:border-gray-200'">
+                            <input type="radio" :value="pm.id" x-model.number="form.payment_method_id" class="accent-primary">
                             <span class="text-sm font-medium text-gray-900" x-text="pm.name"></span>
                         </label>
                     </template>

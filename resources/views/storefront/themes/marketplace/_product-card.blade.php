@@ -73,7 +73,7 @@
         @if($inStock)
             <button
                 @click="addToCart({{ $sp->id }})"
-                class="mt-2 w-full py-2.5 rounded-lg text-sm font-bold transition-all duration-200 hover:shadow-md active:scale-95 bg-purple-600 text-white hover:bg-purple-700"
+                class="mt-2 w-full py-2.5 rounded-lg text-sm font-bold transition-all duration-200 hover:shadow-md active:scale-95 btn-primary"
             >В корзину</button>
         @else
             <button disabled class="mt-2 w-full py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-400 cursor-not-allowed">

@@ -10,7 +10,7 @@
     {{-- Загрузка --}}
     <template x-if="loading">
         <div class="flex items-center justify-center py-20">
-            <svg class="animate-spin w-8 h-8 text-purple-600" fill="none" viewBox="0 0 24 24">
+            <svg class="animate-spin w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
@@ -44,11 +44,11 @@
             {{-- Табы --}}
             <div class="flex gap-1 border-b border-gray-200 mb-6">
                 <button @click="tab = 'orders'" class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors"
-                        :class="tab === 'orders' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+                        :class="tab === 'orders' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'">
                     Мои заказы
                 </button>
                 <button @click="tab = 'profile'" class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors"
-                        :class="tab === 'profile' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+                        :class="tab === 'profile' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'">
                     Профиль
                 </button>
             </div>
