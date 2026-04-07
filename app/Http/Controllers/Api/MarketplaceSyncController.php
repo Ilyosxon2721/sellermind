@@ -243,9 +243,20 @@ class MarketplaceSyncController extends Controller
 
         SyncMarketplaceProductsJob::dispatch($account)->onConnection($connection);
         SyncMarketplacePricesJob::dispatch($account)->onConnection($connection);
-        SyncMarketplaceStocksJob::dispatch($account)->onConnection($connection);
+
+        // Uzum: отдельный job через StockSyncService (корректные fbsLinked/dbsLinked)
+        if ($account->isUzum()) {
+            SyncUzumStocksJob::dispatch($account)->onConnection($connection);
+        } else {
+            SyncMarketplaceStocksJob::dispatch($account)->onConnection($connection);
+        }
+
         SyncMarketplaceOrdersJob::dispatch($account)->onConnection($connection);
-        SyncWildberriesSupplies::dispatch($account)->onConnection($connection);
+
+        // Поставки только для Wildberries
+        if ($account->isWildberries()) {
+            SyncWildberriesSupplies::dispatch($account)->onConnection($connection);
+        }
 
         return response()->json([
             'message' => 'Полная синхронизация запущена.',

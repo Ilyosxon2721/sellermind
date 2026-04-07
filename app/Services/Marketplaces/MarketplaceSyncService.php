@@ -189,11 +189,12 @@ class MarketplaceSyncService
             if ($account->isUzum()) {
                 $syncService = app(StockSyncService::class);
 
+                // Не фильтруем по external_sku_id — StockSyncService::findUzumSkuId()
+                // может зарезолвить skuId по баркоду или из raw_payload
                 $links = VariantMarketplaceLink::where('marketplace_account_id', $account->id)
                     ->where('marketplace_code', 'uzum')
                     ->where('is_active', true)
                     ->where('sync_stock_enabled', true)
-                    ->whereNotNull('external_sku_id')
                     ->with(['variant', 'marketplaceProduct', 'account'])
                     ->get();
 
