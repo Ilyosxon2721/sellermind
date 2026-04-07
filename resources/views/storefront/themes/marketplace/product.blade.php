@@ -177,7 +177,7 @@
     @endif
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function mpProduct(variantsData, basePrice) {
     return {
         variants: variantsData,

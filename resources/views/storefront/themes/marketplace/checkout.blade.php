@@ -104,7 +104,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function mpCheckout(slug, cartItems, deliveryMethods, paymentMethods) {
     return {
         cartItems,

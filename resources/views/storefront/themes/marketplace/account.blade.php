@@ -123,7 +123,7 @@
     </template>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function mpAccount(slug) {
     return {
         loading: true,
