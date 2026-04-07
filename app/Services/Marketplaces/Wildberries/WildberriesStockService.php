@@ -115,7 +115,8 @@ class WildberriesStockService
                 'error' => $e->getMessage(),
             ]);
 
-            $errors[] = ['sync_error' => $e->getMessage()];
+            // Пробрасываем исключение чтобы MarketplaceSyncService пометил лог как ошибку
+            throw $e;
         }
 
         return [

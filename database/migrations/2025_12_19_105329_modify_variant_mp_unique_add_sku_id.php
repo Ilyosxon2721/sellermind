@@ -18,7 +18,9 @@ return new class extends Migration
         });
 
         // Now we can drop the old unique index (FK will use the new index)
-        DB::statement('ALTER TABLE variant_marketplace_links DROP INDEX variant_mp_unique');
+        Schema::table('variant_marketplace_links', function (Blueprint $table) {
+            $table->dropUnique('variant_mp_unique');
+        });
 
         // Create new unique index (marketplace_product + external_sku_id)
         // This allows one variant to be linked to multiple marketplace products,
@@ -34,7 +36,9 @@ return new class extends Migration
     public function down(): void
     {
         // Drop the new unique index
-        DB::statement('ALTER TABLE variant_marketplace_links DROP INDEX variant_mp_sku_unique');
+        Schema::table('variant_marketplace_links', function (Blueprint $table) {
+            $table->dropUnique('variant_mp_sku_unique');
+        });
 
         // Restore the old unique index
         Schema::table('variant_marketplace_links', function (Blueprint $table) {

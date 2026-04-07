@@ -301,8 +301,8 @@ class UzumSettingsController extends Controller
         try {
             $uzum = new UzumApiManager($account);
 
-            // Получаем текущие данные SKU (barcode, title, amount)
-            $response = $uzum->stocks()->get();
+            // Получаем текущие данные SKU без кэша (кэш может быть устаревшим)
+            $response = $uzum->stocks()->getFresh();
             $skuList = $response['skuAmountList'] ?? $response['payload']['skuAmountList'] ?? [];
 
             $skuData = null;
@@ -313,12 +313,51 @@ class UzumSettingsController extends Controller
                 }
             }
 
+            // SKU не найден в FBS/DBS — ищем в локальной базе (raw_payload каталога)
             if (! $skuData) {
-                return response()->json(['message' => "SKU {$skuId} не найден в системе Uzum."], 422);
+                $mpProduct = \App\Models\MarketplaceProduct::where('marketplace_account_id', $account->id)
+                    ->whereJsonContains('raw_payload->skuList', [['skuId' => $skuId]])
+                    ->first();
+
+                // Fallback: поиск по всем товарам аккаунта
+                if (! $mpProduct) {
+                    $mpProduct = \App\Models\MarketplaceProduct::where('marketplace_account_id', $account->id)
+                        ->whereNotNull('raw_payload')
+                        ->get()
+                        ->first(function ($p) use ($skuId) {
+                            foreach ($p->raw_payload['skuList'] ?? [] as $sku) {
+                                if ((int) ($sku['skuId'] ?? 0) === $skuId) {
+                                    return true;
+                                }
+                            }
+                            return false;
+                        });
+                }
+
+                if ($mpProduct) {
+                    foreach ($mpProduct->raw_payload['skuList'] ?? [] as $sku) {
+                        if ((int) ($sku['skuId'] ?? 0) === $skuId) {
+                            $skuData = [
+                                'skuId' => $skuId,
+                                'barcode' => (string) ($sku['barcode'] ?? ''),
+                                'skuTitle' => (string) ($sku['skuTitle'] ?? $sku['skuFullTitle'] ?? ''),
+                                'productTitle' => (string) ($mpProduct->title ?? $mpProduct->raw_payload['title'] ?? ''),
+                                'amount' => 0,
+                                'fbsAllowed' => true,
+                                'dbsAllowed' => true,
+                            ];
+                            break;
+                        }
+                    }
+                }
             }
 
-            $fbsAllowed = (bool) ($skuData['fbsAllowed'] ?? false);
-            $dbsAllowed = (bool) ($skuData['dbsAllowed'] ?? false);
+            if (! $skuData) {
+                return response()->json(['message' => "SKU {$skuId} не найден ни в системе Uzum, ни в каталоге. Обновите каталог товаров."], 422);
+            }
+
+            $fbsAllowed = (bool) ($skuData['fbsAllowed'] ?? true);
+            $dbsAllowed = (bool) ($skuData['dbsAllowed'] ?? true);
 
             // Нельзя включить схему если Uzum не разрешает
             if ($validated['fbsLinked'] && ! $fbsAllowed) {
