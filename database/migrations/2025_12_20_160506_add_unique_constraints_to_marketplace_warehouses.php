@@ -14,13 +14,16 @@ return new class extends Migration
     {
         // Drop old unique constraint if exists
         try {
-            DB::statement('ALTER TABLE marketplace_warehouses DROP INDEX mp_wh_wb_unique');
+            Schema::table('marketplace_warehouses', function (Blueprint $table) {
+                $table->dropUnique('mp_wh_wb_unique');
+            });
         } catch (\Exception $e) {
             // Index doesn't exist, continue
         }
 
         // Check if unique_mp_wh_per_account already exists
-        $indexExists = DB::select("SHOW INDEX FROM marketplace_warehouses WHERE Key_name = 'unique_mp_wh_per_account'");
+        $indexExists = collect(Schema::getIndexes('marketplace_warehouses'))
+            ->firstWhere('name', 'unique_mp_wh_per_account');
 
         if (empty($indexExists)) {
             Schema::table('marketplace_warehouses', function (Blueprint $table) {

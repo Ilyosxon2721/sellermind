@@ -7,34 +7,39 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Use raw SQL to handle foreign keys and indexes reliably
-        // MySQL requires dropping FK before dropping index that FK uses
+        $driver = DB::connection()->getDriverName();
 
-        // Get foreign key names dynamically
-        $fkOptions = $this->getForeignKeyName('global_options', 'company_id');
-        $fkValues = $this->getForeignKeyName('global_option_values', 'company_id');
+        if ($driver === 'mysql') {
+            // Use raw SQL to handle foreign keys and indexes reliably
+            // MySQL requires dropping FK before dropping index that FK uses
 
-        // Drop foreign keys first
-        if ($fkOptions) {
-            DB::statement("ALTER TABLE `global_options` DROP FOREIGN KEY `{$fkOptions}`");
+            // Get foreign key names dynamically
+            $fkOptions = $this->getForeignKeyName('global_options', 'company_id');
+            $fkValues = $this->getForeignKeyName('global_option_values', 'company_id');
+
+            // Drop foreign keys first
+            if ($fkOptions) {
+                DB::statement("ALTER TABLE `global_options` DROP FOREIGN KEY `{$fkOptions}`");
+            }
+            if ($fkValues) {
+                DB::statement("ALTER TABLE `global_option_values` DROP FOREIGN KEY `{$fkValues}`");
+            }
+
+            // Drop unique index
+            $indexName = $this->getIndexName('global_options', ['company_id', 'code']);
+            if ($indexName) {
+                DB::statement("ALTER TABLE `global_options` DROP INDEX `{$indexName}`");
+            }
+
+            // Make company_id nullable
+            DB::statement('ALTER TABLE `global_options` MODIFY `company_id` BIGINT UNSIGNED NULL');
+            DB::statement('ALTER TABLE `global_option_values` MODIFY `company_id` BIGINT UNSIGNED NULL');
+
+            // Re-add foreign keys (allowing NULL)
+            DB::statement('ALTER TABLE `global_options` ADD CONSTRAINT `global_options_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE');
+            DB::statement('ALTER TABLE `global_option_values` ADD CONSTRAINT `global_option_values_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE');
         }
-        if ($fkValues) {
-            DB::statement("ALTER TABLE `global_option_values` DROP FOREIGN KEY `{$fkValues}`");
-        }
-
-        // Drop unique index
-        $indexName = $this->getIndexName('global_options', ['company_id', 'code']);
-        if ($indexName) {
-            DB::statement("ALTER TABLE `global_options` DROP INDEX `{$indexName}`");
-        }
-
-        // Make company_id nullable
-        DB::statement('ALTER TABLE `global_options` MODIFY `company_id` BIGINT UNSIGNED NULL');
-        DB::statement('ALTER TABLE `global_option_values` MODIFY `company_id` BIGINT UNSIGNED NULL');
-
-        // Re-add foreign keys (allowing NULL)
-        DB::statement('ALTER TABLE `global_options` ADD CONSTRAINT `global_options_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE');
-        DB::statement('ALTER TABLE `global_option_values` ADD CONSTRAINT `global_option_values_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE');
+        // SQLite: company_id уже nullable в исходной миграции при тестировании
 
         // Create universal global options (company_id = NULL)
         $this->createUniversalOptions();
@@ -80,25 +85,29 @@ return new class extends Migration
         DB::table('global_option_values')->whereNull('company_id')->delete();
         DB::table('global_options')->whereNull('company_id')->delete();
 
-        // Drop foreign keys
-        $fkOptions = $this->getForeignKeyName('global_options', 'company_id');
-        $fkValues = $this->getForeignKeyName('global_option_values', 'company_id');
+        $driver = DB::connection()->getDriverName();
 
-        if ($fkOptions) {
-            DB::statement("ALTER TABLE `global_options` DROP FOREIGN KEY `{$fkOptions}`");
+        if ($driver === 'mysql') {
+            // Drop foreign keys
+            $fkOptions = $this->getForeignKeyName('global_options', 'company_id');
+            $fkValues = $this->getForeignKeyName('global_option_values', 'company_id');
+
+            if ($fkOptions) {
+                DB::statement("ALTER TABLE `global_options` DROP FOREIGN KEY `{$fkOptions}`");
+            }
+            if ($fkValues) {
+                DB::statement("ALTER TABLE `global_option_values` DROP FOREIGN KEY `{$fkValues}`");
+            }
+
+            // Make company_id NOT NULL again
+            DB::statement('ALTER TABLE `global_options` MODIFY `company_id` BIGINT UNSIGNED NOT NULL');
+            DB::statement('ALTER TABLE `global_option_values` MODIFY `company_id` BIGINT UNSIGNED NOT NULL');
+
+            // Restore unique constraint and foreign keys
+            DB::statement('ALTER TABLE `global_options` ADD UNIQUE INDEX `global_options_company_id_code_unique` (`company_id`, `code`)');
+            DB::statement('ALTER TABLE `global_options` ADD CONSTRAINT `global_options_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE');
+            DB::statement('ALTER TABLE `global_option_values` ADD CONSTRAINT `global_option_values_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE');
         }
-        if ($fkValues) {
-            DB::statement("ALTER TABLE `global_option_values` DROP FOREIGN KEY `{$fkValues}`");
-        }
-
-        // Make company_id NOT NULL again
-        DB::statement('ALTER TABLE `global_options` MODIFY `company_id` BIGINT UNSIGNED NOT NULL');
-        DB::statement('ALTER TABLE `global_option_values` MODIFY `company_id` BIGINT UNSIGNED NOT NULL');
-
-        // Restore unique constraint and foreign keys
-        DB::statement('ALTER TABLE `global_options` ADD UNIQUE INDEX `global_options_company_id_code_unique` (`company_id`, `code`)');
-        DB::statement('ALTER TABLE `global_options` ADD CONSTRAINT `global_options_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE');
-        DB::statement('ALTER TABLE `global_option_values` ADD CONSTRAINT `global_option_values_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE');
     }
 
     protected function createUniversalOptions(): void
