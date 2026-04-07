@@ -112,13 +112,17 @@ class VariantMarketplaceLink extends Model
 
         // If still no SKU, fallback to stock_default
         if (! $skuId) {
-            \Log::debug('No SKU in warehouse system, using stock_default', [
-                'variant_sku' => $variantSku,
+            $fallbackStock = $variant?->stock_default ?? 0;
+            \Log::warning('getCurrentStock: SKU не найден в складской системе — используем stock_default', [
+                'link_id' => $this->id,
                 'variant_id' => $variant?->id,
-                'stock_default' => $variant?->stock_default,
+                'variant_sku' => $variantSku,
+                'variant_barcode' => $variant?->barcode,
+                'stock_default' => $fallbackStock,
+                'company_id' => $companyId,
             ]);
 
-            return $variant?->stock_default ?? 0;
+            return $fallbackStock;
         }
 
         if ($syncMode === 'aggregated') {
