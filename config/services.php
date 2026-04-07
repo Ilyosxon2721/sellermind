@@ -57,6 +57,10 @@ return [
         'notifications_enabled' => env('TELEGRAM_NOTIFICATIONS_ENABLED', false),
     ],
 
+    'yandex_maps' => [
+        'api_key' => env('YANDEX_MAPS_API_KEY', ''),
+    ],
+
     'risment' => [
         'base_url' => env('RISMENT_BASE_URL', 'https://risment.uz'),
     ],

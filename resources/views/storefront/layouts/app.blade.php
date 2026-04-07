@@ -35,6 +35,7 @@
     <script nonce="{{ $cspNonce ?? '' }}" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 
     <link rel="preconnect" href="https://fonts.bunny.net">
+    <link rel="dns-prefetch" href="//{{ request()->getHost() }}">
     <link href="https://fonts.bunny.net/css?family={{ urlencode($store->theme->heading_font ?? 'Inter') }}:400,500,600,700|{{ urlencode($store->theme->body_font ?? 'Inter') }}:400,500,600,700&display=swap" rel="stylesheet">
 
     <script nonce="{{ $cspNonce ?? '' }}">
@@ -78,11 +79,12 @@
 
         .btn-primary {
             background: var(--primary);
-            color: #fff;
+            color: var(--primary-text, #fff);
             transition: filter 0.2s, box-shadow 0.2s;
         }
         .btn-primary:hover {
-            filter: brightness(0.9);
+            filter: brightness(0.85);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
         .btn-secondary {
@@ -205,6 +207,19 @@
     </div>
 
     <script nonce="{{ $cspNonce ?? '' }}">
+        // Автоопределение контраста текста для btn-primary
+        (function() {
+            const primary = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+            if (primary) {
+                const hex = primary.replace('#', '');
+                const r = parseInt(hex.substr(0,2), 16) || 0;
+                const g = parseInt(hex.substr(2,2), 16) || 0;
+                const b = parseInt(hex.substr(4,2), 16) || 0;
+                const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                document.documentElement.style.setProperty('--primary-text', luminance > 0.6 ? '#1C1C1E' : '#FFFFFF');
+            }
+        })();
+
         function toastNotification() {
             return {
                 visible: false,

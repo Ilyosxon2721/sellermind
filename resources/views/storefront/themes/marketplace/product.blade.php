@@ -56,7 +56,7 @@
                     @foreach($images as $img)
                         <button @click="selectedImage = '{{ $img->url }}'"
                                 class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 overflow-hidden flex-shrink-0 transition-colors"
-                                :class="selectedImage === '{{ $img->url }}' ? 'border-purple-500' : 'border-gray-200 hover:border-gray-300'">
+                                :class="selectedImage === '{{ $img->url }}' ? 'border-primary' : 'border-gray-200 hover:border-gray-300'">
                             <img src="{{ $img->url }}" alt="" class="w-full h-full object-cover">
                         </button>
                     @endforeach
@@ -106,7 +106,7 @@
                                     <button @click="selectOption(group.id, val.value)"
                                             class="w-10 h-10 rounded-full border-2 transition-all relative"
                                             :class="selectedOptions[group.id] === val.value
-                                                ? 'border-purple-500 ring-2 ring-purple-200 scale-110'
+                                                ? 'border-primary ring-2 ring-primary/30 scale-110'
                                                 : 'border-gray-200 hover:border-gray-400'"
                                             :style="val.colorHex ? 'background-color:' + val.colorHex : 'background:#e5e7eb'"
                                             :title="val.value">
@@ -125,7 +125,7 @@
                                     <button @click="selectOption(group.id, val.value)"
                                             class="min-w-[48px] px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all"
                                             :class="selectedOptions[group.id] === val.value
-                                                ? 'border-purple-500 bg-purple-50 text-purple-700'
+                                                ? 'border-primary bg-primary/10 text-primary'
                                                 : val.available
                                                     ? 'border-gray-200 text-gray-700 hover:border-gray-400'
                                                     : 'border-gray-100 text-gray-300 cursor-not-allowed line-through'"
@@ -146,7 +146,7 @@
                     <template x-for="v in variants" :key="v.id">
                         <button @click="selectVariant(v)"
                                 class="px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all"
-                                :class="selectedVariant?.id === v.id ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-200 text-gray-700 hover:border-gray-300'"
+                                :class="selectedVariant?.id === v.id ? 'border-primary bg-primary/10 text-primary' : 'border-gray-200 text-gray-700 hover:border-gray-300'"
                                 x-text="v.name">
                         </button>
                     </template>
