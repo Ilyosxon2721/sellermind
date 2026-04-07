@@ -280,7 +280,8 @@ class StockSyncService
         // GET текущих остатков от Uzum — получаем fbsAllowed/dbsAllowed и проверяем регистрацию SKU
         $skuFoundInApi = false;
         try {
-            $currentStocks = $uzum->stocks()->getFresh();
+            // Сначала пробуем кэшированный ответ (быстро, TTL 300с)
+            $currentStocks = $uzum->stocks()->get();
             $skuListFromApi = $currentStocks['skuAmountList']
                 ?? $currentStocks['payload']['skuAmountList']
                 ?? [];
@@ -290,8 +291,6 @@ class StockSyncService
                         $skuFoundInApi = true;
                         $barcode = $barcode ?? (isset($sku['barcode']) ? (string) $sku['barcode'] : null);
                         $skuTitle = $skuTitle ?? ($sku['skuTitle'] ?? null);
-                        // fbsAllowed/dbsAllowed — что разрешено для товара (FBS или DBS)
-                        // Используем Allowed, а не Linked: Linked может быть false даже если Allowed=true
                         $fbsAllowed = isset($sku['fbsAllowed']) ? (bool) $sku['fbsAllowed'] : null;
                         $dbsAllowed = isset($sku['dbsAllowed']) ? (bool) $sku['dbsAllowed'] : null;
                         if ($fbsAllowed !== null || $dbsAllowed !== null) {
@@ -299,6 +298,30 @@ class StockSyncService
                             $dbsLinked = $dbsAllowed ?? true;
                         }
                         break;
+                    }
+                }
+            }
+
+            // Если SKU не в кэше — пробуем свежий запрос (кэш мог устареть)
+            if (! $skuFoundInApi) {
+                $freshStocks = $uzum->stocks()->getFresh();
+                $freshList = $freshStocks['skuAmountList']
+                    ?? $freshStocks['payload']['skuAmountList']
+                    ?? [];
+                if (is_array($freshList)) {
+                    foreach ($freshList as $sku) {
+                        if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
+                            $skuFoundInApi = true;
+                            $barcode = $barcode ?? (isset($sku['barcode']) ? (string) $sku['barcode'] : null);
+                            $skuTitle = $skuTitle ?? ($sku['skuTitle'] ?? null);
+                            $fbsAllowed = isset($sku['fbsAllowed']) ? (bool) $sku['fbsAllowed'] : null;
+                            $dbsAllowed = isset($sku['dbsAllowed']) ? (bool) $sku['dbsAllowed'] : null;
+                            if ($fbsAllowed !== null || $dbsAllowed !== null) {
+                                $fbsLinked = $fbsAllowed ?? true;
+                                $dbsLinked = $dbsAllowed ?? true;
+                            }
+                            break;
+                        }
                     }
                 }
             }
