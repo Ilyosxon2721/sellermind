@@ -420,8 +420,8 @@ class UzumSettingsController extends Controller
         try {
             $uzum = new UzumApiManager($account);
 
-            // Получаем все SKU один раз
-            $response = $uzum->stocks()->get();
+            // Получаем все SKU один раз (без кэша — нужны актуальные fbsLinked/dbsLinked)
+            $response = $uzum->stocks()->getFresh();
             $skuList = $response['skuAmountList'] ?? $response['payload']['skuAmountList'] ?? [];
 
             $skuAmountList = [];
