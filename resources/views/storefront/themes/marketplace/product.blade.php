@@ -89,9 +89,58 @@
                 @endif
             </div>
 
-            {{-- Варианты --}}
+            {{-- Выбор вариантов (группировка по опциям — стиль Uzum) --}}
             @if(count($variantsJson) > 1)
-            <div class="space-y-3">
+            <div class="space-y-5" x-show="optionGroups.length > 0">
+                <template x-for="group in optionGroups" :key="group.id">
+                    <div>
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="text-sm font-semibold text-gray-900" x-text="group.name + ':'"></span>
+                            <span class="text-sm font-bold" style="color: var(--primary);" x-text="selectedOptions[group.id] || ''"></span>
+                        </div>
+
+                        {{-- Цветовые кружки --}}
+                        <template x-if="group.isColor">
+                            <div class="flex flex-wrap gap-2">
+                                <template x-for="val in group.values" :key="val.value">
+                                    <button @click="selectOption(group.id, val.value)"
+                                            class="w-10 h-10 rounded-full border-2 transition-all relative"
+                                            :class="selectedOptions[group.id] === val.value
+                                                ? 'border-purple-500 ring-2 ring-purple-200 scale-110'
+                                                : 'border-gray-200 hover:border-gray-400'"
+                                            :style="val.colorHex ? 'background-color:' + val.colorHex : 'background:#e5e7eb'"
+                                            :title="val.value">
+                                        <template x-if="selectedOptions[group.id] === val.value">
+                                            <svg class="absolute inset-0 m-auto w-4 h-4" :class="val.colorHex === '#FFFFFF' || val.colorHex === '#FFD700' ? 'text-gray-800' : 'text-white'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                        </template>
+                                    </button>
+                                </template>
+                            </div>
+                        </template>
+
+                        {{-- Размеры / текстовые значения --}}
+                        <template x-if="!group.isColor">
+                            <div class="flex flex-wrap gap-2">
+                                <template x-for="val in group.values" :key="val.value">
+                                    <button @click="selectOption(group.id, val.value)"
+                                            class="min-w-[48px] px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all"
+                                            :class="selectedOptions[group.id] === val.value
+                                                ? 'border-purple-500 bg-purple-50 text-purple-700'
+                                                : val.available
+                                                    ? 'border-gray-200 text-gray-700 hover:border-gray-400'
+                                                    : 'border-gray-100 text-gray-300 cursor-not-allowed line-through'"
+                                            :disabled="!val.available"
+                                            x-text="val.value">
+                                    </button>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+
+            {{-- Fallback: если опции не парсятся — плоский список --}}
+            <div class="space-y-3" x-show="optionGroups.length === 0 && variants.length > 1">
                 <h3 class="text-sm font-semibold text-gray-700">Вариант</h3>
                 <div class="flex flex-wrap gap-2">
                     <template x-for="v in variants" :key="v.id">
@@ -182,13 +231,79 @@ function mpProduct(variantsData, basePrice) {
     return {
         variants: variantsData,
         selectedVariant: variantsData.length ? variantsData[0] : null,
+        selectedOptions: {},
         selectedImage: null,
         currentPrice: variantsData.length && variantsData[0].price ? variantsData[0].price : basePrice,
         qty: 1,
 
+        // Группировка опций из вариантов (стиль Uzum)
+        get optionGroups() {
+            const groups = {};
+            const colorCodes = ['цвет', 'color', 'colour'];
+
+            this.variants.forEach(v => {
+                (v.option_values || []).forEach(ov => {
+                    const gid = ov.option_id;
+                    if (!groups[gid]) {
+                        groups[gid] = {
+                            id: gid,
+                            name: ov.option_name,
+                            code: ov.option_code,
+                            isColor: colorCodes.includes((ov.option_code || '').toLowerCase()),
+                            valuesMap: {},
+                        };
+                    }
+                    if (!groups[gid].valuesMap[ov.value]) {
+                        groups[gid].valuesMap[ov.value] = {
+                            value: ov.value,
+                            colorHex: ov.color_hex,
+                            available: true,
+                        };
+                    }
+                });
+            });
+
+            return Object.values(groups).map(g => ({
+                ...g,
+                values: Object.values(g.valuesMap),
+            }));
+        },
+
+        init() {
+            // Инициализируем выбранные опции из первого варианта
+            if (this.selectedVariant && this.selectedVariant.option_values) {
+                this.selectedVariant.option_values.forEach(ov => {
+                    this.selectedOptions[ov.option_id] = ov.value;
+                });
+            }
+        },
+
+        selectOption(groupId, value) {
+            this.selectedOptions = { ...this.selectedOptions, [groupId]: value };
+            this.findMatchingVariant();
+        },
+
+        findMatchingVariant() {
+            const sel = this.selectedOptions;
+            const match = this.variants.find(v => {
+                if (!v.option_values || !v.option_values.length) return false;
+                return v.option_values.every(ov => sel[ov.option_id] === ov.value);
+            });
+            if (match) {
+                this.selectedVariant = match;
+                this.currentPrice = match.price || basePrice;
+            }
+        },
+
         selectVariant(v) {
             this.selectedVariant = v;
             this.currentPrice = v.price || basePrice;
+            // Обновить selectedOptions из варианта
+            if (v.option_values) {
+                v.option_values.forEach(ov => {
+                    this.selectedOptions[ov.option_id] = ov.value;
+                });
+            }
         },
 
         addProductToCart() {

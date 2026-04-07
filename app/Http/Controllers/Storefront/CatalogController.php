@@ -198,6 +198,7 @@ final class CatalogController extends Controller
         }
 
         return $product->variants->map(function ($variant) {
+            // Попытка получить option_values из связи
             $optionValues = $variant->optionValues->map(function ($ov) {
                 return [
                     'option_id'   => $ov->product_option_id,
@@ -208,6 +209,49 @@ final class CatalogController extends Controller
                     'color_hex'   => $ov->color_hex,
                 ];
             })->values()->all();
+
+            // Если optionValues пуст — парсим из option_values_summary
+            // Формат: "Размер: 3XL, Цвет: Чёрный"
+            if (empty($optionValues) && $variant->option_values_summary) {
+                $parts = explode(', ', $variant->option_values_summary);
+                $autoId = 0;
+                foreach ($parts as $part) {
+                    $segments = explode(': ', $part, 2);
+                    if (count($segments) === 2) {
+                        $optName = trim($segments[0]);
+                        $optValue = trim($segments[1]);
+                        $optCode = mb_strtolower($optName);
+
+                        // Определяем цвет по названию
+                        $colorMap = [
+                            'чёрный' => '#000000', 'черный' => '#000000', 'black' => '#000000',
+                            'белый' => '#FFFFFF', 'white' => '#FFFFFF',
+                            'серый' => '#808080', 'gray' => '#808080', 'grey' => '#808080',
+                            'красный' => '#FF0000', 'red' => '#FF0000',
+                            'синий' => '#0000FF', 'blue' => '#0000FF',
+                            'тёмно-синий' => '#191970', 'темно-синий' => '#191970', 'navy' => '#191970',
+                            'бордовый' => '#800020', 'burgundy' => '#800020', 'вишнёвый' => '#800020',
+                            'зелёный' => '#008000', 'зеленый' => '#008000', 'green' => '#008000',
+                            'розовый' => '#FFC0CB', 'pink' => '#FFC0CB',
+                            'бежевый' => '#F5F5DC', 'beige' => '#F5F5DC',
+                            'коричневый' => '#8B4513', 'brown' => '#8B4513',
+                            'фиолетовый' => '#800080', 'purple' => '#800080',
+                            'оранжевый' => '#FF8C00', 'orange' => '#FF8C00',
+                            'жёлтый' => '#FFD700', 'желтый' => '#FFD700', 'yellow' => '#FFD700',
+                        ];
+                        $colorHex = $colorMap[mb_strtolower($optValue)] ?? null;
+
+                        $optionValues[] = [
+                            'option_id'   => crc32($optName),
+                            'option_name' => $optName,
+                            'option_code' => $optCode,
+                            'value_id'    => crc32($optName . ':' . $optValue),
+                            'value'       => $optValue,
+                            'color_hex'   => $colorHex,
+                        ];
+                    }
+                }
+            }
 
             return [
                 'id'                  => $variant->id,
