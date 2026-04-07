@@ -28,6 +28,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Add security headers globally
         $middleware->append(\App\Http\Middleware\AddSecurityHeaders::class);
 
+        // Резолвинг магазина по поддомену/домену (*.sellermind.uz, кастомные домены)
+        $middleware->web(prepend: [
+            \App\Http\Middleware\ResolveStoreDomain::class,
+        ]);
+
         // Add locale middleware to appropriate groups
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
