@@ -35,6 +35,7 @@
     <script nonce="{{ $cspNonce ?? '' }}" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 
     <link rel="preconnect" href="https://fonts.bunny.net">
+    <link rel="dns-prefetch" href="//{{ request()->getHost() }}">
     <link href="https://fonts.bunny.net/css?family={{ urlencode($store->theme->heading_font ?? 'Inter') }}:400,500,600,700|{{ urlencode($store->theme->body_font ?? 'Inter') }}:400,500,600,700&display=swap" rel="stylesheet">
 
     <script nonce="{{ $cspNonce ?? '' }}">

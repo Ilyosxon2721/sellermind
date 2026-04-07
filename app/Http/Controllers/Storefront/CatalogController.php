@@ -37,11 +37,17 @@ final class CatalogController extends Controller
             ->where('is_visible', true)
             ->with(['product.mainImage', 'product.variants']);
 
-        // Фильтр по категории
-        if ($categoryId = $request->input('category')) {
-            $query->whereHas('product', function ($q) use ($categoryId) {
-                $q->where('category_id', (int) $categoryId);
-            });
+        // Фильтр по категории (category = StoreCategory.id → product.category_id)
+        if ($storeCategoryId = $request->input('category')) {
+            $storeCategory = \App\Models\Store\StoreCategory::where('store_id', $store->id)
+                ->where('id', (int) $storeCategoryId)
+                ->first();
+
+            if ($storeCategory) {
+                $query->whereHas('product', function ($q) use ($storeCategory) {
+                    $q->where('category_id', $storeCategory->category_id);
+                });
+            }
         }
 
         // Поиск по названию товара

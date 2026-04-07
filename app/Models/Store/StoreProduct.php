@@ -136,7 +136,7 @@ class StoreProduct extends Model
      */
     public function getDisplayName(): string
     {
-        return $this->custom_name ?: $this->product->name;
+        return $this->custom_name ?: ($this->product?->name ?? 'Товар');
     }
 
     /**
