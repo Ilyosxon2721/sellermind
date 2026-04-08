@@ -465,7 +465,8 @@
                                                   'bg-purple-100 text-purple-700': order.marketplace === 'wb',
                                                   'bg-orange-100 text-orange-700': order.marketplace === 'ozon',
                                                   'bg-red-100 text-red-700': order.marketplace === 'ym',
-                                                  'bg-gray-100 text-gray-700': order.marketplace === 'manual'
+                                                  'bg-gray-100 text-gray-700': order.marketplace === 'manual',
+                                                  'bg-green-100 text-green-700': order.marketplace === 'pos'
                                               }"
                                               x-text="getMarketplaceName(order.marketplace)"></span>
                                     </td>
@@ -494,6 +495,13 @@
                                     <td class="px-6 py-4 text-sm text-gray-600" x-text="formatDate(order.created_at || order.ordered_at)"></td>
                                     <td class="px-6 py-4 text-right" @click.stop>
                                         <div class="flex items-center justify-end space-x-2">
+                                            {{-- Print button for POS sales --}}
+                                            <a x-show="order.marketplace === 'pos'" :href="'/orders/' + order.id + '/print/receipt'" target="_blank"
+                                               class="p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors" title="Печать чека">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                                </svg>
+                                            </a>
                                             {{-- Print dropdown for manual sales --}}
                                             <div x-show="order.marketplace === 'manual' && order.id?.startsWith('sale_')" class="relative" x-data="{ printOpen: false }">
                                                 <button @click="printOpen = !printOpen" class="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors" title="Печать">
@@ -750,7 +758,8 @@
                                           'bg-purple-100 text-purple-700': order.marketplace === 'wb',
                                           'bg-blue-100 text-blue-700': order.marketplace === 'ozon',
                                           'bg-red-100 text-red-700': order.marketplace === 'ym',
-                                          'bg-gray-100 text-gray-700': order.marketplace === 'manual'
+                                          'bg-gray-100 text-gray-700': order.marketplace === 'manual',
+                                          'bg-green-100 text-green-700': order.marketplace === 'pos'
                                       }"
                                       x-text="getMarketplaceName(order.marketplace)"></span>
                                 <span class="text-xs px-2 py-1 rounded-full"

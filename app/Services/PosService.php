@@ -126,6 +126,7 @@ final class PosService
                     'sku_id' => $item['sku_id'] ?? null,
                     'product_id' => $item['product_id'] ?? null,
                     'product_name' => $item['product_name'],
+                    'sku_code' => $item['sku_code'] ?? null,
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
                     'unit_cost' => $unitCost,
