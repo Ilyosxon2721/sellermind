@@ -207,7 +207,13 @@
                                 <div class="flex items-center space-x-4 bg-gray-50 rounded-xl p-4 border border-gray-100">
                                     <div class="flex-1 min-w-0">
                                         <div class="font-medium text-gray-900 truncate" x-text="item.product_name"></div>
-                                        <div class="text-sm text-gray-500" x-text="(item.variant_name || item.sku) + ' | Остаток: ' + item.stock + ' шт'"></div>
+                                        <div class="text-sm text-gray-500">
+                                            <span x-text="(item.variant_name || item.sku) + ' | Остаток: ' + item.stock + ' шт'"></span>
+                                            <template x-if="item.purchase_price > 0">
+                                                <span class="ml-2 text-xs text-gray-400"
+                                                      x-text="'· закупка: ' + formatMoney(item.purchase_price) + ' ' + item.purchase_price_currency"></span>
+                                            </template>
+                                        </div>
                                     </div>
                                     <div class="flex items-center space-x-2">
                                         <label class="text-sm text-gray-500">Кол-во:</label>
@@ -352,6 +358,9 @@ function bundleEditForm(bundleId) {
                     sku: item.component_variant?.sku,
                     stock: item.component_variant?.stock_default || 0,
                     purchase_price: Number(item.component_variant?.purchase_price || 0),
+                    purchase_price_currency: item.component_variant?.purchase_price_currency || 'UZS',
+                    // Сконвертированная в UZS закупочная (приходит с бекенда)
+                    purchase_price_base: Number(item.component_variant?.purchase_price_base || 0),
                     quantity: item.quantity,
                 }));
 
@@ -382,6 +391,8 @@ function bundleEditForm(bundleId) {
                 sku: variant.sku,
                 stock: variant.stock_default || 0,
                 purchase_price: Number(variant.purchase_price || 0),
+                purchase_price_currency: variant.purchase_price_currency || 'UZS',
+                purchase_price_base: Number(variant.purchase_price_base || 0),
                 quantity: 1,
             });
             this.showSearchResults = false;
@@ -402,8 +413,9 @@ function bundleEditForm(bundleId) {
                 return;
             }
             this.bundleStock = Math.min(...this.items.map(i => Math.floor(i.stock / (i.quantity || 1))));
+            // Всегда считаем в UZS — используем сконвертированное purchase_price_base
             this.bundleCost = this.items.reduce(
-                (sum, i) => sum + (Number(i.purchase_price || 0) * Number(i.quantity || 0)),
+                (sum, i) => sum + (Number(i.purchase_price_base || 0) * Number(i.quantity || 0)),
                 0
             );
         },

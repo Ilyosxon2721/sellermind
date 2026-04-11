@@ -255,10 +255,16 @@ final class BundleService
         ]);
         $product->append(['bundle_stock', 'bundle_cost']);
 
-        // Добавляем остатки каждого компонента
+        $settings = \App\Models\Finance\FinanceSettings::getForCompany($product->company_id);
+
+        // Добавляем остатки и себестоимость в базовой валюте у каждого компонента
         foreach ($product->bundleItems as $item) {
-            $item->component_stock = $item->componentVariant?->getCurrentStock() ?? 0;
+            $cv = $item->componentVariant;
+            $item->component_stock = $cv?->getCurrentStock() ?? 0;
             $item->available_kits = $item->getAvailableKits();
+            if ($cv) {
+                $cv->purchase_price_base = $cv->getPurchasePriceInBase($settings);
+            }
         }
 
         return $product;
@@ -266,10 +272,14 @@ final class BundleService
 
     /**
      * Получить варианты для поиска компонентов.
+     *
+     * Возвращает закупочную цену в оригинальной валюте и её конвертированное
+     * значение в UZS (purchase_price_base), чтобы фронт мог корректно
+     * считать суммарную себестоимость комплекта.
      */
     public function searchComponentVariants(int $companyId, string $search): \Illuminate\Support\Collection
     {
-        return ProductVariant::query()
+        $variants = ProductVariant::query()
             ->with('product:id,name,is_bundle')
             ->where('company_id', $companyId)
             ->where('is_active', true)
@@ -284,6 +294,15 @@ final class BundleService
             })
             ->orderBy('sku')
             ->limit(30)
-            ->get(['id', 'product_id', 'sku', 'barcode', 'option_values_summary', 'stock_default', 'price_default', 'purchase_price']);
+            ->get(['id', 'product_id', 'sku', 'barcode', 'option_values_summary', 'stock_default', 'price_default', 'purchase_price', 'purchase_price_currency']);
+
+        $settings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
+
+        // Обогащаем каждую запись конвертированной закупочной ценой в UZS
+        $variants->each(function (ProductVariant $v) use ($settings) {
+            $v->purchase_price_base = $v->getPurchasePriceInBase($settings);
+        });
+
+        return $variants;
     }
 }

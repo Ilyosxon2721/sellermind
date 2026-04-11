@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Models;
 
+use App\Models\Finance\FinanceSettings;
 use App\Models\Product;
 use App\Models\ProductBundleItem;
 use App\Models\ProductVariant;
@@ -19,7 +20,7 @@ use PHPUnit\Framework\TestCase;
  */
 class BundleCalculationsTest extends TestCase
 {
-    private function makeVariant(int $id, int $stock, float $purchasePrice): ProductVariant
+    private function makeVariant(int $id, int $stock, float $purchasePrice, string $currency = 'UZS'): ProductVariant
     {
         $v = new ProductVariant();
         $v->id = $id;
@@ -27,17 +28,18 @@ class BundleCalculationsTest extends TestCase
             'id' => $id,
             'stock_default' => $stock,
             'purchase_price' => $purchasePrice,
+            'purchase_price_currency' => $currency,
             'is_bundle_variant' => false,
         ], true);
 
         return $v;
     }
 
-    private function makeBundleItem(int $componentId, int $stock, float $price, int $quantity): ProductBundleItem
+    private function makeBundleItem(int $componentId, int $stock, float $price, int $quantity, string $currency = 'UZS'): ProductBundleItem
     {
         $item = new ProductBundleItem();
         $item->quantity = $quantity;
-        $item->setRelation('componentVariant', $this->makeVariant($componentId, $stock, $price));
+        $item->setRelation('componentVariant', $this->makeVariant($componentId, $stock, $price, $currency));
 
         return $item;
     }
@@ -149,5 +151,54 @@ class BundleCalculationsTest extends TestCase
 
         // 2 × 1500 + 1 × 2500 = 5500
         $this->assertEquals(5_500.0, $bundle->bundle_cost);
+    }
+
+    public function test_calculateBundleCost_converts_usd_component_to_uzs(): void
+    {
+        $bundle = new Product();
+        $bundle->is_bundle = true;
+
+        // Компонент в USD: 3 доллара × курс 12700 = 38100 UZS за штуку
+        // В комплекте 2 штуки → 76200 UZS
+        $items = new Collection([
+            $this->makeBundleItem(1, 100, 3, 2, 'USD'),
+        ]);
+        $bundle->setRelation('bundleItems', $items);
+
+        // Создаём FinanceSettings в памяти без БД
+        $settings = new FinanceSettings();
+        $settings->setRawAttributes([
+            'base_currency_code' => 'UZS',
+            'usd_rate' => 12700,
+            'rub_rate' => 140,
+            'eur_rate' => 13800,
+        ], true);
+
+        $this->assertEquals(76_200.0, $bundle->calculateBundleCost($settings));
+    }
+
+    public function test_calculateBundleCost_mixes_uzs_and_usd_components(): void
+    {
+        $bundle = new Product();
+        $bundle->is_bundle = true;
+
+        // 1 компонент в UZS: 2 × 5000 = 10000 UZS
+        // 1 компонент в USD: 1 × 2 × 12700 = 25400 UZS
+        // Итого: 35400 UZS
+        $items = new Collection([
+            $this->makeBundleItem(1, 100, 5_000, 2, 'UZS'),
+            $this->makeBundleItem(2, 100, 2, 1, 'USD'),
+        ]);
+        $bundle->setRelation('bundleItems', $items);
+
+        $settings = new FinanceSettings();
+        $settings->setRawAttributes([
+            'base_currency_code' => 'UZS',
+            'usd_rate' => 12700,
+            'rub_rate' => 140,
+            'eur_rate' => 13800,
+        ], true);
+
+        $this->assertEquals(35_400.0, $bundle->calculateBundleCost($settings));
     }
 }
