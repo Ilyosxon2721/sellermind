@@ -208,13 +208,16 @@ class Product extends Model
     }
 
     /**
-     * Рассчитать себестоимость комплекта как сумму себестоимостей компонентов,
-     * умноженных на их количество в комплекте.
+     * Рассчитать себестоимость комплекта в БАЗОВОЙ ВАЛЮТЕ (UZS) как сумму
+     * себестоимостей компонентов × их количество в комплекте.
      *
-     * Используется purchase_price компонентного варианта (закупочная цена).
-     * Возвращает 0, если ни у одного компонента нет закупочной цены.
+     * Учитывает валюту закупочной цены компонента (purchase_price_currency):
+     * если компонент закуплен в USD — конвертируется в UZS через FinanceSettings.
+     *
+     * FinanceSettings загружаются один раз и передаются в каждый компонент —
+     * это избавляет от N+1 запросов.
      */
-    public function calculateBundleCost(): float
+    public function calculateBundleCost(?\App\Models\Finance\FinanceSettings $settings = null): float
     {
         if (! $this->is_bundle) {
             return 0.0;
@@ -226,13 +229,31 @@ class Product extends Model
             return 0.0;
         }
 
+        // Ленивое получение FinanceSettings — нужно только если есть компоненты
+        // с валютой, отличной от UZS. Для UZS-only комплектов settings не
+        // запрашиваются (getPurchasePriceInBase вернёт raw price).
+        $settingsResolver = function () use ($settings) {
+            static $resolved = null;
+            if ($settings !== null) {
+                return $settings;
+            }
+            if ($resolved === null && $this->company_id) {
+                $resolved = \App\Models\Finance\FinanceSettings::getForCompany($this->company_id);
+            }
+
+            return $resolved;
+        };
+
         $total = 0.0;
 
         foreach ($items as $item) {
             if (! $item->componentVariant) {
                 continue;
             }
-            $componentCost = (float) ($item->componentVariant->purchase_price ?? 0);
+            $currency = $item->componentVariant->purchase_price_currency ?? 'UZS';
+            $componentCost = $currency === 'UZS'
+                ? (float) ($item->componentVariant->purchase_price ?? 0)
+                : $item->componentVariant->getPurchasePriceInBase($settingsResolver());
             $total += $componentCost * $item->quantity;
         }
 
