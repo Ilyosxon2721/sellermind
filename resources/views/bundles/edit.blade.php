@@ -75,11 +75,90 @@
                                 </template>
                             </div>
                             <div class="md:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Краткое описание</label>
                                 <textarea x-model="form.description_short" rows="2"
                                           class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
                             </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Полное описание</label>
+                                <textarea x-model="form.description_full" rows="3"
+                                          class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                            </div>
                         </div>
+                    </div>
+
+                    {{-- Параметры для маркетплейса --}}
+                    <div class="bg-white rounded-2xl border border-gray-200/50 shadow-sm p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 class="text-lg font-semibold text-gray-900">Параметры для маркетплейса</h2>
+                                <p class="text-xs text-gray-500 mt-1">Эти поля комплекта публикуются на маркетплейсах как отдельный товар</p>
+                            </div>
+                            <template x-if="marketplaceLinks.length > 0">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                    <span x-text="marketplaceLinks.length + ' привязок'"></span>
+                                </span>
+                            </template>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">SKU *</label>
+                                <input type="text" x-model="form.sku"
+                                       class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <template x-if="errors.sku">
+                                    <p class="mt-1 text-sm text-red-500" x-text="errors.sku"></p>
+                                </template>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Штрихкод</label>
+                                <input type="text" x-model="form.barcode"
+                                       class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Цена продажи, UZS *</label>
+                                <input type="number" min="0" step="0.01" x-model.number="form.price_default"
+                                       class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <template x-if="errors.price_default">
+                                    <p class="mt-1 text-sm text-red-500" x-text="errors.price_default"></p>
+                                </template>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Старая цена, UZS</label>
+                                <input type="number" min="0" step="0.01" x-model.number="form.old_price_default"
+                                       class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div class="md:col-span-2 flex items-center justify-between bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl px-4 py-3 border border-indigo-100">
+                                <div>
+                                    <div class="text-xs text-gray-500 uppercase tracking-wider">Себестоимость комплекта</div>
+                                    <div class="text-xs text-gray-400">Сумма себестоимостей компонентов × их количество</div>
+                                </div>
+                                <div class="text-xl font-bold text-indigo-700" x-text="formatMoney(bundleCost) + ' UZS'"></div>
+                            </div>
+                        </div>
+
+                        {{-- Список привязок к маркетплейсам (read-only) --}}
+                        <template x-if="marketplaceLinks.length > 0">
+                            <div class="mt-4 pt-4 border-t border-gray-100">
+                                <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Активные привязки</div>
+                                <div class="space-y-2">
+                                    <template x-for="link in marketplaceLinks" :key="link.id">
+                                        <div class="flex items-center justify-between text-sm bg-gray-50 rounded-lg px-3 py-2">
+                                            <div class="flex items-center space-x-2">
+                                                <span class="px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700" x-text="(link.marketplace_code || link.account?.marketplace || '').toUpperCase()"></span>
+                                                <span class="text-gray-700" x-text="link.account?.name || '—'"></span>
+                                                <span class="text-xs text-gray-400" x-text="'offer: ' + (link.external_offer_id || '—')"></span>
+                                            </div>
+                                            <div class="flex items-center space-x-2">
+                                                <span class="text-xs text-gray-500" x-text="'sync: ' + (link.last_stock_synced ?? '—')"></span>
+                                                <span class="inline-flex w-2 h-2 rounded-full"
+                                                      :class="link.sync_stock_enabled ? 'bg-green-500' : 'bg-gray-300'"></span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
                     </div>
 
                     {{-- Компоненты комплекта --}}
@@ -218,18 +297,34 @@
 function bundleEditForm(bundleId) {
     return {
         bundleId,
-        form: { name: '', article: '', description_short: '' },
+        form: {
+            name: '',
+            article: '',
+            description_short: '',
+            description_full: '',
+            sku: '',
+            barcode: '',
+            price_default: null,
+            old_price_default: null,
+        },
         items: [],
+        marketplaceLinks: [],
         searchQuery: '',
         searchResults: [],
         showSearchResults: false,
         bundleStock: 0,
+        bundleCost: 0,
         saving: false,
         loadingBundle: true,
         errors: {},
 
         async init() {
             await this.loadBundle();
+        },
+
+        formatMoney(val) {
+            const num = Number(val || 0);
+            return num.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         },
 
         async loadBundle() {
@@ -240,6 +335,15 @@ function bundleEditForm(bundleId) {
                 this.form.name = bundle.name;
                 this.form.article = bundle.article;
                 this.form.description_short = bundle.description_short || '';
+                this.form.description_full = bundle.description_full || '';
+
+                // Загружаем поля bundle-варианта
+                const bv = bundle.bundle_variant || {};
+                this.form.sku = bv.sku || '';
+                this.form.barcode = bv.barcode || '';
+                this.form.price_default = bv.price_default ? Number(bv.price_default) : null;
+                this.form.old_price_default = bv.old_price_default ? Number(bv.old_price_default) : null;
+                this.marketplaceLinks = bv.marketplace_links || [];
 
                 this.items = (bundle.bundle_items || []).map(item => ({
                     variant_id: item.component_variant_id,
@@ -247,10 +351,12 @@ function bundleEditForm(bundleId) {
                     variant_name: item.component_variant?.option_values_summary,
                     sku: item.component_variant?.sku,
                     stock: item.component_variant?.stock_default || 0,
+                    purchase_price: Number(item.component_variant?.purchase_price || 0),
                     quantity: item.quantity,
                 }));
 
                 this.bundleStock = bundle.bundle_stock || 0;
+                this.bundleCost = Number(bundle.bundle_cost || 0);
             } catch (e) {
                 alert('Ошибка загрузки: ' + (e.response?.data?.message || e.message));
             } finally {
@@ -275,6 +381,7 @@ function bundleEditForm(bundleId) {
                 variant_name: variant.option_values_summary,
                 sku: variant.sku,
                 stock: variant.stock_default || 0,
+                purchase_price: Number(variant.purchase_price || 0),
                 quantity: 1,
             });
             this.showSearchResults = false;
@@ -289,14 +396,27 @@ function bundleEditForm(bundleId) {
         },
 
         recalcBundleStock() {
-            if (this.items.length === 0) { this.bundleStock = 0; return; }
+            if (this.items.length === 0) {
+                this.bundleStock = 0;
+                this.bundleCost = 0;
+                return;
+            }
             this.bundleStock = Math.min(...this.items.map(i => Math.floor(i.stock / (i.quantity || 1))));
+            this.bundleCost = this.items.reduce(
+                (sum, i) => sum + (Number(i.purchase_price || 0) * Number(i.quantity || 0)),
+                0
+            );
         },
 
         async save() {
             this.errors = {};
             if (!this.form.name) { this.errors.name = 'Укажите название'; return; }
             if (!this.form.article) { this.errors.article = 'Укажите артикул'; return; }
+            if (!this.form.sku) { this.errors.sku = 'Укажите SKU комплекта'; return; }
+            if (!this.form.price_default || this.form.price_default <= 0) {
+                this.errors.price_default = 'Укажите цену продажи';
+                return;
+            }
             if (this.items.length < 2) { this.errors.items = 'Минимум 2 компонента'; return; }
 
             this.saving = true;

@@ -60,7 +60,14 @@ final class BundleController extends Controller
             'brand_name' => 'nullable|string|max:255',
             'category_id' => 'nullable|integer|exists:product_categories,id',
             'description_short' => 'nullable|string',
+            'description_full' => 'nullable|string',
             'is_active' => 'boolean',
+            // Поля bundle-варианта (SKU/баркод/цена для маркетплейса)
+            'sku' => 'nullable|string|max:100',
+            'barcode' => 'nullable|string|max:20',
+            'price_default' => 'nullable|numeric|min:0',
+            'old_price_default' => 'nullable|numeric|min:0',
+            // Компоненты
             'items' => 'required|array|min:2',
             'items.*.component_variant_id' => 'required|integer|exists:product_variants,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -90,7 +97,14 @@ final class BundleController extends Controller
             'brand_name' => 'nullable|string|max:255',
             'category_id' => 'nullable|integer|exists:product_categories,id',
             'description_short' => 'nullable|string',
+            'description_full' => 'nullable|string',
             'is_active' => 'boolean',
+            // Поля bundle-варианта
+            'sku' => 'nullable|string|max:100',
+            'barcode' => 'nullable|string|max:20',
+            'price_default' => 'nullable|numeric|min:0',
+            'old_price_default' => 'nullable|numeric|min:0',
+            // Компоненты
             'items' => 'sometimes|array|min:2',
             'items.*.component_variant_id' => 'required_with:items|integer|exists:product_variants,id',
             'items.*.quantity' => 'required_with:items|integer|min:1',
