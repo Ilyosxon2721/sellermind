@@ -180,7 +180,12 @@
         <tbody>
             @foreach($order['items'] as $item)
             <tr>
-                <td>{{ Str::limit($item['name'], 25) }}</td>
+                <td>
+                    {{ Str::limit($item['name'], 25) }}
+                    @if(!empty($item['sku']))
+                        <br><span style="font-size:9px;color:#666;">{{ $item['sku'] }}</span>
+                    @endif
+                </td>
                 <td class="qty">{{ (int)$item['quantity'] }}</td>
                 <td class="price">{{ number_format($item['price'], 0, '.', ' ') }}</td>
                 <td class="total">{{ number_format($item['total'], 0, '.', ' ') }}</td>

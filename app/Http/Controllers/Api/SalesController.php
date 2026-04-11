@@ -199,6 +199,15 @@ class SalesController extends Controller
                 }
                 break;
 
+            case 'pos':
+                $order = OfflineSale::with(['items', 'warehouse'])
+                    ->where('company_id', $companyId)
+                    ->find($orderId);
+                if ($order) {
+                    $order = $this->formatPosOrderDetails($order);
+                }
+                break;
+
             case 'sale':
                 // Manual sales from 'sales' table (created via /sales/create)
                 $order = \App\Models\Sale::with(['items.productVariant', 'counterparty', 'warehouse'])
@@ -418,6 +427,53 @@ class SalesController extends Controller
     /**
      * Format Sale model for details view (from /sales/create)
      */
+    private function formatPosOrderDetails(OfflineSale $sale): array
+    {
+        $paymentLabels = [
+            'cash' => 'Наличные',
+            'card' => 'Карта',
+            'transfer' => 'Перевод',
+            'mixed' => 'Смешанная',
+        ];
+
+        $items = $sale->items->map(fn ($item) => [
+            'id' => $item->id,
+            'product_name' => $item->product_name,
+            'sku' => $item->sku_code ?? null,
+            'quantity' => (int) $item->quantity,
+            'unit_price' => (float) $item->unit_price,
+            'subtotal' => (float) $item->line_total,
+            'total' => (float) $item->line_total,
+        ])->toArray();
+
+        return [
+            'id' => 'pos_' . $sale->id,
+            'order_number' => $sale->sale_number,
+            'marketplace' => 'pos',
+            'marketplace_label' => 'POS-Касса',
+            'account_name' => 'POS-Касса',
+            'status' => $sale->status === OfflineSale::STATUS_DELIVERED ? 'delivered' : $sale->status,
+            'status_label' => $this->getStatusLabel(
+                $sale->status === OfflineSale::STATUS_DELIVERED ? 'delivered' : $sale->status
+            ),
+            'raw_status' => $sale->status,
+            'customer_name' => $sale->customer_name,
+            'customer_phone' => $sale->customer_phone,
+            'warehouse_name' => $sale->warehouse?->name,
+            'total_amount' => (float) $sale->total_amount,
+            'subtotal' => (float) $sale->subtotal,
+            'discount_amount' => (float) ($sale->discount_amount ?? 0),
+            'currency' => $sale->currency_code ?? 'UZS',
+            'payment_method' => $paymentLabels[$sale->payment_method] ?? $sale->payment_method,
+            'notes' => $sale->notes,
+            'items' => $items,
+            'items_count' => count($items),
+            'created_at' => ($sale->sale_date ?? $sale->created_at)?->toIso8601String(),
+            'created_at_formatted' => ($sale->sale_date ?? $sale->created_at)?->format('d.m.Y H:i'),
+            'is_revenue' => $sale->status === OfflineSale::STATUS_DELIVERED,
+        ];
+    }
+
     private function formatSaleDetails(\App\Models\Sale $sale): array
     {
         $items = $sale->items->map(fn ($item) => [
@@ -1252,13 +1308,18 @@ class SalesController extends Controller
                 'order_number' => $sale->sale_number,
                 'created_at' => ($sale->sale_date ?? $sale->created_at)?->toIso8601String(),
                 'marketplace' => 'pos',
+                'marketplace_label' => 'POS-Касса',
                 'account_name' => 'POS-Касса',
                 'customer_name' => $sale->customer_name,
+                'customer_phone' => $sale->customer_phone,
                 'total_amount' => (float) $sale->total_amount,
                 'currency' => $sale->currency_code ?? 'UZS',
                 'status' => $sale->status === OfflineSale::STATUS_DELIVERED ? 'delivered' : $sale->status,
-                'status_label' => $paymentLabels[$sale->payment_method] ?? 'Оплачено',
-                'is_revenue' => true,
+                'status_label' => $this->getStatusLabel(
+                    $sale->status === OfflineSale::STATUS_DELIVERED ? 'delivered' : $sale->status
+                ),
+                'payment_method' => $paymentLabels[$sale->payment_method] ?? $sale->payment_method,
+                'is_revenue' => $sale->status === OfflineSale::STATUS_DELIVERED,
                 'raw_status' => $sale->status,
             ]);
         } catch (\Exception $e) {

@@ -210,7 +210,11 @@
                 <template x-for="(item, idx) in cart" :key="idx">
                     <div class="bg-white rounded-xl p-3 shadow-sm">
                         <div class="flex justify-between items-start">
-                            <p class="font-medium text-sm flex-1 pr-2" x-text="item.product_name"></p>
+                            <div class="flex-1 pr-2">
+                                <p class="font-medium text-sm" x-text="item.product_name"></p>
+                                <p class="text-xs text-gray-400" x-show="item.sku_code" x-text="'SKU: ' + item.sku_code"></p>
+                                <p class="text-xs text-gray-400" x-show="item.barcode" x-text="'Штрихкод: ' + item.barcode"></p>
+                            </div>
                             <button @click="removeFromCart(idx)" class="text-red-400 hover:text-red-600 p-1">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
@@ -564,6 +568,7 @@ function posTerminal() {
                         shiftData.total_cash_received = summary.cash_sales ?? shiftData.total_cash_received ?? 0;
                         shiftData.total_card_received = summary.card_sales ?? shiftData.total_card_received ?? 0;
                         shiftData.total_transfer_received = summary.transfer_sales ?? shiftData.total_transfer_received ?? 0;
+                        shiftData.expected_balance = summary.expected_balance ?? shiftData.expected_balance ?? 0;
                     }
                     this.shift = shiftData;
                     if (this.shift) await this.loadRecentSales();
@@ -733,6 +738,7 @@ function posTerminal() {
                     product_id: product.product_id,
                     product_name: product.name || product.product_name || 'Без названия',
                     sku_code: product.sku || '',
+                    barcode: product.barcode || '',
                     quantity: 1,
                     unit_price: price,
                     unit_cost: Number(product.cost_price || product.purchase_price || 0),

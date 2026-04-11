@@ -130,13 +130,18 @@ final class PosController extends Controller
             ->where('status', OfflineSale::STATUS_DELIVERED)
             ->get();
 
+        $cashSales = (float) $salesInShift->where('payment_method', 'cash')->sum('total_amount');
+
         $summary = [
             'sales_count' => $salesInShift->count(),
             'total_sales' => (float) $salesInShift->sum('total_amount'),
-            'cash_sales' => (float) $salesInShift->where('payment_method', 'cash')->sum('total_amount'),
+            'cash_sales' => $cashSales,
             'card_sales' => (float) $salesInShift->where('payment_method', 'card')->sum('total_amount'),
             'transfer_sales' => (float) $salesInShift->where('payment_method', 'transfer')->sum('total_amount'),
             'mixed_sales' => (float) $salesInShift->where('payment_method', 'mixed')->sum('total_amount'),
+            'expected_balance' => (float) $shift->opening_balance + $cashSales
+                + (float) $shift->total_cash_in - (float) $shift->total_cash_out
+                - (float) $shift->total_refunds,
         ];
 
         return $this->successResponse([
