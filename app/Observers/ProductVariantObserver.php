@@ -4,6 +4,8 @@ namespace App\Observers;
 
 use App\Events\StockUpdated;
 use App\Models\PriceHistory;
+use App\Models\Product;
+use App\Models\ProductBundleItem;
 use App\Models\ProductVariant;
 use App\Models\Warehouse\Sku;
 use App\Models\Warehouse\StockLedger;
@@ -83,6 +85,13 @@ class ProductVariantObserver
                         'new_stock' => $newStock,
                     ]);
                     event(new StockUpdated($variant, $oldStock, $newStock));
+
+                    // Если этот вариант — компонент каких-то комплектов, пересчитываем
+                    // их bundle-варианты. Обновление stock_default bundle-варианта
+                    // снова попадёт в этот же observer и запустит sync комплекта на маркетплейс.
+                    if (! $variant->is_bundle_variant) {
+                        $this->syncBundlesContainingVariant($variant);
+                    }
                 } else {
                     Log::debug('ProductVariantObserver: stock values equal after casting, skipping event', [
                         'variant_id' => $variant->id,
@@ -277,6 +286,68 @@ class ProductVariantObserver
         } catch (\Exception $e) {
             Log::warning('Failed to sync stock to warehouse', [
                 'variant_id' => $variant->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Найти все комплекты, в которых участвует данный вариант,
+     * и пересчитать stock_default / purchase_price их bundle-вариантов.
+     *
+     * Обновление stock_default bundle-варианта рекурсивно попадёт в этот же
+     * observer, который зафайрит StockUpdated → SyncStockToMarketplaces
+     * пушнёт новый остаток на маркетплейсы для bundle-листингов.
+     */
+    protected function syncBundlesContainingVariant(ProductVariant $variant): void
+    {
+        try {
+            $bundleProductIds = ProductBundleItem::query()
+                ->where('component_variant_id', $variant->id)
+                ->pluck('bundle_product_id')
+                ->unique();
+
+            if ($bundleProductIds->isEmpty()) {
+                return;
+            }
+
+            $bundles = Product::query()
+                ->whereIn('id', $bundleProductIds)
+                ->where('is_bundle', true)
+                ->where('is_archived', false)
+                ->with(['bundleItems.componentVariant', 'bundleVariant'])
+                ->get();
+
+            foreach ($bundles as $bundle) {
+                $bundleVariant = $bundle->bundleVariant;
+                if (! $bundleVariant) {
+                    continue;
+                }
+
+                $newBundleStock = $bundle->calculateBundleStock();
+                $newBundleCost = $bundle->calculateBundleCost();
+
+                $stockChanged = (int) $bundleVariant->stock_default !== $newBundleStock;
+                $costChanged = (float) $bundleVariant->purchase_price !== (float) $newBundleCost;
+
+                if ($stockChanged || $costChanged) {
+                    $bundleVariant->update([
+                        'stock_default' => $newBundleStock,
+                        'purchase_price' => $newBundleCost,
+                    ]);
+
+                    Log::info('Bundle variant recalculated from component change', [
+                        'bundle_id' => $bundle->id,
+                        'bundle_variant_id' => $bundleVariant->id,
+                        'triggered_by_variant_id' => $variant->id,
+                        'new_stock' => $newBundleStock,
+                        'new_cost' => $newBundleCost,
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to recalculate bundles for component variant', [
+                'component_variant_id' => $variant->id,
                 'error' => $e->getMessage(),
             ]);
         }

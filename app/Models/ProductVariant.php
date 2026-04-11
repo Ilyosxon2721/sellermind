@@ -66,6 +66,7 @@ class ProductVariant extends Model
         'main_image_id',
         'is_active',
         'is_deleted',
+        'is_bundle_variant',
     ];
 
     protected function casts(): array
@@ -81,6 +82,7 @@ class ProductVariant extends Model
             'height_mm' => 'integer',
             'is_active' => 'boolean',
             'is_deleted' => 'boolean',
+            'is_bundle_variant' => 'boolean',
         ];
     }
 
@@ -168,10 +170,19 @@ class ProductVariant extends Model
     }
 
     /**
-     * Получить текущий остаток
+     * Получить текущий остаток.
+     *
+     * Для bundle-варианта остаток считается динамически как минимум по компонентам,
+     * чтобы всегда отражать актуальную сборочную ёмкость комплекта.
      */
     public function getCurrentStock(): int
     {
+        if ($this->is_bundle_variant) {
+            $product = $this->relationLoaded('product') ? $this->product : $this->product()->first();
+
+            return $product ? $product->calculateBundleStock() : 0;
+        }
+
         return $this->stock_default ?? 0;
     }
 
@@ -187,20 +198,47 @@ class ProductVariant extends Model
     }
 
     /**
-     * Уменьшить остаток (при заказе)
+     * Уменьшить остаток (при заказе).
+     *
+     * Для bundle-варианта — каскадно списываем компоненты. Собственный
+     * stock_default bundle-варианта пересчитается автоматически в observer'е
+     * компонентного варианта (см. ProductVariantObserver::syncBundlesContainingVariant).
      */
     public function decrementStock(int $quantity): bool
     {
+        if ($this->is_bundle_variant) {
+            $product = $this->relationLoaded('product') ? $this->product : $this->product()->first();
+            if ($product) {
+                $product->deductBundleStock($quantity);
+
+                return true;
+            }
+
+            return false;
+        }
+
         $newStock = max(0, $this->stock_default - $quantity);
 
         return $this->updateStock($newStock);
     }
 
     /**
-     * Увеличить остаток (при отмене заказа)
+     * Увеличить остаток (при отмене заказа).
+     * Для bundle-варианта возвращаем компоненты.
      */
     public function incrementStock(int $quantity): bool
     {
+        if ($this->is_bundle_variant) {
+            $product = $this->relationLoaded('product') ? $this->product : $this->product()->first();
+            if ($product) {
+                $product->returnBundleStock($quantity);
+
+                return true;
+            }
+
+            return false;
+        }
+
         $newStock = $this->stock_default + $quantity;
 
         return $this->updateStock($newStock);
@@ -211,9 +249,24 @@ class ProductVariant extends Model
      * Используется в OrderStockService и ConsumeInSupplyReservations,
      * которые сами создают записи в stock_ledger и вызывают синхронизацию.
      * Обычный decrementStock() вызывает Observer, который создаёт дублирующую запись в ledger.
+     *
+     * Для bundle-варианта — каскадно списываем с компонентов через обычный (не quietly)
+     * путь, т.к. ledger-записи должны быть на компонентах, и их observer'ы должны
+     * триггернуть sync на маркетплейс.
      */
     public function decrementStockQuietly(int $quantity): bool
     {
+        if ($this->is_bundle_variant) {
+            $product = $this->relationLoaded('product') ? $this->product : $this->product()->first();
+            if ($product) {
+                $product->deductBundleStock($quantity);
+
+                return true;
+            }
+
+            return false;
+        }
+
         $newStock = max(0, $this->stock_default - $quantity);
         $this->stock_default = $newStock;
 
@@ -227,6 +280,17 @@ class ProductVariant extends Model
      */
     public function incrementStockQuietly(int $quantity): bool
     {
+        if ($this->is_bundle_variant) {
+            $product = $this->relationLoaded('product') ? $this->product : $this->product()->first();
+            if ($product) {
+                $product->returnBundleStock($quantity);
+
+                return true;
+            }
+
+            return false;
+        }
+
         $newStock = $this->stock_default + $quantity;
         $this->stock_default = $newStock;
 

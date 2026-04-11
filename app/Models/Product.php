@@ -135,11 +135,43 @@ class Product extends Model
     }
 
     /**
+     * Виртуальный вариант комплекта (есть только у is_bundle=true).
+     * Этот вариант держит sku/barcode/цену/описание и используется
+     * для связи с маркетплейсами через VariantMarketplaceLink.
+     */
+    public function bundleVariant(): HasOne
+    {
+        return $this->hasOne(ProductVariant::class)->where('is_bundle_variant', true);
+    }
+
+    /**
      * Accessor для остатка комплекта (используется через append)
      */
     public function getBundleStockAttribute(): int
     {
         return $this->calculateBundleStock();
+    }
+
+    /**
+     * Accessor для себестоимости комплекта (сумма себестоимостей компонентов × кол-во)
+     */
+    public function getBundleCostAttribute(): float
+    {
+        return $this->calculateBundleCost();
+    }
+
+    /**
+     * Загрузить компоненты комплекта с их вариантами (если ещё не загружены).
+     * Используется расчётными методами ниже — переиспользует eager-loaded
+     * отношение, если оно уже есть, чтобы избежать лишних запросов.
+     */
+    protected function loadBundleItemsWithVariants(): \Illuminate\Support\Collection
+    {
+        if ($this->relationLoaded('bundleItems')) {
+            return $this->bundleItems;
+        }
+
+        return $this->bundleItems()->with('componentVariant')->get();
     }
 
     /**
@@ -152,7 +184,7 @@ class Product extends Model
             return 0;
         }
 
-        $items = $this->bundleItems()->with('componentVariant')->get();
+        $items = $this->loadBundleItemsWithVariants();
 
         if ($items->isEmpty()) {
             return 0;
@@ -161,12 +193,50 @@ class Product extends Model
         $minKits = PHP_INT_MAX;
 
         foreach ($items as $item) {
-            $stock = $item->componentVariant->getCurrentStock();
+            if (! $item->componentVariant) {
+                return 0;
+            }
+            // Берём "сырой" stock_default компонента, без оверрайда для bundle,
+            // чтобы избежать рекурсии (вложенные комплекты).
+            $raw = $item->componentVariant->getRawOriginal('stock_default');
+            $stock = (int) ($raw ?? $item->componentVariant->stock_default ?? 0);
             $kits = $item->quantity > 0 ? intdiv($stock, $item->quantity) : 0;
             $minKits = min($minKits, $kits);
         }
 
         return $minKits === PHP_INT_MAX ? 0 : $minKits;
+    }
+
+    /**
+     * Рассчитать себестоимость комплекта как сумму себестоимостей компонентов,
+     * умноженных на их количество в комплекте.
+     *
+     * Используется purchase_price компонентного варианта (закупочная цена).
+     * Возвращает 0, если ни у одного компонента нет закупочной цены.
+     */
+    public function calculateBundleCost(): float
+    {
+        if (! $this->is_bundle) {
+            return 0.0;
+        }
+
+        $items = $this->loadBundleItemsWithVariants();
+
+        if ($items->isEmpty()) {
+            return 0.0;
+        }
+
+        $total = 0.0;
+
+        foreach ($items as $item) {
+            if (! $item->componentVariant) {
+                continue;
+            }
+            $componentCost = (float) ($item->componentVariant->purchase_price ?? 0);
+            $total += $componentCost * $item->quantity;
+        }
+
+        return round($total, 2);
     }
 
     /**

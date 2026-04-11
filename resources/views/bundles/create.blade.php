@@ -67,9 +67,59 @@
                             </template>
                         </div>
                         <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Краткое описание</label>
                             <textarea x-model="form.description_short" rows="2" placeholder="Краткое описание комплекта"
                                       class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Полное описание</label>
+                            <textarea x-model="form.description_full" rows="3" placeholder="Детальное описание для листинга на маркетплейсах"
+                                      class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Параметры для маркетплейса --}}
+                <div class="bg-white rounded-2xl border border-gray-200/50 shadow-sm p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900">Параметры для маркетплейса</h2>
+                            <p class="text-xs text-gray-500 mt-1">Комплект будет публиковаться как отдельный товар с этими параметрами</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">SKU *</label>
+                            <input type="text" x-model="form.sku" placeholder="BUNDLE-SKU-001"
+                                   class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <template x-if="errors.sku">
+                                <p class="mt-1 text-sm text-red-500" x-text="errors.sku"></p>
+                            </template>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Штрихкод</label>
+                            <input type="text" x-model="form.barcode" placeholder="4600000000000"
+                                   class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Цена продажи, UZS *</label>
+                            <input type="number" min="0" step="0.01" x-model.number="form.price_default" placeholder="0.00"
+                                   class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <template x-if="errors.price_default">
+                                <p class="mt-1 text-sm text-red-500" x-text="errors.price_default"></p>
+                            </template>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Старая цена, UZS</label>
+                            <input type="number" min="0" step="0.01" x-model.number="form.old_price_default" placeholder="0.00"
+                                   class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div class="md:col-span-2 flex items-center justify-between bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl px-4 py-3 border border-indigo-100">
+                            <div>
+                                <div class="text-xs text-gray-500 uppercase tracking-wider">Себестоимость комплекта</div>
+                                <div class="text-xs text-gray-400">Сумма себестоимостей компонентов × их количество</div>
+                            </div>
+                            <div class="text-xl font-bold text-indigo-700" x-text="formatMoney(bundleCost) + ' UZS'"></div>
                         </div>
                     </div>
                 </div>
@@ -220,16 +270,31 @@
 <script nonce="{{ $cspNonce ?? '' }}">
 function bundleForm() {
     return {
-        form: { name: '', article: '', description_short: '' },
+        form: {
+            name: '',
+            article: '',
+            description_short: '',
+            description_full: '',
+            sku: '',
+            barcode: '',
+            price_default: null,
+            old_price_default: null,
+        },
         items: [],
         searchQuery: '',
         searchResults: [],
         showSearchResults: false,
         bundleStock: 0,
+        bundleCost: 0,
         saving: false,
         errors: {},
 
         init() {},
+
+        formatMoney(val) {
+            const num = Number(val || 0);
+            return num.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        },
 
         async searchVariants() {
             if (this.searchQuery.length < 1) {
@@ -255,6 +320,7 @@ function bundleForm() {
                 variant_name: variant.option_values_summary,
                 sku: variant.sku,
                 stock: variant.stock_default || 0,
+                purchase_price: Number(variant.purchase_price || 0),
                 quantity: 1,
             });
             this.showSearchResults = false;
@@ -271,10 +337,15 @@ function bundleForm() {
         recalcBundleStock() {
             if (this.items.length === 0) {
                 this.bundleStock = 0;
+                this.bundleCost = 0;
                 return;
             }
             this.bundleStock = Math.min(
                 ...this.items.map(i => Math.floor(i.stock / (i.quantity || 1)))
+            );
+            this.bundleCost = this.items.reduce(
+                (sum, i) => sum + (Number(i.purchase_price || 0) * Number(i.quantity || 0)),
+                0
             );
         },
 
@@ -282,6 +353,11 @@ function bundleForm() {
             this.errors = {};
             if (!this.form.name) { this.errors.name = 'Укажите название'; return; }
             if (!this.form.article) { this.errors.article = 'Укажите артикул'; return; }
+            if (!this.form.sku) { this.errors.sku = 'Укажите SKU комплекта'; return; }
+            if (!this.form.price_default || this.form.price_default <= 0) {
+                this.errors.price_default = 'Укажите цену продажи';
+                return;
+            }
             if (this.items.length < 2) { this.errors.items = 'Добавьте минимум 2 компонента'; return; }
 
             this.saving = true;
