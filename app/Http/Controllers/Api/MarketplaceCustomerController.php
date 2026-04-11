@@ -176,6 +176,39 @@ class MarketplaceCustomerController extends Controller
     }
 
     /**
+     * Извлечь клиентов из существующих DBS заказов по всем аккаунтам компании
+     */
+    public function extractAll(): JsonResponse
+    {
+        $companyId = $this->getCompanyId();
+
+        $accounts = MarketplaceAccount::where('company_id', $companyId)->get();
+
+        $totals = ['created' => 0, 'updated' => 0, 'skipped' => 0, 'accounts' => 0];
+
+        foreach ($accounts as $account) {
+            try {
+                $stats = $this->customerService->extractFromExistingOrders($account);
+                $totals['created'] += $stats['created'];
+                $totals['updated'] += $stats['updated'];
+                $totals['skipped'] += $stats['skipped'];
+                $totals['accounts']++;
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Ошибка бекфилла клиентов из заказов', [
+                    'account_id' => $account->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $totals,
+            'message' => "Обработано аккаунтов: {$totals['accounts']}. Извлечено клиентов: {$totals['created']} новых, {$totals['updated']} обновлено, {$totals['skipped']} пропущено",
+        ]);
+    }
+
+    /**
      * Статистика клиентской базы
      */
     public function stats(): JsonResponse
