@@ -306,7 +306,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function marketplaceCustomersPage() {
     return {
         customers: [],
