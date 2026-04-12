@@ -55,4 +55,8 @@ Route::middleware(['web', 'auth:sanctum'])
 
         // Экспорт CSV (#081)
         Route::get('/export', [AnalyticsController::class, 'export'])->name('export');
+
+        // Анализ конкурентов
+        Route::get('/our-categories', [AnalyticsController::class, 'ourCategories'])->name('our-categories');
+        Route::get('/category/{id}/rankings', [AnalyticsController::class, 'categoryRankings'])->name('category.rankings');
     });

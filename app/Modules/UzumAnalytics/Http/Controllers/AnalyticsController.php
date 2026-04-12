@@ -454,4 +454,140 @@ final class AnalyticsController extends Controller
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
+
+    // -------------------------------------------------------------------------
+    // Анализ конкурентов
+    // -------------------------------------------------------------------------
+
+    /**
+     * Категории Uzum, где у текущей компании есть товары
+     */
+    public function ourCategories(): JsonResponse
+    {
+        $companyId = $this->getCompanyId();
+        $categories = $this->repository->getCompanyCategoryIds($companyId);
+
+        return response()->json(['categories' => $categories]);
+    }
+
+    /**
+     * Рейтинги магазинов, товаров и позиция компании в категории
+     */
+    public function categoryRankings(Request $request, int $id): JsonResponse
+    {
+        $companyId = $this->getCompanyId();
+        $limit = min((int) $request->get('limit', 30), 48);
+        $sortBy = $request->get('sort', 'orders');
+
+        // Определить наши shop_slug'и на Uzum
+        $ourShopSlugs = $this->repository->getCompanyShopSlugs($companyId);
+
+        // Получить товары категории с Uzum API (до 48 шт, сортировка по отзывам)
+        try {
+            $apiData = $this->apiClient->getCategory($id, 0, 48);
+            $items = $apiData['data']['makeSearch']['items'] ?? [];
+        } catch (\Throwable) {
+            $items = [];
+        }
+
+        $products = collect($items)
+            ->map(fn ($item) => $item['catalogCard'] ?? null)
+            ->filter()
+            ->values();
+
+        // Маппинг товаров
+        $productsList = $products->map(fn ($card) => [
+            'product_id' => $card['id'],
+            'title' => $card['title'] ?? '',
+            'shop_slug' => $card['shop']['slug'] ?? '',
+            'shop_title' => $card['shop']['title'] ?? $card['shop']['slug'] ?? '',
+            'price' => (int) ($card['minSellPrice'] ?? 0) / 100,
+            'original_price' => (int) ($card['minFullPrice'] ?? 0) / 100,
+            'rating' => (float) ($card['rating'] ?? 0),
+            'reviews_count' => (int) ($card['reviewsCount'] ?? 0),
+            'orders_count' => (int) ($card['ordersCount'] ?? 0),
+            'is_our_product' => in_array($card['shop']['slug'] ?? '', $ourShopSlugs, true),
+        ]);
+
+        // ---- Рейтинг магазинов ----
+        $shopRankings = $productsList
+            ->groupBy('shop_slug')
+            ->map(fn ($shopProducts, $slug) => [
+                'shop_slug' => $slug,
+                'shop_title' => $shopProducts->first()['shop_title'],
+                'products_count' => $shopProducts->count(),
+                'total_orders' => $shopProducts->sum('orders_count'),
+                'total_revenue' => (int) $shopProducts->sum(fn ($p) => $p['orders_count'] * $p['price']),
+                'total_reviews' => $shopProducts->sum('reviews_count'),
+                'avg_price' => (int) round($shopProducts->avg('price')),
+                'avg_rating' => round($shopProducts->avg('rating'), 2),
+                'is_our_shop' => in_array($slug, $ourShopSlugs, true),
+            ])
+            ->sortByDesc(match ($sortBy) {
+                'revenue' => 'total_revenue',
+                'reviews' => 'total_reviews',
+                'rating' => 'avg_rating',
+                'products' => 'products_count',
+                default => 'total_orders',
+            })
+            ->values()
+            ->take($limit);
+
+        // Присвоить ранги
+        $shopRankings = $shopRankings->map(fn ($shop, $i) => array_merge($shop, ['rank' => $i + 1]));
+
+        // ---- Рейтинг товаров ----
+        $productRankings = $productsList
+            ->sortByDesc(match ($sortBy) {
+                'revenue' => fn ($p) => $p['orders_count'] * $p['price'],
+                'reviews' => 'reviews_count',
+                'rating' => 'rating',
+                'price_asc' => fn ($p) => -$p['price'],
+                'price_desc' => 'price',
+                default => 'orders_count',
+            })
+            ->values()
+            ->take($limit)
+            ->map(fn ($p, $i) => array_merge($p, ['rank' => $i + 1]));
+
+        // ---- Позиция нашей компании ----
+        $ourShop = $shopRankings->firstWhere('is_our_shop', true);
+
+        // Ранги по разным метрикам
+        $byOrders = $shopRankings->sortByDesc('total_orders')->values();
+        $byRevenue = $shopRankings->sortByDesc('total_revenue')->values();
+        $byReviews = $shopRankings->sortByDesc('total_reviews')->values();
+        $byRating = $shopRankings->sortByDesc('avg_rating')->values();
+
+        $ourMetrics = null;
+        if ($ourShop) {
+            $ourMetrics = [
+                'shop_slug' => $ourShop['shop_slug'],
+                'shop_title' => $ourShop['shop_title'],
+                'products_in_category' => $ourShop['products_count'],
+                'total_orders' => $ourShop['total_orders'],
+                'total_revenue' => $ourShop['total_revenue'],
+                'total_reviews' => $ourShop['total_reviews'],
+                'avg_price' => $ourShop['avg_price'],
+                'avg_rating' => $ourShop['avg_rating'],
+                'rank_by_orders' => $byOrders->search(fn ($s) => $s['is_our_shop']) + 1,
+                'rank_by_revenue' => $byRevenue->search(fn ($s) => $s['is_our_shop']) + 1,
+                'rank_by_reviews' => $byReviews->search(fn ($s) => $s['is_our_shop']) + 1,
+                'rank_by_rating' => $byRating->search(fn ($s) => $s['is_our_shop']) + 1,
+                'total_shops' => $shopRankings->count(),
+            ];
+        }
+
+        // Категория
+        $category = UzumCategory::find($id);
+
+        return response()->json([
+            'category' => $category ? ['id' => $category->id, 'title' => $category->title] : null,
+            'total_products' => $apiData['data']['makeSearch']['total'] ?? $products->count(),
+            'shop_rankings' => $shopRankings->toArray(),
+            'product_rankings' => $productRankings->toArray(),
+            'our_metrics' => $ourMetrics,
+            'our_shop_slugs' => $ourShopSlugs,
+        ]);
+    }
 }
