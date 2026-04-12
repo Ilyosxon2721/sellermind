@@ -396,49 +396,27 @@ final class PosService
 
     /**
      * Обработка списания остатков для POS-продажи
+     *
+     * Делегирует в OfflineSaleStockService, который:
+     * - уменьшает stock_default варианта
+     * - создаёт отрицательную запись в StockLedger для склада
      */
     protected function processStockDeduction(OfflineSale $sale): void
     {
-        $items = $sale->items()->get();
-        $itemsProcessed = 0;
+        $stockService = app(\App\Services\Stock\OfflineSaleStockService::class);
 
-        foreach ($items as $item) {
-            $quantity = (float) $item->quantity;
-            if ($quantity <= 0) {
-                continue;
-            }
+        $result = $stockService->processSaleStatusChange(
+            $sale,
+            null,
+            OfflineSale::STATUS_DELIVERED
+        );
 
-            $variant = $this->findVariantForItem($sale->company_id, $item);
-
-            if (! $variant) {
-                Log::warning('POS: Вариант товара не найден для списания', [
-                    'sale_id' => $sale->id,
-                    'item_id' => $item->id,
-                    'sku_id' => $item->sku_id,
-                    'product_id' => $item->product_id,
-                ]);
-
-                continue;
-            }
-
-            // Списываем остатки
-            $variant->decrementStockQuietly((int) $quantity);
-            $itemsProcessed++;
-
-            Log::info('POS: Остатки списаны', [
+        if (! ($result['success'] ?? false)) {
+            Log::warning('POS: Ошибка списания остатков', [
                 'sale_id' => $sale->id,
-                'variant_id' => $variant->id,
-                'sku' => $variant->sku,
-                'quantity' => $quantity,
-                'stock_after' => $variant->stock_default,
+                'error' => $result['error'] ?? 'unknown',
             ]);
         }
-
-        // Обновляем статус остатков продажи
-        $sale->update([
-            'stock_status' => $itemsProcessed > 0 ? 'sold' : 'skipped',
-            'stock_sold_at' => $itemsProcessed > 0 ? now() : null,
-        ]);
     }
 
     /**
