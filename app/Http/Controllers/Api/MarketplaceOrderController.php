@@ -1211,13 +1211,14 @@ class MarketplaceOrderController extends Controller
         $orders = $query->orderByDesc('ordered_at')->limit(1000)->get();
 
         return $orders->map(function ($o) {
-            // Приоритет: колонка delivery_type → raw_payload.scheme.
-            // Не используем дефолт 'FBS', чтобы фронт мог корректно различать схемы
-            // и не перекидывать заказы без scheme в FBS.
+            // Приоритет: колонка delivery_type → raw_payload.scheme → дефолт 'FBS'.
+            // Дефолт 'FBS' безопасен: новые заказы уже получают delivery_type через
+            // scheme-итерацию в sync, а старые с null — приходили через FBS API,
+            // значит с высокой вероятностью FBS. DBS/EDBS обычно имеют raw_payload.scheme.
             $rawPayload = is_array($o->raw_payload) ? $o->raw_payload : json_decode($o->raw_payload, true);
             $rawScheme = $rawPayload['scheme'] ?? null;
-            $scheme = $o->delivery_type ?: $rawScheme;
-            $scheme = $scheme ? strtoupper($scheme) : null;
+            $scheme = $o->delivery_type ?: $rawScheme ?: 'FBS';
+            $scheme = strtoupper($scheme);
 
             return [
                 'id' => $o->id,
