@@ -377,6 +377,26 @@ Schedule::command('marketplace:check-fbs-stock --threshold=7')
 
 /*
 |--------------------------------------------------------------------------
+| RISMENT Integration Queue Processing
+|--------------------------------------------------------------------------
+|
+| Processes incoming events from RISMENT: products, stock, shipments,
+| marketplace accounts via shared Redis queues.
+|
+*/
+
+// RISMENT: Process incoming queue messages every minute (with 55s timeout)
+Schedule::command('integration:process-risment --timeout=55 --sleep=1')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->name('risment-queue-processor')
+    ->onFailure(function () {
+        \Log::error('RISMENT queue processor failed');
+    })
+    ->appendOutputTo(storage_path('logs/risment-integration.log'));
+
+/*
+|--------------------------------------------------------------------------
 | Marketplace Event Polling (Real-time notifications)
 |--------------------------------------------------------------------------
 */
