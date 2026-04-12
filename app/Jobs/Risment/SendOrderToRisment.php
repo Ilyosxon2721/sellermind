@@ -29,8 +29,7 @@ class SendOrderToRisment implements ShouldQueue
         protected array $orderData,
         protected ?int $rismentClientId = null,
     ) {
-        $this->connection = 'risment-integration';
-        $this->queue = 'risment:orders';
+        // Use default queue connection (has worker), handle() pushes to Redis directly
     }
 
     public function handle(): void
