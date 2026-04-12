@@ -438,9 +438,11 @@ class SalesController extends Controller
 
         $items = $sale->items->map(fn ($item) => [
             'id' => $item->id,
+            'name' => $item->product_name,
             'product_name' => $item->product_name,
             'sku' => $item->sku_code ?? null,
-            'quantity' => (int) $item->quantity,
+            'quantity' => (float) $item->quantity,
+            'price' => (float) $item->unit_price,
             'unit_price' => (float) $item->unit_price,
             'subtotal' => (float) $item->line_total,
             'total' => (float) $item->line_total,
