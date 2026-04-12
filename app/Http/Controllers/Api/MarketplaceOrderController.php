@@ -1184,18 +1184,29 @@ class MarketplaceOrderController extends Controller
             $shopIds = collect(explode(',', $request->shop_id))->filter()->map(fn ($v) => trim($v))->all();
             $query->whereIn('shop_id', $shopIds);
         }
-        // Filter by delivery type (scheme) if specified
+        // Filter by delivery type (scheme) if specified.
+        // Используем колонку delivery_type как приоритетный источник, fallback — raw_payload.scheme.
         if ($request->delivery_type) {
             $deliveryType = strtoupper($request->delivery_type);
-            $query->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(raw_payload, '$.scheme')) = ?", [$deliveryType]);
+            $query->where(function ($q) use ($deliveryType) {
+                $q->where('delivery_type', $deliveryType)
+                    ->orWhere(function ($q2) use ($deliveryType) {
+                        $q2->whereNull('delivery_type')
+                            ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(raw_payload, '$.scheme')) = ?", [$deliveryType]);
+                    });
+            });
         }
 
         $orders = $query->orderByDesc('ordered_at')->limit(1000)->get();
 
         return $orders->map(function ($o) {
-            // Get delivery type from DB field first, fallback to raw_payload
+            // Приоритет: колонка delivery_type → raw_payload.scheme.
+            // Не используем дефолт 'FBS', чтобы фронт мог корректно различать схемы
+            // и не перекидывать заказы без scheme в FBS.
             $rawPayload = is_array($o->raw_payload) ? $o->raw_payload : json_decode($o->raw_payload, true);
-            $scheme = strtoupper($o->delivery_type ?? $rawPayload['scheme'] ?? 'FBS');
+            $rawScheme = $rawPayload['scheme'] ?? null;
+            $scheme = $o->delivery_type ?: $rawScheme;
+            $scheme = $scheme ? strtoupper($scheme) : null;
 
             return [
                 'id' => $o->id,
