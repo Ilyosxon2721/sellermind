@@ -9,6 +9,9 @@ use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceCustomer;
+use App\Models\OzonOrder;
+use App\Models\UzumOrder;
+use App\Models\WbOrder;
 use App\Services\Marketplaces\MarketplaceCustomerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -176,7 +179,8 @@ class MarketplaceCustomerController extends Controller
     }
 
     /**
-     * Извлечь клиентов из существующих DBS заказов по всем аккаунтам компании
+     * Извлечь клиентов из существующих DBS заказов по всем аккаунтам компании.
+     * Возвращает детализацию по каждому аккаунту для диагностики.
      */
     public function extractAll(): JsonResponse
     {
@@ -185,26 +189,148 @@ class MarketplaceCustomerController extends Controller
         $accounts = MarketplaceAccount::where('company_id', $companyId)->get();
 
         $totals = ['created' => 0, 'updated' => 0, 'skipped' => 0, 'accounts' => 0];
+        $details = [];
 
         foreach ($accounts as $account) {
+            $accountName = $account->name ?? $account->login ?? "#{$account->id}";
+            $detail = [
+                'account_id' => $account->id,
+                'marketplace' => $account->marketplace,
+                'name' => $accountName,
+                'orders_total' => 0,
+                'eligible' => 0,
+                'created' => 0,
+                'updated' => 0,
+                'skipped' => 0,
+            ];
+
+            // Считаем подходящие заказы (диагностика)
             try {
+                if ($account->marketplace === 'uzum') {
+                    $base = UzumOrder::where('marketplace_account_id', $account->id);
+                    $detail['orders_total'] = (clone $base)->count();
+                    $detail['eligible'] = (clone $base)
+                        ->whereIn('delivery_type', ['DBS', 'EDBS'])
+                        ->whereNotNull('customer_phone')
+                        ->whereNotNull('customer_name')
+                        ->count();
+                } elseif ($account->marketplace === 'wb') {
+                    $base = WbOrder::where('marketplace_account_id', $account->id);
+                    $detail['orders_total'] = (clone $base)->count();
+                    $detail['eligible'] = (clone $base)
+                        ->whereNotNull('customer_phone')
+                        ->whereNotNull('customer_name')
+                        ->count();
+                } elseif ($account->marketplace === 'ozon' && \Illuminate\Support\Facades\Schema::hasTable('ozon_orders')) {
+                    $base = OzonOrder::where('marketplace_account_id', $account->id);
+                    $detail['orders_total'] = (clone $base)->count();
+                    $detail['eligible'] = (clone $base)
+                        ->whereNotNull('customer_phone')
+                        ->whereNotNull('customer_name')
+                        ->count();
+                }
+
                 $stats = $this->customerService->extractFromExistingOrders($account);
+                $detail['created'] = $stats['created'];
+                $detail['updated'] = $stats['updated'];
+                $detail['skipped'] = $stats['skipped'];
+
                 $totals['created'] += $stats['created'];
                 $totals['updated'] += $stats['updated'];
                 $totals['skipped'] += $stats['skipped'];
                 $totals['accounts']++;
             } catch (\Throwable $e) {
+                $detail['error'] = $e->getMessage();
                 \Illuminate\Support\Facades\Log::warning('Ошибка бекфилла клиентов из заказов', [
                     'account_id' => $account->id,
                     'error' => $e->getMessage(),
                 ]);
             }
+
+            $details[] = $detail;
         }
 
         return response()->json([
             'success' => true,
-            'data' => $totals,
+            'data' => [
+                'totals' => $totals,
+                'accounts' => $details,
+            ],
             'message' => "Обработано аккаунтов: {$totals['accounts']}. Извлечено клиентов: {$totals['created']} новых, {$totals['updated']} обновлено, {$totals['skipped']} пропущено",
+        ]);
+    }
+
+    /**
+     * Диагностика: сколько заказов по каждому аккаунту и сколько из них подходят под критерии
+     * извлечения клиентов (есть customer_phone/customer_name и нужный delivery_type).
+     *
+     * Используется для отладки: если "Извлечь из заказов" возвращает 0 — тут видно почему.
+     */
+    public function diagnose(): JsonResponse
+    {
+        $companyId = $this->getCompanyId();
+
+        $accounts = MarketplaceAccount::where('company_id', $companyId)->get();
+
+        $report = [];
+        foreach ($accounts as $account) {
+            $row = [
+                'account_id' => $account->id,
+                'marketplace' => $account->marketplace,
+                'name' => $account->name ?? $account->login ?? "#{$account->id}",
+                'orders_total' => 0,
+                'with_phone' => 0,
+                'with_name' => 0,
+                'with_phone_and_name' => 0,
+                'dbs_eligible' => 0,
+                'delivery_types' => [],
+            ];
+
+            if ($account->marketplace === 'uzum') {
+                $base = UzumOrder::where('marketplace_account_id', $account->id);
+                $row['orders_total'] = (clone $base)->count();
+                $row['with_phone'] = (clone $base)->whereNotNull('customer_phone')->count();
+                $row['with_name'] = (clone $base)->whereNotNull('customer_name')->count();
+                $row['with_phone_and_name'] = (clone $base)->whereNotNull('customer_phone')->whereNotNull('customer_name')->count();
+                $row['dbs_eligible'] = (clone $base)
+                    ->whereIn('delivery_type', ['DBS', 'EDBS'])
+                    ->whereNotNull('customer_phone')
+                    ->whereNotNull('customer_name')
+                    ->count();
+                $row['delivery_types'] = (clone $base)
+                    ->selectRaw('delivery_type, COUNT(*) as cnt')
+                    ->groupBy('delivery_type')
+                    ->pluck('cnt', 'delivery_type')
+                    ->toArray();
+            } elseif ($account->marketplace === 'wb') {
+                $base = WbOrder::where('marketplace_account_id', $account->id);
+                $row['orders_total'] = (clone $base)->count();
+                $row['with_phone'] = (clone $base)->whereNotNull('customer_phone')->count();
+                $row['with_name'] = (clone $base)->whereNotNull('customer_name')->count();
+                $row['with_phone_and_name'] = (clone $base)->whereNotNull('customer_phone')->whereNotNull('customer_name')->count();
+                $row['dbs_eligible'] = $row['with_phone_and_name'];
+                $row['delivery_types'] = (clone $base)
+                    ->selectRaw('wb_delivery_type as delivery_type, COUNT(*) as cnt')
+                    ->groupBy('wb_delivery_type')
+                    ->pluck('cnt', 'delivery_type')
+                    ->toArray();
+            } elseif ($account->marketplace === 'ozon' && \Illuminate\Support\Facades\Schema::hasTable('ozon_orders')) {
+                $base = OzonOrder::where('marketplace_account_id', $account->id);
+                $row['orders_total'] = (clone $base)->count();
+                $row['with_phone'] = (clone $base)->whereNotNull('customer_phone')->count();
+                $row['with_name'] = (clone $base)->whereNotNull('customer_name')->count();
+                $row['with_phone_and_name'] = (clone $base)->whereNotNull('customer_phone')->whereNotNull('customer_name')->count();
+                $row['dbs_eligible'] = $row['with_phone_and_name'];
+            } else {
+                $row['note'] = 'маркетплейс не поддерживается извлечением клиентов';
+            }
+
+            $report[] = $row;
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $report,
         ]);
     }
 
