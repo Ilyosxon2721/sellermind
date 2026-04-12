@@ -71,12 +71,6 @@ final class UzumOrderSyncService
     ];
 
     /**
-     * Схемы доставки, которые синхронизируются через FBS API.
-     * FBO заказы загружаются отдельно через Finance API.
-     */
-    private const SYNC_SCHEMES = ['FBS', 'DBS', 'EDBS'];
-
-    /**
      * Полная синхронизация заказов для аккаунта
      *
      * @return array{total: int, created: int, updated: int, errors: int}
@@ -100,25 +94,24 @@ final class UzumOrderSyncService
 
         $allStatuses = array_keys(self::STATUS_MAP);
 
-        // Проходим отдельно по каждой схеме доставки (FBS, DBS, EDBS),
-        // чтобы гарантированно знать тип доставки для каждого заказа.
-        foreach (self::SYNC_SCHEMES as $scheme) {
-            foreach ($allStatuses as $apiStatus) {
-                $isActive = in_array($apiStatus, self::ACTIVE_STATUSES);
-                $isExtended = in_array($apiStatus, self::EXTENDED_WINDOW_STATUSES);
+        // Загружаем ВСЕ заказы без фильтра scheme — Uzum API возвращает 0 при
+        // scheme=DBS/EDBS (параметр не поддерживается или работает иначе).
+        // Тип доставки определяется из response payload через detectDeliveryType().
+        foreach ($allStatuses as $apiStatus) {
+            $isActive = in_array($apiStatus, self::ACTIVE_STATUSES);
+            $isExtended = in_array($apiStatus, self::EXTENDED_WINDOW_STATUSES);
 
-                foreach ($shopIds as $shopId) {
-                    try {
-                        $this->syncStatusForShop(
-                            $uzum, $account, (string) $shopId, $apiStatus,
-                            $isActive, $isExtended, $fromMs, $extendedFromMs, $stats, $scheme
-                        );
-                    } catch (\Throwable $e) {
-                        Log::warning("UzumOrderSync: ошибка схемы {$scheme} статуса {$apiStatus} магазина {$shopId}", [
-                            'account_id' => $account->id,
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
+            foreach ($shopIds as $shopId) {
+                try {
+                    $this->syncStatusForShop(
+                        $uzum, $account, (string) $shopId, $apiStatus,
+                        $isActive, $isExtended, $fromMs, $extendedFromMs, $stats
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning("UzumOrderSync: ошибка статуса {$apiStatus} магазина {$shopId}", [
+                        'account_id' => $account->id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
         }
@@ -129,9 +122,11 @@ final class UzumOrderSyncService
     }
 
     /**
-     * Синхронизация заказов по одному статусу/схеме/магазину.
+     * Синхронизация заказов по одному статусу и магазину.
      *
-     * @param  string|null  $scheme  Схема доставки (FBS|DBS|EDBS), передаётся как фильтр в API
+     * Тип доставки (FBS/DBS/EDBS) определяется из response payload через
+     * detectDeliveryType(). Параметр scheme в FBS API не используется —
+     * Uzum возвращает 0 результатов при scheme=DBS/EDBS.
      */
     private function syncStatusForShop(
         UzumApiManager $uzum,
@@ -143,26 +138,19 @@ final class UzumOrderSyncService
         int $fromMs,
         int $extendedFromMs,
         array &$stats,
-        ?string $scheme = null,
     ): void {
         $page = 0;
         $size = 50;
 
         do {
-            $query = [
-                'shopIds' => $shopId,
-                'status' => $apiStatus,
-                'page' => $page,
-                'size' => $size,
-            ];
-
-            if ($scheme !== null) {
-                $query['scheme'] = $scheme;
-            }
-
             $response = $uzum->api()->call(
                 UzumEndpoints::FBS_ORDERS_LIST,
-                query: $query,
+                query: [
+                    'shopIds' => $shopId,
+                    'status' => $apiStatus,
+                    'page' => $page,
+                    'size' => $size,
+                ],
             );
 
             $payload = $response['payload'] ?? [];
@@ -191,11 +179,6 @@ final class UzumOrderSyncService
 
                 try {
                     $mapped = $this->mapOrderData($orderData);
-                    // Если scheme передан явно через API фильтр — используем его как
-                    // авторитетное значение, чтобы корректно различать FBS/DBS/EDBS.
-                    if ($scheme !== null) {
-                        $mapped['delivery_type'] = $scheme;
-                    }
                     $result = $this->persistOrder($account, $mapped);
                     $stats[$result]++;
                 } catch (\Throwable $e) {
@@ -376,6 +359,19 @@ final class UzumOrderSyncService
         if (! empty($address['street']) && ! empty($address['house'])) {
             return 'DBS';
         }
+
+        // Логируем заказы с неопределённым типом для диагностики.
+        // Ключи верхнего уровня помогут понять, какие поля Uzum API возвращает.
+        Log::debug('UzumOrderSync: delivery_type не определён, дефолт FBS', [
+            'order_id' => $orderData['id'] ?? 'unknown',
+            'top_keys' => array_keys($orderData),
+            'scheme' => $orderData['scheme'] ?? null,
+            'deliveryType' => $orderData['deliveryType'] ?? null,
+            'deliveryMode' => $orderData['deliveryMode'] ?? null,
+            'type' => $orderData['type'] ?? null,
+            'has_deliveryInfo' => isset($orderData['deliveryInfo']),
+            'has_address_street' => ! empty($address['street']),
+        ]);
 
         return null;
     }
