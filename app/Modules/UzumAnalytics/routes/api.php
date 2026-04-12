@@ -59,4 +59,7 @@ Route::middleware(['web', 'auth:sanctum'])
         // Анализ конкурентов
         Route::get('/our-categories', [AnalyticsController::class, 'ourCategories'])->name('our-categories');
         Route::get('/category/{id}/rankings', [AnalyticsController::class, 'categoryRankings'])->name('category.rankings');
+        Route::get('/category/{id}/competitor/{slug}', [AnalyticsController::class, 'competitorDetail'])->name('category.competitor');
+        Route::get('/category/{id}/ranking-history', [AnalyticsController::class, 'rankingHistory'])->name('category.ranking-history');
+        Route::get('/category/{id}/export-rankings', [AnalyticsController::class, 'exportRankings'])->name('category.export-rankings');
     });

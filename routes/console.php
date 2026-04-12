@@ -513,6 +513,24 @@ Schedule::call(function () {
     ->name('uzum-analytics:crawl-products-18')
     ->withoutOverlapping(30);
 
+// Uzum Analytics: Снепшот рангов 1 раз в сутки в 04:00
+Schedule::call(function () {
+    $delay = 0;
+    \App\Models\Company::where('is_active', true)->cursor()->each(function ($company) use (&$delay) {
+        $repository = app(\App\Modules\UzumAnalytics\Repositories\AnalyticsRepository::class);
+        $categories = $repository->getCompanyCategoryIds($company->id);
+        $categories->each(function ($cat) use ($company, &$delay) {
+            \App\Modules\UzumAnalytics\Jobs\SnapshotRankingsJob::dispatch($company->id, $cat['id'])
+                ->onQueue('uzum-crawler')
+                ->delay(now()->addSeconds($delay));
+            $delay += 12;
+        });
+    });
+})
+    ->dailyAt('04:00')
+    ->name('uzum-analytics:snapshot-rankings')
+    ->withoutOverlapping(30);
+
 /*
 |--------------------------------------------------------------------------
 | KPI Scheduled Tasks
