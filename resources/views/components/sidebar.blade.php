@@ -314,7 +314,7 @@
 
         {{-- Uzum Analytics --}}
         <a href="/analytics/uzum"
-           class="flex items-center rounded-lg transition {{ request()->is('analytics/uzum*') ? 'bg-orange-50 text-orange-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           class="flex items-center rounded-lg transition {{ request()->is('analytics/uzum*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
            :class="$store.ui.sidebarCollapsed ? 'justify-center p-2.5' : 'space-x-3 px-3 py-2.5'"
            :title="$store.ui.sidebarCollapsed ? 'Аналитика Uzum' : ''">
             <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

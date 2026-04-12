@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\UzumAnalytics\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Modules\UzumAnalytics\Jobs\CrawlProductJob;
 use App\Modules\UzumAnalytics\Models\UzumCategory;
 use App\Modules\UzumAnalytics\Models\UzumProductSnapshot;
@@ -16,7 +17,6 @@ use App\Modules\UzumAnalytics\Services\UzumAnalyticsApiClient;
 use App\Services\AIService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -35,6 +35,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 final class AnalyticsController extends Controller
 {
+    use HasCompanyScope;
+
     public function __construct(
         private readonly AnalyticsRepository $repository,
         private readonly CircuitBreaker $circuitBreaker,
@@ -56,13 +58,13 @@ final class AnalyticsController extends Controller
      */
     public function categoryProducts(Request $request, int $id): JsonResponse
     {
-        $days  = (int) $request->get('days', 7);
+        $days = (int) $request->get('days', 7);
         $limit = min((int) $request->get('limit', 20), 50);
         $stats = $this->repository->getCategoryStats($id, $days);
 
         try {
             $apiData = $this->apiClient->getCategory($id, 0, 48);
-            $items   = $apiData['data']['makeSearch']['items'] ?? [];
+            $items = $apiData['data']['makeSearch']['items'] ?? [];
 
             $products = collect($items)
                 ->map(fn ($item) => $item['catalogCard'] ?? null)
@@ -70,15 +72,15 @@ final class AnalyticsController extends Controller
                 ->values();
 
             $topProducts = $products->map(fn ($card) => [
-                'product_id'     => $card['id'],
-                'title'          => $card['title'] ?? '',
-                'shop_slug'      => $card['shop']['slug'] ?? '',
-                'shop_title'     => $card['shop']['title'] ?? $card['shop']['slug'] ?? '',
-                'price'          => (int) ($card['minSellPrice'] ?? 0) / 100,
+                'product_id' => $card['id'],
+                'title' => $card['title'] ?? '',
+                'shop_slug' => $card['shop']['slug'] ?? '',
+                'shop_title' => $card['shop']['title'] ?? $card['shop']['slug'] ?? '',
+                'price' => (int) ($card['minSellPrice'] ?? 0) / 100,
                 'original_price' => (int) ($card['minFullPrice'] ?? 0) / 100,
-                'rating'         => (float) ($card['rating'] ?? 0),
-                'reviews_count'  => (int) ($card['reviewsCount'] ?? 0),
-                'orders_count'   => (int) ($card['ordersCount'] ?? 0),
+                'rating' => (float) ($card['rating'] ?? 0),
+                'reviews_count' => (int) ($card['reviewsCount'] ?? 0),
+                'orders_count' => (int) ($card['ordersCount'] ?? 0),
             ])
                 ->sortByDesc('orders_count')
                 ->values()
@@ -87,24 +89,24 @@ final class AnalyticsController extends Controller
             $topSellers = $topProducts
                 ->groupBy('shop_slug')
                 ->map(fn ($shopProducts, $slug) => [
-                    'shop_slug'      => $slug,
-                    'shop_title'     => $shopProducts->first()['shop_title'],
+                    'shop_slug' => $slug,
+                    'shop_title' => $shopProducts->first()['shop_title'],
                     'products_count' => $shopProducts->count(),
-                    'total_orders'   => $shopProducts->sum('orders_count'),
-                    'total_reviews'  => $shopProducts->sum('reviews_count'),
-                    'avg_price'      => (int) round($shopProducts->avg('price')),
-                    'avg_rating'     => round($shopProducts->avg('rating'), 2),
+                    'total_orders' => $shopProducts->sum('orders_count'),
+                    'total_reviews' => $shopProducts->sum('reviews_count'),
+                    'avg_price' => (int) round($shopProducts->avg('price')),
+                    'avg_rating' => round($shopProducts->avg('rating'), 2),
                 ])
                 ->sortByDesc('total_orders')
                 ->values()
                 ->take($limit);
 
-            $stats['top_products']      = $topProducts->toArray();
-            $stats['top_sellers']       = $topSellers->toArray();
+            $stats['top_products'] = $topProducts->toArray();
+            $stats['top_sellers'] = $topSellers->toArray();
             $stats['total_in_category'] = $apiData['data']['makeSearch']['total'] ?? 0;
         } catch (\Throwable) {
-            $stats['top_products']      = $stats['top_products'] ?? [];
-            $stats['top_sellers']       = [];
+            $stats['top_products'] = $stats['top_products'] ?? [];
+            $stats['top_sellers'] = [];
             $stats['total_in_category'] = 0;
         }
 
@@ -127,13 +129,13 @@ final class AnalyticsController extends Controller
      */
     public function priceHistory(Request $request, int $productId): JsonResponse
     {
-        $days    = (int) $request->get('days', 30);
+        $days = (int) $request->get('days', 30);
         $history = $this->repository->getPriceHistory($productId, $days);
 
         return response()->json([
             'product_id' => $productId,
-            'days'       => $days,
-            'history'    => $history,
+            'days' => $days,
+            'history' => $history,
         ]);
     }
 
@@ -142,8 +144,7 @@ final class AnalyticsController extends Controller
      */
     public function marketOverview(Request $request): JsonResponse
     {
-        $companyId = $request->user()->company_id
-            ?? $request->get('company_id');
+        $companyId = $this->getCompanyId();
 
         $tracked = UzumTrackedProduct::where('company_id', $companyId)
             ->orderByDesc('last_scraped_at')
@@ -153,13 +154,13 @@ final class AnalyticsController extends Controller
             $history = $this->repository->getPriceHistory($item->product_id, 7);
 
             return [
-                'product_id'      => $item->product_id,
-                'title'           => $item->title,
-                'shop_slug'       => $item->shop_slug,
-                'last_price'      => $item->last_price,
+                'product_id' => $item->product_id,
+                'title' => $item->title,
+                'shop_slug' => $item->shop_slug,
+                'last_price' => $item->last_price,
                 'last_scraped_at' => $item->last_scraped_at,
-                'alert_enabled'   => $item->alert_enabled,
-                'price_trend'     => $history->pluck('price'),
+                'alert_enabled' => $item->alert_enabled,
+                'price_trend' => $history->pluck('price'),
             ];
         });
 
@@ -171,7 +172,7 @@ final class AnalyticsController extends Controller
      */
     public function tracked(Request $request): JsonResponse
     {
-        $companyId = $request->user()->company_id ?? $request->get('company_id');
+        $companyId = $this->getCompanyId();
 
         $items = UzumTrackedProduct::where('company_id', $companyId)
             ->orderByDesc('created_at')
@@ -186,15 +187,15 @@ final class AnalyticsController extends Controller
     public function addTracked(Request $request): JsonResponse
     {
         $request->validate([
-            'product_id'          => 'required|integer',
-            'alert_enabled'       => 'boolean',
+            'product_id' => 'required|integer',
+            'alert_enabled' => 'boolean',
             'alert_threshold_pct' => 'integer|min:1|max:99',
         ]);
 
-        $companyId = $request->user()->company_id ?? $request->get('company_id');
+        $companyId = $this->getCompanyId();
 
         // Проверить лимит по тарифу (ТЗ: 20 Pro / 50 Business)
-        $limit   = config('uzum-crawler.limits.pro.max_tracked_products', 20);
+        $limit = config('uzum-crawler.limits.pro.max_tracked_products', 20);
         $current = UzumTrackedProduct::where('company_id', $companyId)->count();
 
         if ($current >= $limit) {
@@ -206,7 +207,7 @@ final class AnalyticsController extends Controller
         $tracked = UzumTrackedProduct::firstOrCreate(
             ['company_id' => $companyId, 'product_id' => $request->product_id],
             [
-                'alert_enabled'       => $request->boolean('alert_enabled', true),
+                'alert_enabled' => $request->boolean('alert_enabled', true),
                 'alert_threshold_pct' => $request->integer('alert_threshold_pct', 5),
             ]
         );
@@ -223,7 +224,7 @@ final class AnalyticsController extends Controller
      */
     public function removeTracked(Request $request, int $productId): JsonResponse
     {
-        $companyId = $request->user()->company_id ?? $request->get('company_id');
+        $companyId = $this->getCompanyId();
 
         UzumTrackedProduct::where('company_id', $companyId)
             ->where('product_id', $productId)
@@ -238,7 +239,7 @@ final class AnalyticsController extends Controller
     public function healthcheck(): JsonResponse
     {
         $activeTokens = UzumToken::active()->where('expires_at', '>', now())->count();
-        $totalTokens  = UzumToken::count();
+        $totalTokens = UzumToken::count();
 
         $lastSnapshot = UzumProductSnapshot::orderByDesc('scraped_at')
             ->value('scraped_at');
@@ -246,16 +247,16 @@ final class AnalyticsController extends Controller
         $snapshotsToday = UzumProductSnapshot::whereDate('scraped_at', today())->count();
 
         return response()->json([
-            'status'         => 'ok',
-            'tokens'         => [
+            'status' => 'ok',
+            'tokens' => [
                 'active' => $activeTokens,
-                'total'  => $totalTokens,
+                'total' => $totalTokens,
             ],
-            'circuit_breaker'   => $this->circuitBreaker->getStatus(),
-            'last_snapshot'     => $lastSnapshot?->toIso8601String(),
-            'snapshots_today'   => $snapshotsToday,
-            'tracked_products'  => UzumTrackedProduct::count(),
-            'feature_enabled'   => (bool) config('uzum-crawler.features.enabled'),
+            'circuit_breaker' => $this->circuitBreaker->getStatus(),
+            'last_snapshot' => $lastSnapshot?->toIso8601String(),
+            'snapshots_today' => $snapshotsToday,
+            'tracked_products' => UzumTrackedProduct::count(),
+            'feature_enabled' => (bool) config('uzum-crawler.features.enabled'),
         ]);
     }
 
@@ -264,8 +265,8 @@ final class AnalyticsController extends Controller
      */
     public function aiInsights(Request $request): JsonResponse
     {
-        $companyId = $request->user()->company_id ?? $request->get('company_id');
-        $cacheKey  = "uzum_ai_insights_{$companyId}";
+        $companyId = $this->getCompanyId();
+        $cacheKey = "uzum_ai_insights_{$companyId}";
 
         if ($cached = Cache::get($cacheKey)) {
             return response()->json($cached);
@@ -277,8 +278,8 @@ final class AnalyticsController extends Controller
 
         if ($tracked->isEmpty()) {
             return response()->json([
-                'insights'     => null,
-                'message'      => 'Добавьте товары для мониторинга, чтобы получить AI-анализ.',
+                'insights' => null,
+                'message' => 'Добавьте товары для мониторинга, чтобы получить AI-анализ.',
                 'generated_at' => null,
             ]);
         }
@@ -286,7 +287,7 @@ final class AnalyticsController extends Controller
         // Собираем данные о ценах за 7 дней
         $productsData = $tracked->map(function (UzumTrackedProduct $item): array {
             $history = $this->repository->getPriceHistory($item->product_id, 7);
-            $prices  = $history->map(fn ($h) => (float) $h->price)->values()->toArray();
+            $prices = $history->map(fn ($h) => (float) $h->price)->values()->toArray();
 
             $changePct = null;
             if (count($prices) >= 2 && $prices[0] > 0) {
@@ -294,8 +295,8 @@ final class AnalyticsController extends Controller
             }
 
             return [
-                'title'         => $item->title ?? "Товар #{$item->product_id}",
-                'shop'          => $item->shop_slug ?? 'неизвестно',
+                'title' => $item->title ?? "Товар #{$item->product_id}",
+                'shop' => $item->shop_slug ?? 'неизвестно',
                 'current_price' => (float) $item->last_price,
                 'change_pct_7d' => $changePct,
             ];
@@ -303,7 +304,7 @@ final class AnalyticsController extends Controller
 
         // Формируем промпт
         $lines = array_map(function (array $p): string {
-            $price  = number_format($p['current_price'], 0, '.', ' ');
+            $price = number_format($p['current_price'], 0, '.', ' ');
             $change = $p['change_pct_7d'] !== null
                 ? ($p['change_pct_7d'] >= 0 ? "+{$p['change_pct_7d']}%" : "{$p['change_pct_7d']}%")
                 : 'нет истории';
@@ -311,26 +312,26 @@ final class AnalyticsController extends Controller
             return "• «{$p['title']}» (магазин: {$p['shop']}): цена {$price} сум, изменение за 7 дней: {$change}";
         }, $productsData);
 
-        $count  = count($productsData);
+        $count = count($productsData);
         $prompt = "Ты — аналитик маркетплейса Uzum Market. Проанализируй ценовые данные конкурентов и дай рекомендации продавцу.\n\n"
-            . "Отслеживаемые товары конкурентов ({$count} шт.):\n"
-            . implode("\n", $lines) . "\n\n"
-            . "Дай анализ в трёх блоках:\n"
-            . "**Ситуация на рынке** — 2-3 предложения о текущих тенденциях.\n"
-            . "**Рекомендации** — конкретные действия (ценообразование, акции, стратегия).\n"
-            . "**Прогноз** — что ожидать на следующей неделе.\n\n"
-            . "Пиши конкретно, используй цифры из данных. Ответ на русском.";
+            ."Отслеживаемые товары конкурентов ({$count} шт.):\n"
+            .implode("\n", $lines)."\n\n"
+            ."Дай анализ в трёх блоках:\n"
+            ."**Ситуация на рынке** — 2-3 предложения о текущих тенденциях.\n"
+            ."**Рекомендации** — конкретные действия (ценообразование, акции, стратегия).\n"
+            ."**Прогноз** — что ожидать на следующей неделе.\n\n"
+            .'Пиши конкретно, используй цифры из данных. Ответ на русском.';
 
         $aiService = app(AIService::class);
-        $insights  = $aiService->generateChatResponse([], $prompt, [
-            'model'      => 'fast',
+        $insights = $aiService->generateChatResponse([], $prompt, [
+            'model' => 'fast',
             'company_id' => $companyId,
-            'user_id'    => $request->user()?->id,
+            'user_id' => $request->user()?->id,
         ]);
 
         $result = [
-            'insights'       => $insights,
-            'generated_at'   => now()->toIso8601String(),
+            'insights' => $insights,
+            'generated_at' => now()->toIso8601String(),
             'products_count' => $tracked->count(),
         ];
 
@@ -345,7 +346,11 @@ final class AnalyticsController extends Controller
     public function syncCategories(): JsonResponse
     {
         try {
-            $response   = $this->apiClient->getRootCategories();
+            // Сбрасываем кэш перед ручной синхронизацией, чтобы пустой ответ не блокировал повторные попытки
+            $cacheKey = config('uzum-crawler.redis_prefix', 'uzum_crawler:').'api:root_categories';
+            Cache::forget($cacheKey);
+
+            $response = $this->apiClient->getRootCategories();
             $categories = $response['data']
                 ?? $response['payload']
                 ?? $response['categories']
@@ -355,7 +360,7 @@ final class AnalyticsController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Uzum API вернул пустой список категорий. Возможно, нет активных токенов.',
-                    'raw'     => array_keys($response),
+                    'raw' => array_keys($response),
                 ], 422);
             }
 
@@ -364,15 +369,15 @@ final class AnalyticsController extends Controller
             $total = UzumCategory::count();
 
             return response()->json([
-                'success'         => true,
-                'message'         => "Синхронизировано. В базе {$total} категорий.",
-                'root_count'      => count($categories),
-                'total_in_db'     => $total,
+                'success' => true,
+                'message' => "Синхронизировано. В базе {$total} категорий.",
+                'root_count' => count($categories),
+                'total_in_db' => $total,
             ]);
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка синхронизации: ' . $e->getMessage(),
+                'message' => 'Ошибка синхронизации: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -387,11 +392,11 @@ final class AnalyticsController extends Controller
             'days' => 'integer|min:1|max:365',
         ]);
 
-        $companyId = $request->user()->company_id ?? $request->get('company_id');
-        $days      = (int) $request->get('days', 30);
-        $type      = $request->get('type', 'tracked');
+        $companyId = $this->getCompanyId();
+        $days = (int) $request->get('days', 30);
+        $type = $request->get('type', 'tracked');
 
-        $filename = "uzum-analytics-{$type}-" . now()->format('Y-m-d') . '.csv';
+        $filename = "uzum-analytics-{$type}-".now()->format('Y-m-d').'.csv';
 
         return response()->streamDownload(function () use ($companyId, $days, $type): void {
             $handle = fopen('php://output', 'w');
@@ -413,7 +418,7 @@ final class AnalyticsController extends Controller
                             $item->last_price ?? '',
                             $item->last_scraped_at?->format('d.m.Y H:i') ?? '',
                             $item->alert_enabled ? 'Да' : 'Нет',
-                            $item->alert_threshold_pct . '%',
+                            $item->alert_threshold_pct.'%',
                         ]);
                     });
             } else {
