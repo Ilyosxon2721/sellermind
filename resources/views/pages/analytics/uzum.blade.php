@@ -582,6 +582,13 @@
                             <p class="text-xs text-gray-500" x-text="rankingsData?.total_products ? rankingsData.total_products + ' товаров в категории' : ''"></p>
                         </div>
                         <div class="flex items-center space-x-3">
+                            <a :href="'/api/analytics/uzum/category/' + selectedCompCategory.id + '/export-rankings?type=' + rankingsSubTab"
+                               class="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 flex items-center space-x-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                </svg>
+                                <span>CSV</span>
+                            </a>
                             <select x-model="rankingsSort" @change="loadCategoryRankings(selectedCompCategory.id, selectedCompCategory.title)"
                                     class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
                                 <option value="orders">По заказам</option>
@@ -615,38 +622,77 @@
                                     </svg>
                                     <span>Ваша позиция: <span class="text-blue-600" x-text="rankingsData.our_metrics.shop_title"></span></span>
                                 </h3>
-                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
                                     <div class="bg-white rounded-lg p-3 border border-blue-100">
                                         <p class="text-xs text-gray-500 uppercase tracking-wider">Ранг по заказам</p>
-                                        <p class="mt-1 text-2xl font-bold text-blue-600">
-                                            #<span x-text="rankingsData.our_metrics.rank_by_orders"></span>
-                                        </p>
+                                        <p class="mt-1 text-2xl font-bold text-blue-600">#<span x-text="rankingsData.our_metrics.rank_by_orders"></span></p>
                                         <p class="text-xs text-gray-400" x-text="'из ' + rankingsData.our_metrics.total_shops + ' магазинов'"></p>
                                     </div>
                                     <div class="bg-white rounded-lg p-3 border border-blue-100">
                                         <p class="text-xs text-gray-500 uppercase tracking-wider">Ранг по выручке</p>
-                                        <p class="mt-1 text-2xl font-bold text-green-600">
-                                            #<span x-text="rankingsData.our_metrics.rank_by_revenue"></span>
-                                        </p>
+                                        <p class="mt-1 text-2xl font-bold text-green-600">#<span x-text="rankingsData.our_metrics.rank_by_revenue"></span></p>
                                         <p class="text-xs text-gray-400" x-text="formatPrice(rankingsData.our_metrics.total_revenue) + ' сум'"></p>
                                     </div>
                                     <div class="bg-white rounded-lg p-3 border border-blue-100">
                                         <p class="text-xs text-gray-500 uppercase tracking-wider">Ранг по отзывам</p>
-                                        <p class="mt-1 text-2xl font-bold text-orange-600">
-                                            #<span x-text="rankingsData.our_metrics.rank_by_reviews"></span>
-                                        </p>
+                                        <p class="mt-1 text-2xl font-bold text-orange-600">#<span x-text="rankingsData.our_metrics.rank_by_reviews"></span></p>
                                         <p class="text-xs text-gray-400" x-text="rankingsData.our_metrics.total_reviews + ' отзывов'"></p>
                                     </div>
                                     <div class="bg-white rounded-lg p-3 border border-blue-100">
                                         <p class="text-xs text-gray-500 uppercase tracking-wider">Ранг по рейтингу</p>
-                                        <p class="mt-1 text-2xl font-bold text-yellow-500">
-                                            #<span x-text="rankingsData.our_metrics.rank_by_rating"></span>
-                                        </p>
+                                        <p class="mt-1 text-2xl font-bold text-yellow-500">#<span x-text="rankingsData.our_metrics.rank_by_rating"></span></p>
                                         <p class="text-xs text-gray-400" x-text="'★ ' + rankingsData.our_metrics.avg_rating"></p>
                                     </div>
+                                    <div class="bg-white rounded-lg p-3 border border-blue-100">
+                                        <p class="text-xs text-gray-500 uppercase tracking-wider">Доля рынка</p>
+                                        <p class="mt-1 text-2xl font-bold text-indigo-600"><span x-text="rankingsData.our_metrics.market_share_pct ?? '—'"></span>%</p>
+                                        <p class="text-xs text-gray-400" x-text="rankingsData.our_metrics.category_total_orders ? formatPrice(rankingsData.our_metrics.category_total_orders) + ' заказов' : ''"></p>
+                                    </div>
                                 </div>
+                                <template x-if="rankingsData.our_metrics.fulfillment">
+                                    <div class="mt-3 flex items-center space-x-4 text-xs text-gray-500">
+                                        <span class="flex items-center space-x-1">
+                                            <span class="w-2 h-2 bg-green-400 rounded-full"></span>
+                                            <span>FBS: <span class="font-medium text-gray-700" x-text="formatPrice(rankingsData.our_metrics.fulfillment.fbs_stock) + ' шт'"></span></span>
+                                        </span>
+                                        <span class="flex items-center space-x-1">
+                                            <span class="w-2 h-2 bg-blue-400 rounded-full"></span>
+                                            <span>FBO: <span class="font-medium text-gray-700" x-text="formatPrice(rankingsData.our_metrics.fulfillment.fbo_stock) + ' шт'"></span></span>
+                                        </span>
+                                        <span class="text-gray-400" x-text="'(' + rankingsData.our_metrics.fulfillment.total_products + ' товаров)'"></span>
+                                    </div>
+                                </template>
                             </div>
                         </template>
+
+                        {{-- История рангов --}}
+                        <template x-if="rankingsData?.our_metrics">
+                            <div class="bg-white rounded-xl border border-gray-200 p-5">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h3 class="text-sm font-semibold text-gray-900">Динамика позиции</h3>
+                                    <button @click="loadRankingHistory()" :disabled="loadingRankingHistory"
+                                            class="text-xs text-blue-600 hover:underline disabled:opacity-50"
+                                            x-text="loadingRankingHistory ? 'Загрузка...' : 'Обновить'"></button>
+                                </div>
+                                <div x-show="loadingRankingHistory" class="py-6 text-center text-gray-400 text-sm">Загрузка истории...</div>
+                                <div x-show="!loadingRankingHistory && rankingHistory.length === 0" class="py-6 text-center text-gray-400 text-sm">
+                                    Данные накапливаются. История будет доступна через 1-2 дня.
+                                </div>
+                                <canvas id="rankingHistoryChart" x-show="!loadingRankingHistory && rankingHistory.length > 0" style="max-height: 200px;"></canvas>
+                            </div>
+                        </template>
+
+                        {{-- Графики --}}
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div class="bg-white rounded-xl border border-gray-200 p-5">
+                                <h3 class="text-sm font-semibold text-gray-900 mb-3">Сравнение с конкурентами</h3>
+                                <canvas id="competitorRadarChart" style="max-height: 280px;"></canvas>
+                            </div>
+                            <div class="bg-white rounded-xl border border-gray-200 p-5">
+                                <h3 class="text-sm font-semibold text-gray-900 mb-3">Распределение цен в категории</h3>
+                                <canvas id="priceDistributionChart" style="max-height: 280px;"></canvas>
+                            </div>
+                        </div>
 
                         {{-- Суб-табы: Магазины / Товары --}}
                         <div class="flex border-b border-gray-200 mb-0">
@@ -690,9 +736,9 @@
                                                     <td class="px-4 py-3 text-sm text-gray-400 font-mono" x-text="shop.rank"></td>
                                                     <td class="px-4 py-3">
                                                         <div class="flex items-center space-x-2">
-                                                            <a :href="'https://uzum.uz/shop/' + shop.shop_slug" target="_blank"
-                                                               class="text-sm text-blue-600 hover:underline"
-                                                               x-text="shop.shop_title || shop.shop_slug"></a>
+                                                            <button @click="openCompetitorDetail(selectedCompCategory.id, shop.shop_slug)"
+                                                               class="text-sm text-blue-600 hover:underline text-left"
+                                                               x-text="shop.shop_title || shop.shop_slug"></button>
                                                             <span x-show="shop.is_our_shop" class="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">Вы</span>
                                                         </div>
                                                     </td>
@@ -838,6 +884,76 @@
         </div>
     </div>
 
+    {{-- Modal: Competitor Detail --}}
+    <div x-show="showCompetitorModal" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div @click.outside="showCompetitorModal = false"
+             class="bg-white rounded-xl shadow-xl w-full max-w-4xl mx-4 max-h-[80vh] flex flex-col">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900" x-text="competitorDetailData?.shop_slug || 'Магазин'"></h3>
+                    <p class="text-xs text-gray-500" x-text="competitorDetailData?.stats ? competitorDetailData.stats.products_count + ' товаров в категории' : ''"></p>
+                </div>
+                <button @click="showCompetitorModal = false" class="p-1 text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div x-show="loadingCompetitorDetail" class="px-6 py-12 text-center text-gray-400">Загрузка...</div>
+            <div x-show="!loadingCompetitorDetail && competitorDetailData" class="flex-1 overflow-y-auto">
+                <template x-if="competitorDetailData?.stats">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-0 border-b border-gray-100">
+                        <div class="px-4 py-3 border-r border-gray-100">
+                            <p class="text-xs text-gray-500">Заказов</p>
+                            <p class="text-lg font-bold text-blue-600" x-text="formatPrice(competitorDetailData.stats.total_orders)"></p>
+                        </div>
+                        <div class="px-4 py-3 border-r border-gray-100">
+                            <p class="text-xs text-gray-500">Выручка</p>
+                            <p class="text-lg font-bold text-green-600" x-text="formatPrice(competitorDetailData.stats.total_revenue) + ' сум'"></p>
+                        </div>
+                        <div class="px-4 py-3 border-r border-gray-100">
+                            <p class="text-xs text-gray-500">Ср. цена</p>
+                            <p class="text-lg font-bold text-gray-900" x-text="formatPrice(competitorDetailData.stats.avg_price) + ' сум'"></p>
+                        </div>
+                        <div class="px-4 py-3">
+                            <p class="text-xs text-gray-500">Рейтинг</p>
+                            <p class="text-lg font-bold text-yellow-500" x-text="'★ ' + competitorDetailData.stats.avg_rating"></p>
+                        </div>
+                    </div>
+                </template>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+                            <tr>
+                                <th class="px-4 py-3 text-left">Товар</th>
+                                <th class="px-4 py-3 text-right">Цена</th>
+                                <th class="px-4 py-3 text-right">Заказов</th>
+                                <th class="px-4 py-3 text-right">Отзывов</th>
+                                <th class="px-4 py-3 text-right">Рейтинг</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <template x-for="p in (competitorDetailData?.products || [])" :key="p.product_id">
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3">
+                                        <a :href="'https://uzum.uz/product/' + p.product_id" target="_blank"
+                                           class="text-sm text-blue-600 hover:underline line-clamp-2 max-w-sm block"
+                                           x-text="p.title"></a>
+                                    </td>
+                                    <td class="px-4 py-3 text-right text-sm font-semibold" x-text="formatPrice(p.price) + ' сум'"></td>
+                                    <td class="px-4 py-3 text-right text-sm font-bold text-blue-600" x-text="formatPrice(p.orders_count)"></td>
+                                    <td class="px-4 py-3 text-right text-sm text-gray-600" x-text="formatPrice(p.reviews_count)"></td>
+                                    <td class="px-4 py-3 text-right text-sm text-yellow-500" x-text="p.rating ? '★ ' + p.rating : '—'"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 @endsection
 
@@ -871,6 +987,14 @@ function uzumAnalytics() {
         loadingRankings: false,
         rankingsSort: 'orders',
         rankingsSubTab: 'shops',
+        showCompetitorModal: false,
+        competitorDetailData: null,
+        loadingCompetitorDetail: false,
+        radarChart: null,
+        priceDistChart: null,
+        rankingHistory: [],
+        loadingRankingHistory: false,
+        rankingHistoryChart: null,
 
         overviewProducts: [],
         trackedProducts: [],
@@ -1139,12 +1263,191 @@ function uzumAnalytics() {
                 });
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 this.rankingsData = await res.json();
+                this.$nextTick(() => this.renderCompetitorCharts());
+                this.loadRankingHistory();
             } catch (e) {
                 this.showToast('Ошибка загрузки рейтингов: ' + e.message, 'error');
                 this.selectedCompCategory = null;
             } finally {
                 this.loadingRankings = false;
             }
+        },
+
+        async openCompetitorDetail(categoryId, shopSlug) {
+            this.showCompetitorModal = true;
+            this.loadingCompetitorDetail = true;
+            this.competitorDetailData = null;
+            try {
+                const res = await fetch(`/api/analytics/uzum/category/${categoryId}/competitor/${shopSlug}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.competitorDetailData = await res.json();
+            } catch (e) {
+                this.showToast('Ошибка загрузки деталей', 'error');
+                this.showCompetitorModal = false;
+            } finally {
+                this.loadingCompetitorDetail = false;
+            }
+        },
+
+        async loadRankingHistory() {
+            if (!this.selectedCompCategory) return;
+            this.loadingRankingHistory = true;
+            this.rankingHistory = [];
+            try {
+                const res = await fetch(`/api/analytics/uzum/category/${this.selectedCompCategory.id}/ranking-history?days=${this.days}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.rankingHistory = data.history || [];
+                this.$nextTick(() => this.renderRankingHistoryChart());
+            } catch (e) {
+                // Тихо — история может быть пустой
+            } finally {
+                this.loadingRankingHistory = false;
+            }
+        },
+
+        renderCompetitorCharts() {
+            this.renderRadarChart();
+            this.renderPriceDistChart();
+        },
+
+        renderRadarChart() {
+            const ctx = document.getElementById('competitorRadarChart');
+            if (!ctx || !this.rankingsData?.shop_rankings?.length) return;
+            if (this.radarChart) this.radarChart.destroy();
+
+            const shops = this.rankingsData.shop_rankings;
+            const ourShop = shops.find(s => s.is_our_shop);
+            const topCompetitors = shops.filter(s => !s.is_our_shop).slice(0, 3);
+
+            const maxOrders = Math.max(...shops.map(s => s.total_orders)) || 1;
+            const maxRevenue = Math.max(...shops.map(s => s.total_revenue)) || 1;
+            const maxReviews = Math.max(...shops.map(s => s.total_reviews)) || 1;
+            const maxProducts = Math.max(...shops.map(s => s.products_count)) || 1;
+
+            const normalize = (shop) => [
+                Math.round(shop.total_orders / maxOrders * 100),
+                Math.round(shop.total_revenue / maxRevenue * 100),
+                Math.round(shop.total_reviews / maxReviews * 100),
+                Math.round((shop.avg_rating || 0) / 5 * 100),
+                Math.round(shop.products_count / maxProducts * 100),
+            ];
+
+            const datasets = [];
+            const colors = [
+                { border: '#EF4444', bg: 'rgba(239,68,68,0.1)' },
+                { border: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
+                { border: '#8B5CF6', bg: 'rgba(139,92,246,0.1)' },
+            ];
+
+            if (ourShop) {
+                datasets.push({
+                    label: ourShop.shop_title || 'Мы',
+                    data: normalize(ourShop),
+                    borderColor: '#2563EB',
+                    backgroundColor: 'rgba(37,99,235,0.15)',
+                    borderWidth: 2,
+                    pointRadius: 3,
+                });
+            }
+
+            topCompetitors.forEach((comp, i) => {
+                datasets.push({
+                    label: comp.shop_title || comp.shop_slug,
+                    data: normalize(comp),
+                    borderColor: colors[i]?.border || '#6B7280',
+                    backgroundColor: colors[i]?.bg || 'rgba(107,114,128,0.1)',
+                    borderWidth: 1.5,
+                    pointRadius: 2,
+                });
+            });
+
+            this.radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: { labels: ['Заказы', 'Выручка', 'Отзывы', 'Рейтинг', 'Товары'], datasets },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } },
+                    scales: { r: { beginAtZero: true, max: 100, ticks: { display: false }, pointLabels: { font: { size: 11 } } } },
+                },
+            });
+        },
+
+        renderPriceDistChart() {
+            const ctx = document.getElementById('priceDistributionChart');
+            if (!ctx || !this.rankingsData?.product_rankings?.length) return;
+            if (this.priceDistChart) this.priceDistChart.destroy();
+
+            const prices = this.rankingsData.product_rankings.map(p => p.price).filter(p => p > 0);
+            if (prices.length === 0) return;
+
+            const minP = Math.min(...prices);
+            const maxP = Math.max(...prices);
+            const bucketCount = 8;
+            const step = Math.ceil((maxP - minP) / bucketCount) || 1;
+            const buckets = [], labels = [], ourBuckets = [];
+
+            for (let i = 0; i < bucketCount; i++) {
+                const lo = minP + i * step;
+                const hi = lo + step;
+                labels.push(this.formatPrice(lo));
+                const inBucket = this.rankingsData.product_rankings.filter(p => p.price >= lo && p.price < hi);
+                buckets.push(inBucket.length);
+                ourBuckets.push(inBucket.filter(p => p.is_our_product).length);
+            }
+
+            this.priceDistChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'Все товары', data: buckets, backgroundColor: 'rgba(209,213,219,0.8)', borderRadius: 4 },
+                        { label: 'Наши товары', data: ourBuckets, backgroundColor: 'rgba(37,99,235,0.7)', borderRadius: 4 },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } },
+                    scales: {
+                        x: { title: { display: true, text: 'Цена (сум)', font: { size: 11 } } },
+                        y: { beginAtZero: true, ticks: { stepSize: 1 }, title: { display: true, text: 'Товаров', font: { size: 11 } } },
+                    },
+                },
+            });
+        },
+
+        renderRankingHistoryChart() {
+            const ctx = document.getElementById('rankingHistoryChart');
+            if (!ctx || this.rankingHistory.length === 0) return;
+            if (this.rankingHistoryChart) this.rankingHistoryChart.destroy();
+
+            const labels = this.rankingHistory.map(h => {
+                const d = new Date(h.recorded_at);
+                return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' });
+            });
+
+            this.rankingHistoryChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'По заказам', data: this.rankingHistory.map(h => h.rank_by_orders), borderColor: '#2563EB', tension: 0.3, pointRadius: 3 },
+                        { label: 'По выручке', data: this.rankingHistory.map(h => h.rank_by_revenue), borderColor: '#10B981', tension: 0.3, pointRadius: 3 },
+                        { label: 'По отзывам', data: this.rankingHistory.map(h => h.rank_by_reviews), borderColor: '#F59E0B', tension: 0.3, pointRadius: 3 },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } },
+                    scales: {
+                        y: { reverse: true, beginAtZero: false, min: 1, ticks: { stepSize: 1, callback: v => '#' + v }, title: { display: true, text: 'Ранг', font: { size: 11 } } },
+                    },
+                },
+            });
         },
 
         renderPriceChart() {

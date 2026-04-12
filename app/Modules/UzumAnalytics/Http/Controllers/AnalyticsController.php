@@ -6,6 +6,8 @@ namespace App\Modules\UzumAnalytics\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasCompanyScope;
+use App\Models\MarketplaceAccount;
+use App\Models\MarketplaceProduct;
 use App\Modules\UzumAnalytics\Jobs\CrawlProductJob;
 use App\Modules\UzumAnalytics\Models\UzumCategory;
 use App\Modules\UzumAnalytics\Models\UzumProductSnapshot;
@@ -559,6 +561,8 @@ final class AnalyticsController extends Controller
         $byReviews = $shopRankings->sortByDesc('total_reviews')->values();
         $byRating = $shopRankings->sortByDesc('avg_rating')->values();
 
+        $categoryTotalOrders = $shopRankings->sum('total_orders');
+
         $ourMetrics = null;
         if ($ourShop) {
             $ourMetrics = [
@@ -575,10 +579,26 @@ final class AnalyticsController extends Controller
                 'rank_by_reviews' => $byReviews->search(fn ($s) => $s['is_our_shop']) + 1,
                 'rank_by_rating' => $byRating->search(fn ($s) => $s['is_our_shop']) + 1,
                 'total_shops' => $shopRankings->count(),
+                'market_share_pct' => $categoryTotalOrders > 0
+                    ? round($ourShop['total_orders'] / $categoryTotalOrders * 100, 2)
+                    : 0,
+                'category_total_orders' => $categoryTotalOrders,
+            ];
+
+            // FBS/FBO данные для наших товаров
+            $accountIds = MarketplaceAccount::where('company_id', $companyId)
+                ->where('marketplace', 'uzum')
+                ->pluck('id');
+            $ourFbsFbo = MarketplaceProduct::whereIn('marketplace_account_id', $accountIds)
+                ->selectRaw('SUM(stock_fbs) as total_fbs, SUM(stock_fbo) as total_fbo, COUNT(*) as count')
+                ->first();
+            $ourMetrics['fulfillment'] = [
+                'fbs_stock' => (int) ($ourFbsFbo->total_fbs ?? 0),
+                'fbo_stock' => (int) ($ourFbsFbo->total_fbo ?? 0),
+                'total_products' => (int) ($ourFbsFbo->count ?? 0),
             ];
         }
 
-        // Категория
         $category = UzumCategory::find($id);
 
         return response()->json([
@@ -588,6 +608,158 @@ final class AnalyticsController extends Controller
             'product_rankings' => $productRankings->toArray(),
             'our_metrics' => $ourMetrics,
             'our_shop_slugs' => $ourShopSlugs,
+        ]);
+    }
+
+    /**
+     * История рангов компании в категории
+     */
+    public function rankingHistory(Request $request, int $categoryId): JsonResponse
+    {
+        $companyId = $this->getCompanyId();
+        $days = (int) $request->get('days', 30);
+        $history = $this->repository->getRankingHistory($companyId, $categoryId, $days);
+
+        return response()->json([
+            'category_id' => $categoryId,
+            'days' => $days,
+            'history' => $history,
+        ]);
+    }
+
+    /**
+     * Детали магазина конкурента в категории
+     */
+    public function competitorDetail(Request $request, int $categoryId, string $shopSlug): JsonResponse
+    {
+        try {
+            $apiData = $this->apiClient->getCategory($categoryId, 0, 48);
+            $items = $apiData['data']['makeSearch']['items'] ?? [];
+        } catch (\Throwable) {
+            return response()->json(['products' => [], 'stats' => null]);
+        }
+
+        $products = collect($items)
+            ->map(fn ($item) => $item['catalogCard'] ?? null)
+            ->filter()
+            ->values();
+
+        $shopProducts = $products
+            ->filter(fn ($card) => ($card['shop']['slug'] ?? '') === $shopSlug)
+            ->map(fn ($card) => [
+                'product_id' => $card['id'],
+                'title' => $card['title'] ?? '',
+                'price' => (int) ($card['minSellPrice'] ?? 0) / 100,
+                'original_price' => (int) ($card['minFullPrice'] ?? 0) / 100,
+                'rating' => (float) ($card['rating'] ?? 0),
+                'reviews_count' => (int) ($card['reviewsCount'] ?? 0),
+                'orders_count' => (int) ($card['ordersCount'] ?? 0),
+            ])
+            ->sortByDesc('orders_count')
+            ->values();
+
+        $stats = null;
+        if ($shopProducts->isNotEmpty()) {
+            $stats = [
+                'products_count' => $shopProducts->count(),
+                'total_orders' => $shopProducts->sum('orders_count'),
+                'total_revenue' => (int) $shopProducts->sum(fn ($p) => $p['orders_count'] * $p['price']),
+                'total_reviews' => $shopProducts->sum('reviews_count'),
+                'avg_price' => (int) round($shopProducts->avg('price')),
+                'min_price' => (int) $shopProducts->min('price'),
+                'max_price' => (int) $shopProducts->max('price'),
+                'avg_rating' => round($shopProducts->avg('rating'), 2),
+            ];
+        }
+
+        return response()->json([
+            'shop_slug' => $shopSlug,
+            'category_id' => $categoryId,
+            'products' => $shopProducts->toArray(),
+            'stats' => $stats,
+        ]);
+    }
+
+    /**
+     * Экспорт рейтингов категории в CSV
+     */
+    public function exportRankings(Request $request, int $categoryId): StreamedResponse
+    {
+        $companyId = $this->getCompanyId();
+        $ourShopSlugs = $this->repository->getCompanyShopSlugs($companyId);
+
+        try {
+            $apiData = $this->apiClient->getCategory($categoryId, 0, 48);
+            $items = $apiData['data']['makeSearch']['items'] ?? [];
+        } catch (\Throwable) {
+            $items = [];
+        }
+
+        $products = collect($items)
+            ->map(fn ($item) => $item['catalogCard'] ?? null)
+            ->filter()
+            ->values();
+
+        $category = UzumCategory::find($categoryId);
+        $catTitle = $category?->title ?? "category-{$categoryId}";
+        $type = $request->get('type', 'shops');
+        $filename = "uzum-rankings-{$catTitle}-{$type}-".now()->format('Y-m-d').'.csv';
+
+        return response()->streamDownload(function () use ($products, $ourShopSlugs, $type): void {
+            $handle = fopen('php://output', 'w');
+            fwrite($handle, "\xEF\xBB\xBF");
+
+            if ($type === 'products') {
+                fputcsv($handle, ['#', 'ID', 'Название', 'Магазин', 'Цена (сум)', 'Скидка', 'Заказов', 'Отзывов', 'Рейтинг', 'Наш']);
+                $rank = 0;
+                $products->sortByDesc(fn ($card) => (int) ($card['ordersCount'] ?? 0))
+                    ->each(function ($card) use ($handle, $ourShopSlugs, &$rank): void {
+                        $rank++;
+                        $slug = $card['shop']['slug'] ?? '';
+                        $price = (int) ($card['minSellPrice'] ?? 0) / 100;
+                        $origPrice = (int) ($card['minFullPrice'] ?? 0) / 100;
+                        fputcsv($handle, [
+                            $rank,
+                            $card['id'],
+                            $card['title'] ?? '',
+                            $card['shop']['title'] ?? $slug,
+                            $price,
+                            $origPrice > $price ? $origPrice : '',
+                            (int) ($card['ordersCount'] ?? 0),
+                            (int) ($card['reviewsCount'] ?? 0),
+                            (float) ($card['rating'] ?? 0),
+                            in_array($slug, $ourShopSlugs, true) ? 'Да' : '',
+                        ]);
+                    });
+            } else {
+                fputcsv($handle, ['#', 'Магазин', 'Товаров', 'Заказов', 'Выручка (сум)', 'Отзывов', 'Ср. цена', 'Рейтинг', 'Наш']);
+                $rank = 0;
+                $products->groupBy(fn ($card) => $card['shop']['slug'] ?? '')
+                    ->map(fn ($prods, $slug) => [
+                        'slug' => $slug,
+                        'title' => $prods->first()['shop']['title'] ?? $slug,
+                        'count' => $prods->count(),
+                        'orders' => $prods->sum(fn ($c) => (int) ($c['ordersCount'] ?? 0)),
+                        'revenue' => (int) $prods->sum(fn ($c) => (int) ($c['ordersCount'] ?? 0) * ((int) ($c['minSellPrice'] ?? 0) / 100)),
+                        'reviews' => $prods->sum(fn ($c) => (int) ($c['reviewsCount'] ?? 0)),
+                        'avg_price' => (int) round($prods->avg(fn ($c) => (int) ($c['minSellPrice'] ?? 0) / 100)),
+                        'avg_rating' => round($prods->avg(fn ($c) => (float) ($c['rating'] ?? 0)), 2),
+                        'is_our' => in_array($slug, $ourShopSlugs, true),
+                    ])
+                    ->sortByDesc('orders')
+                    ->each(function ($shop) use ($handle, &$rank): void {
+                        $rank++;
+                        fputcsv($handle, [
+                            $rank, $shop['title'], $shop['count'], $shop['orders'],
+                            $shop['revenue'], $shop['reviews'], $shop['avg_price'],
+                            $shop['avg_rating'], $shop['is_our'] ? 'Да' : '',
+                        ]);
+                    });
+            }
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
 }

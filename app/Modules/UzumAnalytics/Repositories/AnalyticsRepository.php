@@ -10,6 +10,7 @@ use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceProduct;
 use App\Modules\UzumAnalytics\Models\UzumCategory;
 use App\Modules\UzumAnalytics\Models\UzumProductSnapshot;
+use App\Modules\UzumAnalytics\Models\UzumRankingHistory;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -297,6 +298,22 @@ final class AnalyticsRepository
                         'our_products_count' => $ourCount,
                     ];
                 });
+        });
+    }
+
+    /**
+     * История рангов компании в категории
+     */
+    public function getRankingHistory(int $companyId, int $categoryId, int $days = 30): Collection
+    {
+        $cacheKey = $this->cachePrefix."ranking_history:{$companyId}:{$categoryId}:{$days}";
+
+        return Cache::remember($cacheKey, $this->cacheTtl, function () use ($companyId, $categoryId, $days) {
+            return UzumRankingHistory::where('company_id', $companyId)
+                ->where('category_id', $categoryId)
+                ->where('recorded_at', '>=', now()->subDays($days))
+                ->orderBy('recorded_at')
+                ->get();
         });
     }
 
