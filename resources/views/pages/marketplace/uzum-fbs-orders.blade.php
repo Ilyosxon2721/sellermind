@@ -742,7 +742,7 @@ function uzumOrdersPage() {
         showCancelModal: false,
         orderToCancel: null,
         cancelingOrder: false,
-        activeTab: 'new',
+        activeTab: 'all',
         // Режим показа: 'fbs' | 'dbs' | 'edbs' | 'fbo'
         orderMode: 'fbs',
         modeLabels: { fbs: 'FBS', dbs: 'DBS', edbs: 'EDBS', fbo: 'FBO' },
@@ -765,6 +765,7 @@ function uzumOrdersPage() {
 
         // FBS / DBS / EDBS Status Tabs (orders from uzum_orders table)
         fbsStatusTabs: [
+            { value: 'all', label: 'Все' },
             { value: 'new', label: 'Новые' },
             { value: 'in_assembly', label: 'В сборке' },
             { value: 'in_supply', label: 'В поставке' },
@@ -894,8 +895,9 @@ function uzumOrdersPage() {
         async switchMode(mode) {
             if (this.orderMode === mode) return;
             this.orderMode = mode;
-            // FBS / DBS / EDBS используют статус-табы из uzum_orders, FBO — 'all'
-            this.activeTab = mode === 'fbo' ? 'all' : 'new';
+            // При переключении режима всегда показываем «Все» заказы,
+            // чтобы пользователь сразу видел данные, а не пустой список.
+            this.activeTab = 'all';
             this.loading = true;
 
             // FBS / DBS / EDBS — заказы уже в this.orders
