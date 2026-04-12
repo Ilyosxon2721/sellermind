@@ -402,11 +402,13 @@ final class UzumOrderSyncService
         $orderedAt = $this->parseTimestamp($orderData['ordered_at'] ?? null);
         $deliveredAt = $this->parseTimestamp($orderData['delivered_at'] ?? null);
 
-        // delivery_type: приоритет — явно переданный scheme от API, затем существующее значение в БД.
-        // Не используем дефолт 'FBS', чтобы DBS/EDBS/FBO заказы не маркировались как FBS,
-        // когда схема не определена (была баг: все заказы попадали в FBS).
+        // delivery_type: приоритет — явно переданный scheme от API, затем существующее
+        // значение в БД, затем дефолт 'FBS'. Дефолт безопасен: sync итерирует по
+        // scheme (FBS/DBS/EDBS) и явно проставляет delivery_type, поэтому дефолт
+        // сработает только для legacy-вызовов без scheme.
         $newDeliveryType = $orderData['delivery_type'] ?? null;
-        $deliveryType = $newDeliveryType ?? $existingOrder?->delivery_type;
+        $deliveryType = $newDeliveryType
+            ?? ($existingOrder?->delivery_type ?? 'FBS');
 
         $payload = [
             'marketplace_account_id' => $account->id,

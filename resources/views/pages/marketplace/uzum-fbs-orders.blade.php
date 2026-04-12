@@ -814,9 +814,11 @@ function uzumOrdersPage() {
         },
 
         // Получить нормализованную схему доставки заказа.
-        // Возвращает 'FBS' | 'DBS' | 'EDBS' | 'FBO' | '' (если не определена).
+        // Дефолт 'FBS': старые заказы с null delivery_type приходили через
+        // FBS API, DBS/EDBS обычно имеют raw_payload.scheme. Без дефолта
+        // заказы с null пропадают из всех вкладок.
         getOrderScheme(o) {
-            const raw = o?.delivery_type || o?.deliveryType || o?.scheme || o?.raw_payload?.scheme || '';
+            const raw = o?.delivery_type || o?.deliveryType || o?.scheme || o?.raw_payload?.scheme || 'FBS';
             return String(raw).toUpperCase();
         },
 

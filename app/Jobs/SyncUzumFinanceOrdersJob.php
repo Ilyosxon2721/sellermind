@@ -244,10 +244,14 @@ class SyncUzumFinanceOrdersJob implements ShouldQueue
             'shops_count' => count($shopIds),
         ]);
 
-        // Определяем дату начала
+        // IMPORTANT: Uzum Finance API некорректно обрабатывает фильтры dateFrom/dateTo
+        // (возвращает пустые результаты). Запрашиваем всё без дат, фильтруем локально.
         $dateFromMs = null;
+
+        // Для локальной фильтрации по дате при вставке
+        $localDateFilter = null;
         if (! $this->fullSync && $this->days > 0) {
-            $dateFromMs = now()->subDays($this->days)->startOfDay()->getTimestampMs();
+            $localDateFilter = now()->subDays($this->days)->startOfDay()->getTimestamp();
         }
 
         // Сначала получаем общее количество заказов для расчёта прогресса
@@ -305,6 +309,13 @@ class SyncUzumFinanceOrdersJob implements ShouldQueue
                                 $errors++;
 
                                 continue;
+                            }
+
+                            // Локальная фильтрация по дате (API не поддерживает dateFrom)
+                            if ($localDateFilter && $data['order_date'] instanceof \Carbon\Carbon) {
+                                if ($data['order_date']->getTimestamp() < $localDateFilter) {
+                                    continue;
+                                }
                             }
 
                             $order = UzumFinanceOrder::updateOrCreate(

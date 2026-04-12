@@ -1379,12 +1379,14 @@ final class UzumClient implements MarketplaceClientInterface
 
         foreach ($shopIds as $shopId) {
             try {
-                // shopIds должен быть массивом согласно API документации
+                // shopIds передаём как строку (не массив!) — Uzum API не понимает
+                // формат shopIds[0]=123, который генерирует http_build_query для массивов.
+                // FBS API (/v2/fbs/orders) тоже принимает shopIds как строку.
                 $query = [
                     'page' => $page,
                     'size' => min($size, 100),
                     'group' => $group ? 'true' : 'false',
-                    'shopIds' => [$shopId],
+                    'shopIds' => (string) $shopId,
                 ];
 
                 // Добавляем фильтр по дате если указан
