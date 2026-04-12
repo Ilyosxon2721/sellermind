@@ -312,6 +312,79 @@
             </div>
         </div>
     </div>
+
+    <!-- Extract Report Modal -->
+    <div x-show="showExtractReport" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="modal-backdrop" @click="showExtractReport = false"></div>
+        <div class="modal max-w-3xl">
+            <div class="modal-header">
+                <h3 class="text-lg font-semibold text-gray-900">Результат извлечения клиентов</h3>
+            </div>
+            <div class="modal-body">
+                <template x-if="extractReport">
+                    <div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                            <div class="bg-gray-50 rounded-lg p-3 text-center">
+                                <p class="text-xs text-gray-500">Аккаунтов</p>
+                                <p class="text-lg font-bold text-gray-900" x-text="extractReport.totals?.accounts || 0"></p>
+                            </div>
+                            <div class="bg-green-50 rounded-lg p-3 text-center">
+                                <p class="text-xs text-gray-500">Создано</p>
+                                <p class="text-lg font-bold text-green-600" x-text="extractReport.totals?.created || 0"></p>
+                            </div>
+                            <div class="bg-blue-50 rounded-lg p-3 text-center">
+                                <p class="text-xs text-gray-500">Обновлено</p>
+                                <p class="text-lg font-bold text-blue-600" x-text="extractReport.totals?.updated || 0"></p>
+                            </div>
+                            <div class="bg-yellow-50 rounded-lg p-3 text-center">
+                                <p class="text-xs text-gray-500">Пропущено</p>
+                                <p class="text-lg font-bold text-yellow-600" x-text="extractReport.totals?.skipped || 0"></p>
+                            </div>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="table text-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Аккаунт</th>
+                                        <th>Маркетплейс</th>
+                                        <th class="text-right">Всего заказов</th>
+                                        <th class="text-right">Подходит под DBS</th>
+                                        <th class="text-right">Создано</th>
+                                        <th class="text-right">Обновлено</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="acc in (extractReport.accounts || [])" :key="acc.account_id">
+                                        <tr>
+                                            <td x-text="acc.name"></td>
+                                            <td x-text="marketplaceLabel(acc.marketplace)"></td>
+                                            <td class="text-right" x-text="acc.orders_total"></td>
+                                            <td class="text-right" :class="acc.eligible === 0 ? 'text-red-500 font-medium' : 'text-green-600 font-medium'" x-text="acc.eligible"></td>
+                                            <td class="text-right" x-text="acc.created"></td>
+                                            <td class="text-right" x-text="acc.updated"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-4 text-xs text-gray-500 space-y-1">
+                            <p><strong>Подходит под DBS</strong> — заказы с заполненными телефоном и именем покупателя (для Uzum дополнительно требуется <code>delivery_type = DBS/EDBS</code>).</p>
+                            <p x-show="(extractReport.totals?.created || 0) === 0 && (extractReport.totals?.updated || 0) === 0">
+                                Если везде <strong>Подходит под DBS = 0</strong>, значит в БД нет DBS-заказов с контактами клиентов.
+                                Проверьте в разделе «Заказы», что у Uzum есть заказы с <code>delivery_type = DBS</code> или <code>EDBS</code>,
+                                и у них заполнены поля <code>customer_phone</code> и <code>customer_name</code>.
+                            </p>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" @click="showExtractReport = false">OK</button>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection
 
@@ -341,6 +414,10 @@ function marketplaceCustomersPage() {
 
         deletingId: null,
         extracting: false,
+
+        // Диагностика извлечения
+        showExtractReport: false,
+        extractReport: null,
 
         async init() {
             await Promise.all([this.loadCustomers(), this.loadStats()]);
@@ -447,13 +524,13 @@ function marketplaceCustomersPage() {
             this.extracting = true;
             try {
                 const res = await window.api.post('/marketplace-customers/extract-all');
-                const data = res.data?.data || {};
-                const msg = res.data?.message || `Извлечено: ${data.created || 0} новых, ${data.updated || 0} обновлено`;
-                if (window.$toast) {
-                    window.$toast.success(msg);
-                } else {
-                    alert(msg);
-                }
+                const payload = res.data?.data || {};
+                this.extractReport = {
+                    totals: payload.totals || {},
+                    accounts: payload.accounts || [],
+                    message: res.data?.message || '',
+                };
+                this.showExtractReport = true;
                 await Promise.all([this.loadCustomers(), this.loadStats()]);
             } catch (e) {
                 console.error('Error extracting customers:', e);
@@ -466,6 +543,11 @@ function marketplaceCustomersPage() {
             } finally {
                 this.extracting = false;
             }
+        },
+
+        marketplaceLabel(code) {
+            const labels = { uzum: 'Uzum Market', wb: 'Wildberries', ozon: 'Ozon', ym: 'Yandex Market' };
+            return labels[code] || code;
         },
 
         // Delete

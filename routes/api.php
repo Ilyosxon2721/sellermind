@@ -174,6 +174,7 @@ Route::middleware(['web', 'auth.any'])->group(function () {
     Route::prefix('marketplace-customers')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'index']);
         Route::get('/stats', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'stats']);
+        Route::get('/diagnose', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'diagnose']);
         Route::post('/extract-all', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'extractAll']);
         Route::post('/extract/{accountId}', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'extractFromOrders']);
         Route::get('/{id}', [\App\Http\Controllers\Api\MarketplaceCustomerController::class, 'show']);
