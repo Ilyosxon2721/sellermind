@@ -110,8 +110,13 @@ class UzumSyncFinanceOrders extends Command
 
         $this->line('  Found '.count($shopIds).' shops');
 
-        // Конвертируем дату в timestamp (миллисекунды) для API
-        $dateFromMs = $dateFrom ? $dateFrom->getTimestampMs() : null;
+        // IMPORTANT: Uzum Finance API некорректно обрабатывает фильтры dateFrom/dateTo
+        // (возвращает пустые результаты). Поэтому ВСЕГДА запрашиваем без дат,
+        // а фильтруем уже полученные данные локально по order_date при сохранении.
+        $dateFromMs = null;
+
+        // Локальная фильтрация по дате (в секундах) — отсекаем при вставке
+        $localDateFilter = $dateFrom ? $dateFrom->getTimestamp() : null;
 
         foreach ($shopIds as $shopId) {
             $page = 0;
@@ -140,6 +145,13 @@ class UzumSyncFinanceOrders extends Command
                                 $errors++;
 
                                 continue;
+                            }
+
+                            // Локальная фильтрация по дате (API не поддерживает dateFrom корректно)
+                            if ($localDateFilter && $data['order_date'] instanceof \Carbon\Carbon) {
+                                if ($data['order_date']->getTimestamp() < $localDateFilter) {
+                                    continue;
+                                }
                             }
 
                             $order = UzumFinanceOrder::updateOrCreate(
