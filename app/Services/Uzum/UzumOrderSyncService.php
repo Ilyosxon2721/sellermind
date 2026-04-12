@@ -7,6 +7,7 @@ namespace App\Services\Uzum;
 use App\Models\MarketplaceAccount;
 use App\Models\UzumOrder;
 use App\Models\UzumOrderItem;
+use App\Services\Marketplaces\MarketplaceCustomerService;
 use App\Services\Stock\OrderStockService;
 use App\Services\Uzum\Api\UzumApiManager;
 use App\Services\Uzum\Api\UzumEndpoints;
@@ -21,9 +22,14 @@ final class UzumOrderSyncService
 {
     private OrderStockService $stockService;
 
-    public function __construct(?OrderStockService $stockService = null)
-    {
+    private MarketplaceCustomerService $customerService;
+
+    public function __construct(
+        ?OrderStockService $stockService = null,
+        ?MarketplaceCustomerService $customerService = null,
+    ) {
         $this->stockService = $stockService ?? new OrderStockService;
+        $this->customerService = $customerService ?? new MarketplaceCustomerService;
     }
 
     /** Маппинг статусов Uzum API → внутренние */
@@ -428,6 +434,16 @@ final class UzumOrderSyncService
 
         // Проверяем зависшие резервы
         $this->ensureCancelledStockReleased($account, $order);
+
+        // Извлекаем данные клиента из DBS/EDBS заказа в клиентскую базу
+        try {
+            $this->customerService->extractFromOrder($account, $order);
+        } catch (\Throwable $e) {
+            Log::warning('Ошибка извлечения клиента из заказа Uzum', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return $result['result'];
     }

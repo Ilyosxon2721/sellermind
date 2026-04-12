@@ -25,9 +25,31 @@ use Throwable;
 
 class MarketplaceSyncService
 {
+    protected MarketplaceCustomerService $customerService;
+
     public function __construct(
-        protected MarketplaceRegistry $registry
-    ) {}
+        protected MarketplaceRegistry $registry,
+        ?MarketplaceCustomerService $customerService = null,
+    ) {
+        $this->customerService = $customerService ?? new MarketplaceCustomerService;
+    }
+
+    /**
+     * Извлечь данные клиента из DBS заказа в клиентскую базу.
+     * Ошибки извлечения не прерывают синхронизацию заказов.
+     */
+    protected function extractCustomerFromOrder(MarketplaceAccount $account, $order): void
+    {
+        try {
+            $this->customerService->extractFromOrder($account, $order);
+        } catch (Throwable $e) {
+            Log::warning('Ошибка извлечения клиента из заказа', [
+                'order_id' => $order->id ?? null,
+                'marketplace' => $account->marketplace,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
 
     /**
      * Sync products catalog
@@ -575,6 +597,8 @@ class MarketplaceSyncService
             }
         }
 
+        $this->extractCustomerFromOrder($account, $order);
+
         return $isNew ? 'created' : 'updated';
     }
 
@@ -665,6 +689,8 @@ class MarketplaceSyncService
                 );
             }
         }
+
+        $this->extractCustomerFromOrder($account, $order);
 
         return $isNew ? 'created' : 'updated';
     }
