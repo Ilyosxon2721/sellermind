@@ -1018,7 +1018,7 @@ final class UzumClient implements MarketplaceClientInterface
                                 }
                             }
 
-                            $orders[] = $this->mapOrderData($orderData, 'fbs');
+                            $orders[] = $this->mapOrderData($orderData);
                         }
 
                         $page++;
