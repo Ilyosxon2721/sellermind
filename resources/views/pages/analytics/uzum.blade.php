@@ -69,6 +69,11 @@
                         class="px-4 py-2 rounded-lg text-sm font-medium transition">
                     Категории
                 </button>
+                <button @click="activeTab = 'competitors'; loadOurCategories()"
+                        :class="activeTab === 'competitors' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition">
+                    Конкуренты
+                </button>
             </div>
         </header>
 
@@ -531,6 +536,237 @@
 
             </div>
 
+            {{-- Tab: Competitors --}}
+            <div x-show="activeTab === 'competitors'" class="space-y-4">
+
+                {{-- Выбор категории --}}
+                <div class="bg-white rounded-xl border border-gray-200">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h2 class="font-semibold text-gray-900">Анализ конкурентов по вашим категориям</h2>
+                        <p class="text-xs text-gray-400 mt-0.5">Категории определяются по вашим товарам на Uzum</p>
+                    </div>
+                    <div x-show="loadingOurCategories" class="px-6 py-8 text-center text-gray-400">Загрузка категорий...</div>
+                    <template x-if="!loadingOurCategories && ourCategories.length === 0">
+                        <div class="px-6 py-12 text-center text-gray-500">
+                            <p class="font-medium">Нет данных о ваших категориях</p>
+                            <p class="text-sm mt-1">Убедитесь, что ваши товары синхронизированы с Uzum и собраны снепшоты</p>
+                        </div>
+                    </template>
+                    <template x-if="!loadingOurCategories && ourCategories.length > 0">
+                        <div class="divide-y divide-gray-100">
+                            <template x-for="cat in ourCategories" :key="cat.id">
+                                <div class="px-6 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer"
+                                     :class="selectedCompCategory && selectedCompCategory.id === cat.id ? 'bg-blue-50' : ''"
+                                     @click="loadCategoryRankings(cat.id, cat.title)">
+                                    <div>
+                                        <span class="text-sm font-medium text-gray-900" x-text="cat.title"></span>
+                                        <span class="ml-2 text-xs text-blue-600 font-medium" x-text="'Ваших товаров: ' + cat.our_products_count"></span>
+                                        <span class="ml-2 text-xs text-gray-500" x-text="cat.products_count ? 'Всего: ' + cat.products_count : ''"></span>
+                                    </div>
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+
+                {{-- Рейтинги (показываются после выбора категории) --}}
+                <div x-show="selectedCompCategory !== null">
+
+                    {{-- Заголовок + сортировка --}}
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900" x-text="selectedCompCategory?.title"></h2>
+                            <p class="text-xs text-gray-500" x-text="rankingsData?.total_products ? rankingsData.total_products + ' товаров в категории' : ''"></p>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <select x-model="rankingsSort" @change="loadCategoryRankings(selectedCompCategory.id, selectedCompCategory.title)"
+                                    class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                <option value="orders">По заказам</option>
+                                <option value="revenue">По выручке</option>
+                                <option value="reviews">По отзывам</option>
+                                <option value="rating">По рейтингу</option>
+                            </select>
+                            <button @click="selectedCompCategory = null; rankingsData = null" class="p-1.5 text-gray-400 hover:text-gray-600">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div x-show="loadingRankings" class="bg-white rounded-xl border border-gray-200 px-6 py-12 text-center">
+                        <svg class="w-8 h-8 mx-auto animate-spin text-blue-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <p class="text-sm text-gray-500">Загрузка данных из Uzum...</p>
+                    </div>
+
+                    <div x-show="!loadingRankings && rankingsData" class="space-y-4">
+
+                        {{-- Наша позиция (карточки) --}}
+                        <template x-if="rankingsData?.our_metrics">
+                            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-5">
+                                <h3 class="font-semibold text-blue-900 mb-3 flex items-center space-x-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                                    </svg>
+                                    <span>Ваша позиция: <span class="text-blue-600" x-text="rankingsData.our_metrics.shop_title"></span></span>
+                                </h3>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                    <div class="bg-white rounded-lg p-3 border border-blue-100">
+                                        <p class="text-xs text-gray-500 uppercase tracking-wider">Ранг по заказам</p>
+                                        <p class="mt-1 text-2xl font-bold text-blue-600">
+                                            #<span x-text="rankingsData.our_metrics.rank_by_orders"></span>
+                                        </p>
+                                        <p class="text-xs text-gray-400" x-text="'из ' + rankingsData.our_metrics.total_shops + ' магазинов'"></p>
+                                    </div>
+                                    <div class="bg-white rounded-lg p-3 border border-blue-100">
+                                        <p class="text-xs text-gray-500 uppercase tracking-wider">Ранг по выручке</p>
+                                        <p class="mt-1 text-2xl font-bold text-green-600">
+                                            #<span x-text="rankingsData.our_metrics.rank_by_revenue"></span>
+                                        </p>
+                                        <p class="text-xs text-gray-400" x-text="formatPrice(rankingsData.our_metrics.total_revenue) + ' сум'"></p>
+                                    </div>
+                                    <div class="bg-white rounded-lg p-3 border border-blue-100">
+                                        <p class="text-xs text-gray-500 uppercase tracking-wider">Ранг по отзывам</p>
+                                        <p class="mt-1 text-2xl font-bold text-orange-600">
+                                            #<span x-text="rankingsData.our_metrics.rank_by_reviews"></span>
+                                        </p>
+                                        <p class="text-xs text-gray-400" x-text="rankingsData.our_metrics.total_reviews + ' отзывов'"></p>
+                                    </div>
+                                    <div class="bg-white rounded-lg p-3 border border-blue-100">
+                                        <p class="text-xs text-gray-500 uppercase tracking-wider">Ранг по рейтингу</p>
+                                        <p class="mt-1 text-2xl font-bold text-yellow-500">
+                                            #<span x-text="rankingsData.our_metrics.rank_by_rating"></span>
+                                        </p>
+                                        <p class="text-xs text-gray-400" x-text="'★ ' + rankingsData.our_metrics.avg_rating"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        {{-- Суб-табы: Магазины / Товары --}}
+                        <div class="flex border-b border-gray-200 mb-0">
+                            <button @click="rankingsSubTab = 'shops'"
+                                    :class="rankingsSubTab === 'shops' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'"
+                                    class="px-4 py-2.5 text-sm font-medium">
+                                Рейтинг магазинов
+                                <span class="ml-1 text-xs text-gray-400" x-text="rankingsData?.shop_rankings?.length ? '(' + rankingsData.shop_rankings.length + ')' : ''"></span>
+                            </button>
+                            <button @click="rankingsSubTab = 'products'"
+                                    :class="rankingsSubTab === 'products' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'"
+                                    class="px-4 py-2.5 text-sm font-medium">
+                                Рейтинг товаров
+                                <span class="ml-1 text-xs text-gray-400" x-text="rankingsData?.product_rankings?.length ? '(' + rankingsData.product_rankings.length + ')' : ''"></span>
+                            </button>
+                        </div>
+
+                        {{-- Таблица магазинов --}}
+                        <div x-show="rankingsSubTab === 'shops'" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                            <template x-if="!rankingsData?.shop_rankings?.length">
+                                <div class="px-6 py-8 text-center text-gray-500 text-sm">Нет данных о магазинах</div>
+                            </template>
+                            <template x-if="rankingsData?.shop_rankings?.length">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full">
+                                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+                                            <tr>
+                                                <th class="px-4 py-3 text-left">#</th>
+                                                <th class="px-4 py-3 text-left">Магазин</th>
+                                                <th class="px-4 py-3 text-right">Товаров</th>
+                                                <th class="px-4 py-3 text-right">Заказов</th>
+                                                <th class="px-4 py-3 text-right">Выручка (сум)</th>
+                                                <th class="px-4 py-3 text-right">Отзывов</th>
+                                                <th class="px-4 py-3 text-right">Ср. цена</th>
+                                                <th class="px-4 py-3 text-right">Рейтинг</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100">
+                                            <template x-for="shop in rankingsData.shop_rankings" :key="shop.shop_slug">
+                                                <tr :class="shop.is_our_shop ? 'bg-blue-50 font-semibold' : 'hover:bg-gray-50'">
+                                                    <td class="px-4 py-3 text-sm text-gray-400 font-mono" x-text="shop.rank"></td>
+                                                    <td class="px-4 py-3">
+                                                        <div class="flex items-center space-x-2">
+                                                            <a :href="'https://uzum.uz/shop/' + shop.shop_slug" target="_blank"
+                                                               class="text-sm text-blue-600 hover:underline"
+                                                               x-text="shop.shop_title || shop.shop_slug"></a>
+                                                            <span x-show="shop.is_our_shop" class="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">Вы</span>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-right">
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs font-medium"
+                                                              x-text="shop.products_count"></span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-right text-sm font-bold text-blue-600" x-text="formatPrice(shop.total_orders)"></td>
+                                                    <td class="px-4 py-3 text-right text-sm text-gray-900" x-text="formatPrice(shop.total_revenue)"></td>
+                                                    <td class="px-4 py-3 text-right text-sm text-gray-600" x-text="formatPrice(shop.total_reviews)"></td>
+                                                    <td class="px-4 py-3 text-right text-sm text-gray-900" x-text="formatPrice(shop.avg_price) + ' сум'"></td>
+                                                    <td class="px-4 py-3 text-right text-sm text-yellow-500 font-medium" x-text="'★ ' + shop.avg_rating"></td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </template>
+                        </div>
+
+                        {{-- Таблица товаров --}}
+                        <div x-show="rankingsSubTab === 'products'" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                            <template x-if="!rankingsData?.product_rankings?.length">
+                                <div class="px-6 py-8 text-center text-gray-500 text-sm">Нет данных о товарах</div>
+                            </template>
+                            <template x-if="rankingsData?.product_rankings?.length">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full">
+                                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+                                            <tr>
+                                                <th class="px-4 py-3 text-left">#</th>
+                                                <th class="px-4 py-3 text-left">Товар</th>
+                                                <th class="px-4 py-3 text-left">Магазин</th>
+                                                <th class="px-4 py-3 text-right">Цена</th>
+                                                <th class="px-4 py-3 text-right">Заказов</th>
+                                                <th class="px-4 py-3 text-right">Отзывов</th>
+                                                <th class="px-4 py-3 text-right">Рейтинг</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100">
+                                            <template x-for="item in rankingsData.product_rankings" :key="item.product_id">
+                                                <tr :class="item.is_our_product ? 'bg-blue-50 font-semibold' : 'hover:bg-gray-50'">
+                                                    <td class="px-4 py-3 text-sm text-gray-400 font-mono" x-text="item.rank"></td>
+                                                    <td class="px-4 py-3">
+                                                        <div class="flex items-center space-x-2">
+                                                            <a :href="'https://uzum.uz/product/' + item.product_id" target="_blank"
+                                                               class="text-sm text-blue-600 hover:underline line-clamp-2 max-w-xs block"
+                                                               x-text="item.title || ('ID ' + item.product_id)"></a>
+                                                            <span x-show="item.is_our_product" class="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium shrink-0">Ваш</span>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-sm text-gray-600" x-text="item.shop_title || item.shop_slug || '—'"></td>
+                                                    <td class="px-4 py-3 text-right">
+                                                        <span class="text-sm font-semibold text-gray-900" x-text="formatPrice(item.price) + ' сум'"></span>
+                                                        <template x-if="item.original_price && item.original_price > item.price">
+                                                            <span class="block text-xs text-gray-400 line-through" x-text="formatPrice(item.original_price)"></span>
+                                                        </template>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-right text-sm font-bold text-blue-600" x-text="formatPrice(item.orders_count)"></td>
+                                                    <td class="px-4 py-3 text-right text-sm text-gray-600" x-text="formatPrice(item.reviews_count)"></td>
+                                                    <td class="px-4 py-3 text-right text-sm text-yellow-500 font-medium" x-text="item.rating ? '★ ' + item.rating : '—'"></td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </template>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
         </main>
     </div>
 
@@ -626,6 +862,15 @@ function uzumAnalytics() {
         selectedCategory: null,
         categoryDetail: null,
         categorySubTab: 'products',
+
+        // Конкуренты
+        ourCategories: [],
+        loadingOurCategories: false,
+        selectedCompCategory: null,
+        rankingsData: null,
+        loadingRankings: false,
+        rankingsSort: 'orders',
+        rankingsSubTab: 'shops',
 
         overviewProducts: [],
         trackedProducts: [],
@@ -861,6 +1106,44 @@ function uzumAnalytics() {
                 this.showToast('Ошибка загрузки истории', 'error');
             } finally {
                 this.loadingHistory = false;
+            }
+        },
+
+        // ---- Конкуренты ----
+
+        async loadOurCategories() {
+            if (this.ourCategories.length > 0) return;
+            this.loadingOurCategories = true;
+            try {
+                const res = await fetch('/api/analytics/uzum/our-categories', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.ourCategories = data.categories || [];
+            } catch (e) {
+                this.showToast('Ошибка загрузки категорий', 'error');
+            } finally {
+                this.loadingOurCategories = false;
+            }
+        },
+
+        async loadCategoryRankings(categoryId, title) {
+            this.selectedCompCategory = { id: categoryId, title };
+            this.rankingsData = null;
+            this.loadingRankings = true;
+            this.rankingsSubTab = 'shops';
+            try {
+                const res = await fetch(`/api/analytics/uzum/category/${categoryId}/rankings?sort=${this.rankingsSort}&limit=30`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.rankingsData = await res.json();
+            } catch (e) {
+                this.showToast('Ошибка загрузки рейтингов: ' + e.message, 'error');
+                this.selectedCompCategory = null;
+            } finally {
+                this.loadingRankings = false;
             }
         },
 

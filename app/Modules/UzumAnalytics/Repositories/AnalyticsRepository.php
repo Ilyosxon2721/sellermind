@@ -6,11 +6,12 @@ declare(strict_types=1);
 
 namespace App\Modules\UzumAnalytics\Repositories;
 
+use App\Models\MarketplaceAccount;
+use App\Models\MarketplaceProduct;
 use App\Modules\UzumAnalytics\Models\UzumCategory;
 use App\Modules\UzumAnalytics\Models\UzumProductSnapshot;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Репозиторий для хранения и получения аналитических данных Uzum.
@@ -26,8 +27,8 @@ final class AnalyticsRepository
 
     public function __construct()
     {
-        $this->cacheTtl    = (int) config('uzum-crawler.cache_ttl_minutes', 30) * 60;
-        $this->cachePrefix = config('uzum-crawler.redis_prefix', 'uzum_crawler:') . 'analytics:';
+        $this->cacheTtl = (int) config('uzum-crawler.cache_ttl_minutes', 30) * 60;
+        $this->cachePrefix = config('uzum-crawler.redis_prefix', 'uzum_crawler:').'analytics:';
     }
 
     // -------------------------------------------------------------------------
@@ -43,20 +44,20 @@ final class AnalyticsRepository
         $product = $apiProduct['product'] ?? $apiProduct;
 
         $snapshot = UzumProductSnapshot::create([
-            'product_id'     => $product['id'],
-            'category_id'    => $product['category']['id'] ?? $product['categoryId'] ?? 0,
-            'shop_slug'      => $product['shop']['slug'] ?? $product['shopSlug'] ?? '',
-            'title'          => $product['title'] ?? '',
-            'price'          => (int) ($product['minSellPrice'] ?? 0) / 100,
+            'product_id' => $product['id'],
+            'category_id' => $product['category']['id'] ?? $product['categoryId'] ?? 0,
+            'shop_slug' => $product['shop']['slug'] ?? $product['shopSlug'] ?? '',
+            'title' => $product['title'] ?? '',
+            'price' => (int) ($product['minSellPrice'] ?? 0) / 100,
             'original_price' => isset($product['maxFullPrice']) ? (int) $product['maxFullPrice'] / 100 : null,
-            'rating'         => (float) ($product['rating'] ?? 0),
-            'reviews_count'  => (int) ($product['reviewsAmount'] ?? $product['reviewsCount'] ?? 0),
-            'orders_count'   => (int) ($product['ordersAmount'] ?? $product['ordersCount'] ?? 0),
-            'scraped_at'     => now(),
+            'rating' => (float) ($product['rating'] ?? 0),
+            'reviews_count' => (int) ($product['reviewsAmount'] ?? $product['reviewsCount'] ?? 0),
+            'orders_count' => (int) ($product['ordersAmount'] ?? $product['ordersCount'] ?? 0),
+            'scraped_at' => now(),
         ]);
 
         // Инвалидировать кэш истории цен для этого товара
-        Cache::forget($this->cachePrefix . "price_history:{$snapshot->product_id}");
+        Cache::forget($this->cachePrefix."price_history:{$snapshot->product_id}");
 
         return $snapshot;
     }
@@ -66,7 +67,7 @@ final class AnalyticsRepository
      */
     public function getPriceHistory(int $productId, int $days = 30): Collection
     {
-        $cacheKey = $this->cachePrefix . "price_history:{$productId}:{$days}";
+        $cacheKey = $this->cachePrefix."price_history:{$productId}:{$days}";
 
         return Cache::remember($cacheKey, $this->cacheTtl, function () use ($productId, $days) {
             return UzumProductSnapshot::forProduct($productId)
@@ -81,7 +82,7 @@ final class AnalyticsRepository
      */
     public function getCategoryStats(int $categoryId, int $days = 7): array
     {
-        $cacheKey = $this->cachePrefix . "category_stats:{$categoryId}:{$days}";
+        $cacheKey = $this->cachePrefix."category_stats:{$categoryId}:{$days}";
 
         return Cache::remember($cacheKey, $this->cacheTtl, function () use ($categoryId, $days) {
             $since = now()->subDays($days);
@@ -105,15 +106,15 @@ final class AnalyticsRepository
                 ->get(['product_id', 'title', 'price', 'rating', 'reviews_count', 'orders_count', 'shop_slug']);
 
             return [
-                'category_id'    => $categoryId,
-                'period_days'    => $days,
+                'category_id' => $categoryId,
+                'period_days' => $days,
                 'products_count' => (int) ($stats->products_count ?? 0),
-                'min_price'      => (float) ($stats->min_price ?? 0),
-                'max_price'      => (float) ($stats->max_price ?? 0),
-                'avg_price'      => (float) ($stats->avg_price ?? 0),
-                'avg_rating'     => (float) ($stats->avg_rating ?? 0),
-                'total_reviews'  => (int) ($stats->total_reviews ?? 0),
-                'top_products'   => $topProducts->toArray(),
+                'min_price' => (float) ($stats->min_price ?? 0),
+                'max_price' => (float) ($stats->max_price ?? 0),
+                'avg_price' => (float) ($stats->avg_price ?? 0),
+                'avg_rating' => (float) ($stats->avg_rating ?? 0),
+                'total_reviews' => (int) ($stats->total_reviews ?? 0),
+                'top_products' => $topProducts->toArray(),
             ];
         });
     }
@@ -123,7 +124,7 @@ final class AnalyticsRepository
      */
     public function getCompetitorData(string $shopSlug, int $days = 30): array
     {
-        $cacheKey = $this->cachePrefix . "competitor:{$shopSlug}:{$days}";
+        $cacheKey = $this->cachePrefix."competitor:{$shopSlug}:{$days}";
 
         return Cache::remember($cacheKey, $this->cacheTtl, function () use ($shopSlug, $days) {
             $since = now()->subDays($days);
@@ -146,14 +147,14 @@ final class AnalyticsRepository
                 ->get(['product_id', 'title', 'price', 'original_price', 'rating', 'reviews_count', 'orders_count']);
 
             return [
-                'shop_slug'      => $shopSlug,
-                'period_days'    => $days,
+                'shop_slug' => $shopSlug,
+                'period_days' => $days,
                 'products_count' => (int) ($stats->products_count ?? 0),
-                'avg_price'      => (float) ($stats->avg_price ?? 0),
-                'avg_rating'     => (float) ($stats->avg_rating ?? 0),
-                'total_reviews'  => (int) ($stats->total_reviews ?? 0),
-                'total_orders'   => (int) ($stats->total_orders ?? 0),
-                'products'       => $products->toArray(),
+                'avg_price' => (float) ($stats->avg_price ?? 0),
+                'avg_rating' => (float) ($stats->avg_rating ?? 0),
+                'total_reviews' => (int) ($stats->total_reviews ?? 0),
+                'total_orders' => (int) ($stats->total_orders ?? 0),
+                'products' => $products->toArray(),
             ];
         });
     }
@@ -172,8 +173,8 @@ final class AnalyticsRepository
             UzumCategory::updateOrCreate(
                 ['id' => $cat['id']],
                 [
-                    'parent_id'      => $parentId,
-                    'title'          => $cat['title'] ?? $cat['name'] ?? '',
+                    'parent_id' => $parentId,
+                    'title' => $cat['title'] ?? $cat['name'] ?? '',
                     'products_count' => $cat['productCount'] ?? $cat['products_count'] ?? 0,
                     'last_synced_at' => now(),
                 ]
@@ -185,7 +186,7 @@ final class AnalyticsRepository
             }
         }
 
-        Cache::forget($this->cachePrefix . 'categories_tree');
+        Cache::forget($this->cachePrefix.'categories_tree');
     }
 
     /**
@@ -193,13 +194,109 @@ final class AnalyticsRepository
      */
     public function getCategoriesTree(): Collection
     {
-        $cacheKey = $this->cachePrefix . 'categories_tree';
+        $cacheKey = $this->cachePrefix.'categories_tree';
 
         return Cache::remember($cacheKey, $this->cacheTtl, function () {
             return UzumCategory::whereNull('parent_id')
                 ->with('children')
                 ->orderBy('title')
                 ->get();
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // Анализ конкурентов
+    // -------------------------------------------------------------------------
+
+    /**
+     * Получить shop_slug'и компании на Uzum (из снепшотов или MarketplaceProduct)
+     */
+    public function getCompanyShopSlugs(int $companyId): array
+    {
+        $cacheKey = $this->cachePrefix."company_shop_slugs:{$companyId}";
+
+        return Cache::remember($cacheKey, $this->cacheTtl, function () use ($companyId): array {
+            // Получить Uzum аккаунты компании
+            $accountIds = MarketplaceAccount::where('company_id', $companyId)
+                ->where('marketplace', 'uzum')
+                ->pluck('id');
+
+            if ($accountIds->isEmpty()) {
+                return [];
+            }
+
+            // Получить external_product_id наших товаров на Uzum
+            $externalIds = MarketplaceProduct::whereIn('marketplace_account_id', $accountIds)
+                ->whereNotNull('external_product_id')
+                ->pluck('external_product_id')
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->toArray();
+
+            if (empty($externalIds)) {
+                return [];
+            }
+
+            // Найти shop_slug из снепшотов наших товаров
+            return UzumProductSnapshot::whereIn('product_id', $externalIds)
+                ->whereNotNull('shop_slug')
+                ->where('shop_slug', '!=', '')
+                ->distinct()
+                ->pluck('shop_slug')
+                ->toArray();
+        });
+    }
+
+    /**
+     * Получить категории Uzum, где у компании есть товары
+     */
+    public function getCompanyCategoryIds(int $companyId): Collection
+    {
+        $cacheKey = $this->cachePrefix."company_categories:{$companyId}";
+
+        return Cache::remember($cacheKey, $this->cacheTtl, function () use ($companyId): Collection {
+            $accountIds = MarketplaceAccount::where('company_id', $companyId)
+                ->where('marketplace', 'uzum')
+                ->pluck('id');
+
+            if ($accountIds->isEmpty()) {
+                return collect();
+            }
+
+            $externalIds = MarketplaceProduct::whereIn('marketplace_account_id', $accountIds)
+                ->whereNotNull('external_product_id')
+                ->pluck('external_product_id')
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->toArray();
+
+            if (empty($externalIds)) {
+                return collect();
+            }
+
+            // Находим категории из снепшотов наших товаров
+            $categoryIds = UzumProductSnapshot::whereIn('product_id', $externalIds)
+                ->where('category_id', '>', 0)
+                ->distinct()
+                ->pluck('category_id')
+                ->toArray();
+
+            // Получить информацию о категориях
+            return UzumCategory::whereIn('id', $categoryIds)
+                ->get(['id', 'title', 'products_count'])
+                ->map(function (UzumCategory $cat) use ($externalIds) {
+                    $ourCount = UzumProductSnapshot::where('category_id', $cat->id)
+                        ->whereIn('product_id', $externalIds)
+                        ->distinct('product_id')
+                        ->count('product_id');
+
+                    return [
+                        'id' => $cat->id,
+                        'title' => $cat->title,
+                        'products_count' => $cat->products_count,
+                        'our_products_count' => $ourCount,
+                    ];
+                });
         });
     }
 
