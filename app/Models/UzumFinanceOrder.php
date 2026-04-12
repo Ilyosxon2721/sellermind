@@ -21,6 +21,7 @@ class UzumFinanceOrder extends Model
         'product_id',
         'sku_title',
         'product_image_url',
+        'delivery_type',
         'status',
         'status_normalized',
         'sell_price',

@@ -7,6 +7,7 @@ use App\Models\UzumFinanceOrder;
 use App\Services\Marketplaces\IssueDetectorService;
 use App\Services\Marketplaces\MarketplaceHttpClient;
 use App\Services\Marketplaces\UzumClient;
+use App\Services\Uzum\UzumFinanceOrderEnricher;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -150,6 +151,23 @@ class SyncUzumFinanceOrdersJob implements ShouldQueue
             $client = new UzumClient($httpClient, app(IssueDetectorService::class));
 
             $result = $this->syncAccountFinanceOrders($client, $account);
+
+            // После загрузки финансовых заказов проставляем delivery_type
+            // через перекрёстную проверку с uzum_orders. FBS API уже должен быть
+            // синхронизирован — иначе все заказы будут помечены как FBO.
+            $this->updateProgress(['message' => 'Определение типов доставки (FBS/DBS/EDBS/FBO)...']);
+            try {
+                $enriched = app(UzumFinanceOrderEnricher::class)->enrichForAccount($account);
+                Log::info('SyncUzumFinanceOrdersJob: enrich finished', [
+                    'account_id' => $account->id,
+                    'enriched_rows' => $enriched,
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('SyncUzumFinanceOrdersJob: enrich failed', [
+                    'account_id' => $account->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             // Финальный статус
             $this->updateProgress([
