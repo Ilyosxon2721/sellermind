@@ -1002,6 +1002,17 @@ class ProcessRismentQueues extends Command
 
     protected function handleShipmentEvent(string $event, array $data, int $companyId): void
     {
+        // Also handle 'shipment.updated' by routing based on status in data
+        if ($event === 'shipment.updated') {
+            $status = strtolower($data['status'] ?? '');
+            $event = match ($status) {
+                'shipped', 'in_transit' => 'shipment.shipped',
+                'delivered' => 'shipment.delivered',
+                'cancelled' => 'shipment.cancelled',
+                default => $event,
+            };
+        }
+
         match ($event) {
             'shipment.shipped' => $this->onShipmentShipped($data, $companyId),
             'shipment.delivered' => $this->onShipmentDelivered($data, $companyId),

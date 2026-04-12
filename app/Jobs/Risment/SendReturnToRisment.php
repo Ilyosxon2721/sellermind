@@ -12,8 +12,9 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
 /**
- * Push return/cancellation events into risment:returns Redis queue.
- * RISMENT reads from this queue to handle returns.
+ * Push return/cancellation events to RISMENT Redis queues.
+ * Cancellations go to risment:orders (handled by cancelOrder).
+ * Physical returns with items go to risment:returns (handled by handleReturn).
  */
 class SendReturnToRisment implements ShouldQueue
 {
@@ -30,7 +31,7 @@ class SendReturnToRisment implements ShouldQueue
         protected ?int $rismentClientId = null,
     ) {
         $this->connection = 'risment-integration';
-        $this->queue = 'risment:returns';
+        $this->queue = 'risment:orders';
     }
 
     public function handle(): void
@@ -40,6 +41,10 @@ class SendReturnToRisment implements ShouldQueue
         if ($links->isEmpty()) {
             return;
         }
+
+        // Route cancellations to risment:orders, physical returns to risment:returns
+        $isCancellation = in_array($this->event, ['order.cancelled', 'order.cancel']);
+        $queue = $isCancellation ? 'risment:orders' : 'risment:returns';
 
         foreach ($links as $link) {
             $message = json_encode([
@@ -51,12 +56,13 @@ class SendReturnToRisment implements ShouldQueue
                 'data' => $this->returnData,
             ], JSON_UNESCAPED_UNICODE);
 
-            Redis::connection('integration')->rpush('risment:returns', $message);
+            Redis::connection('integration')->rpush($queue, $message);
 
-            Log::info('SendReturnToRisment: Pushed to risment:returns', [
+            Log::info("SendReturnToRisment: Pushed to {$queue}", [
                 'company_id' => $this->companyId,
                 'risment_client_id' => $link->risment_client_id,
                 'event' => $this->event,
+                'queue' => $queue,
             ]);
         }
     }
