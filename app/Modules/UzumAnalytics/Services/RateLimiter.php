@@ -23,20 +23,21 @@ class RateLimiter
     public function __construct()
     {
         $this->config = config('uzum-crawler');
-        $this->prefix = $this->config['redis_prefix'] . 'rate:';
+        $this->prefix = $this->config['redis_prefix'].'rate:';
     }
 
     /**
      * Задержать выполнение чтобы не превысить лимит для типа запроса.
      *
      * @param  string  $type  product | category | shop | token
+     * @param  bool  $withDelay  true для фоновых задач (sleep между запросами), false для web-запросов
      */
-    public function throttle(string $type): void
+    public function throttle(string $type, bool $withDelay = true): void
     {
-        $key      = $this->prefix . $type;
-        $limit    = $this->config['rate_limits'][$type] ?? 10;
-        $delay    = $this->config['delays'][$type] ?? 6;
-        $jitter   = $this->config['jitter'] ?? 0.5;
+        $key = $this->prefix.$type;
+        $limit = $this->config['rate_limits'][$type] ?? 10;
+        $delay = $this->config['delays'][$type] ?? 6;
+        $jitter = $this->config['jitter'] ?? 0.5;
 
         // Считаем запросы за последнюю минуту
         $count = (int) Cache::get($key, 0);
@@ -44,16 +45,20 @@ class RateLimiter
         if ($count === 0) {
             Cache::put($key, 1, 60);
         } elseif ($count >= $limit) {
-            // Лимит исчерпан — ждём новое окно
-            sleep(60);
+            if ($withDelay) {
+                // Лимит исчерпан — ждём новое окно (только в фоне)
+                sleep(60);
+            }
             Cache::put($key, 1, 60);
         } else {
             Cache::put($key, $count + 1, 60);
         }
 
-        // Базовая задержка + случайный jitter
-        $sleepSeconds = $delay * (1 + (mt_rand(0, (int) ($jitter * 100)) / 100));
-        usleep((int) ($sleepSeconds * 1_000_000));
+        // Базовая задержка + случайный jitter (только для фоновых задач)
+        if ($withDelay) {
+            $sleepSeconds = $delay * (1 + (mt_rand(0, (int) ($jitter * 100)) / 100));
+            usleep((int) ($sleepSeconds * 1_000_000));
+        }
     }
 
     /**
@@ -61,7 +66,7 @@ class RateLimiter
      */
     public function canProceed(string $type): bool
     {
-        $key   = $this->prefix . $type;
+        $key = $this->prefix.$type;
         $limit = $this->config['rate_limits'][$type] ?? 10;
         $count = (int) Cache::get($key, 0);
 

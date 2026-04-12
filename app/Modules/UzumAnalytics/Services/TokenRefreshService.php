@@ -9,6 +9,7 @@ namespace App\Modules\UzumAnalytics\Services;
 use App\Modules\UzumAnalytics\Models\UzumToken;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Управление пулом JWT токенов для публичного API Uzum.
@@ -32,7 +33,7 @@ class TokenRefreshService
     {
         $maxRequests = $this->config['max_requests'];
 
-        $token = UzumToken::active()
+        $token = UzumToken::usable()
             ->where('requests_count', '<', $maxRequests)
             ->orderBy('requests_count')
             ->first();
@@ -62,7 +63,7 @@ class TokenRefreshService
 
         // Проверить текущий размер пула
         $activeCount = UzumToken::active()->count();
-        $needed      = $this->config['min_size'] - $activeCount;
+        $needed = $this->config['min_size'] - $activeCount;
 
         // Создать токены до минимального размера
         for ($i = 0; $i < $needed; $i++) {
@@ -80,7 +81,7 @@ class TokenRefreshService
 
         Log::info('UzumCrawler: пул токенов обновлён', [
             'active_before' => $activeCount,
-            'active_now'    => UzumToken::active()->count(),
+            'active_now' => UzumToken::active()->count(),
         ]);
     }
 
@@ -93,12 +94,12 @@ class TokenRefreshService
             $userAgent = $this->getRandomUserAgent();
 
             $response = Http::withHeaders([
-                'User-Agent'      => $userAgent,
-                'Accept'          => 'application/json',
+                'User-Agent' => $userAgent,
+                'Accept' => 'application/json',
                 'Accept-Language' => 'ru-RU,ru;q=0.9,uz;q=0.8',
-                'Origin'          => 'https://uzum.uz',
-                'Referer'         => 'https://uzum.uz/',
-                'Content-Type'    => 'application/json',
+                'Origin' => 'https://uzum.uz',
+                'Referer' => 'https://uzum.uz/',
+                'Content-Type' => 'application/json',
             ])
                 ->timeout(15)
                 ->post(config('uzum-crawler.token_url'), []);
@@ -106,7 +107,7 @@ class TokenRefreshService
             if (! $response->successful()) {
                 Log::warning('UzumCrawler: не удалось получить токен', [
                     'status' => $response->status(),
-                    'body'   => $response->body(),
+                    'body' => $response->body(),
                 ]);
 
                 return null;
@@ -127,17 +128,43 @@ class TokenRefreshService
                 return null;
             }
 
+            // Извлечь iid из JWT payload (если есть), иначе сгенерировать UUID
+            $iid = $this->extractIidFromJwt($jwt) ?? Str::uuid()->toString();
+
             return UzumToken::create([
-                'token'          => $jwt,
-                'expires_at'     => now()->addMinutes($this->config['ttl_minutes']),
+                'token' => $jwt,
+                'iid' => $iid,
+                'expires_at' => now()->addMinutes($this->config['ttl_minutes']),
                 'requests_count' => 0,
-                'is_active'      => true,
+                'is_active' => true,
             ]);
         } catch (\Throwable $e) {
             Log::error('UzumCrawler: ошибка получения токена', [
                 'error' => $e->getMessage(),
             ]);
 
+            return null;
+        }
+    }
+
+    /**
+     * Извлечь iid из payload JWT токена
+     */
+    private function extractIidFromJwt(string $jwt): ?string
+    {
+        try {
+            $parts = explode('.', $jwt);
+            if (count($parts) !== 3) {
+                return null;
+            }
+
+            $payload = json_decode(
+                base64_decode(strtr($parts[1], '-_', '+/')),
+                true,
+            );
+
+            return $payload['iid'] ?? null;
+        } catch (\Throwable) {
             return null;
         }
     }

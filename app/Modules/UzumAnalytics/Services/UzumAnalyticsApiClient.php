@@ -33,8 +33,8 @@ class UzumAnalyticsApiClient
         private readonly RateLimiter $rateLimiter,
         private readonly CircuitBreaker $circuitBreaker,
     ) {
-        $this->baseUrl     = rtrim(config('uzum-crawler.api.rest_base_url', 'https://api.umarket.uz/api'), '/');
-        $this->cacheTtl    = (int) config('uzum-crawler.cache_ttl_minutes', 30) * 60;
+        $this->baseUrl = rtrim(config('uzum-crawler.api.rest_base_url', 'https://api.umarket.uz/api'), '/');
+        $this->cacheTtl = (int) config('uzum-crawler.cache_ttl_minutes', 30) * 60;
         $this->retryConfig = config('uzum-crawler.retry', ['max_attempts' => 3, 'backoff_seconds' => [30, 60, 120]]);
     }
 
@@ -44,7 +44,7 @@ class UzumAnalyticsApiClient
     public function getProduct(int $productId): array
     {
         return $this->cachedRequest("product:{$productId}", function () use ($productId): array {
-            $this->rateLimiter->throttle('product');
+            $this->rateLimiter->throttle('product', withDelay: false);
 
             // ТЗ: GET /v2/product/{productId} — цены в тийинах (÷100 = сум)
             return $this->request('GET', "/v2/product/{$productId}");
@@ -59,18 +59,18 @@ class UzumAnalyticsApiClient
         $cacheKey = "category:{$categoryId}:p{$page}:s{$size}";
 
         return $this->cachedRequest($cacheKey, function () use ($categoryId, $page, $size): array {
-            $this->rateLimiter->throttle('category');
+            $this->rateLimiter->throttle('category', withDelay: false);
 
-            // ТЗ: POST https://graphql.umarket.uz — отдельный хост для GraphQL
-            $graphqlUrl = config('uzum-crawler.api.graphql_url', 'https://graphql.umarket.uz');
+            // ТЗ: POST https://graphql.uzum.uz — отдельный хост для GraphQL
+            $graphqlUrl = config('uzum-crawler.api.graphql_url', 'https://graphql.uzum.uz');
 
             return $this->requestUrl('POST', $graphqlUrl, [
-                'query'     => $this->categoryGraphqlQuery(),
+                'query' => $this->categoryGraphqlQuery(),
                 'variables' => [
                     'categoryId' => $categoryId,
-                    'offset'     => $page * $size,
-                    'limit'      => $size,
-                    'sort'       => 'BY_REVIEWS_COUNT_DESC',
+                    'offset' => $page * $size,
+                    'limit' => $size,
+                    'sort' => 'BY_REVIEWS_COUNT_DESC',
                 ],
             ], graphql: true);
         });
@@ -82,7 +82,7 @@ class UzumAnalyticsApiClient
     public function getShop(string $shopSlug): array
     {
         return $this->cachedRequest("shop:{$shopSlug}", function () use ($shopSlug): array {
-            $this->rateLimiter->throttle('shop');
+            $this->rateLimiter->throttle('shop', withDelay: false);
 
             // ТЗ: GET /shop/{shopName}
             return $this->request('GET', "/shop/{$shopSlug}");
@@ -95,7 +95,7 @@ class UzumAnalyticsApiClient
     public function getRootCategories(): array
     {
         return $this->cachedRequest('root_categories', function (): array {
-            $this->rateLimiter->throttle('category');
+            $this->rateLimiter->throttle('category', withDelay: false);
 
             // ТЗ: GET /main/root-categories
             return $this->request('GET', '/main/root-categories');
@@ -107,22 +107,22 @@ class UzumAnalyticsApiClient
      */
     public function searchProducts(string $query, int $page = 0): array
     {
-        $cacheKey = 'search:' . md5($query) . ":p{$page}";
+        $cacheKey = 'search:'.md5($query).":p{$page}";
 
         return $this->cachedRequest($cacheKey, function () use ($query, $page): array {
-            $this->rateLimiter->throttle('category');
+            $this->rateLimiter->throttle('category', withDelay: false);
 
             $graphqlUrl = config('uzum-crawler.api.graphql_url', 'https://graphql.uzum.uz');
 
             return $this->requestUrl('POST', $graphqlUrl, [
-                'query'     => $this->categoryGraphqlQuery(),
+                'query' => $this->categoryGraphqlQuery(),
                 'variables' => [
                     'categoryId' => null,
                     'showAdultContent' => true,
                     'searchText' => $query,
-                    'offset'     => $page * 48,
-                    'limit'      => 48,
-                    'sort'       => 'BY_REVIEWS_COUNT_DESC',
+                    'offset' => $page * 48,
+                    'limit' => 48,
+                    'sort' => 'BY_REVIEWS_COUNT_DESC',
                 ],
             ], graphql: true);
         });
@@ -133,7 +133,7 @@ class UzumAnalyticsApiClient
      */
     private function request(string $method, string $path, array $payload = []): array
     {
-        return $this->requestUrl($method, $this->baseUrl . $path, $payload);
+        return $this->requestUrl($method, $this->baseUrl.$path, $payload);
     }
 
     /**
@@ -147,21 +147,21 @@ class UzumAnalyticsApiClient
             throw new \RuntimeException('UzumCrawler: краулер на паузе (Circuit Breaker)');
         }
 
-        $maxAttempts   = $this->retryConfig['max_attempts'];
-        $backoffs      = $this->retryConfig['backoff_seconds'];
+        $maxAttempts = $this->retryConfig['max_attempts'];
+        $backoffs = $this->retryConfig['backoff_seconds'];
         $lastException = null;
 
         for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
             try {
-                $token     = $this->tokenService->getToken();
+                $token = $this->tokenService->getToken();
                 $userAgent = $this->getRandomUserAgent();
 
                 $headers = [
-                    'User-Agent'      => $userAgent,
-                    'Accept'          => 'application/json',
+                    'User-Agent' => $userAgent,
+                    'Accept' => 'application/json',
                     'Accept-Language' => 'ru-RU,ru;q=0.9,uz;q=0.8',
-                    'Origin'          => 'https://uzum.uz',
-                    'Referer'         => 'https://uzum.uz/',
+                    'Origin' => 'https://uzum.uz',
+                    'Referer' => 'https://uzum.uz/',
                 ];
 
                 // X-Iid нужен для GraphQL запросов (UUID из записи токена)
@@ -176,7 +176,7 @@ class UzumAnalyticsApiClient
                 }
 
                 $response = match (strtoupper($method)) {
-                    'GET'  => $httpClient->timeout(30)->get($url, $payload),
+                    'GET' => $httpClient->timeout(30)->get($url, $payload),
                     'POST' => $httpClient->timeout(30)->post($url, $payload),
                     default => throw new \InvalidArgumentException("Неподдерживаемый метод: {$method}"),
                 };
@@ -185,6 +185,7 @@ class UzumAnalyticsApiClient
                     // Токен недействителен — деактивировать и повторить
                     $token?->update(['is_active' => false]);
                     Log::info("UzumCrawler: 401, смена токена [{$url}]");
+
                     continue;
                 }
 
@@ -194,6 +195,7 @@ class UzumAnalyticsApiClient
                     $sleepSec = $backoffs[$attempt - 1] ?? end($backoffs);
                     Log::warning("UzumCrawler: {$response->status()} [{$url}], backoff {$sleepSec}s");
                     sleep($sleepSec);
+
                     continue;
                 }
 
@@ -209,7 +211,7 @@ class UzumAnalyticsApiClient
                 $this->circuitBreaker->recordFailure();
                 Log::error("UzumCrawler: ошибка запроса [{$url}]", [
                     'attempt' => $attempt,
-                    'error'   => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
 
                 if ($attempt < $maxAttempts) {
@@ -224,13 +226,24 @@ class UzumAnalyticsApiClient
     }
 
     /**
-     * Кэшировать результат в Redis
+     * Кэшировать результат в Redis (пустые ответы не кешируются)
      */
     private function cachedRequest(string $key, \Closure $callback): array
     {
-        $cacheKey = config('uzum-crawler.redis_prefix', 'uzum_crawler:') . 'api:' . $key;
+        $cacheKey = config('uzum-crawler.redis_prefix', 'uzum_crawler:').'api:'.$key;
 
-        return Cache::remember($cacheKey, $this->cacheTtl, $callback);
+        $cached = Cache::get($cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $result = $callback();
+
+        if (! empty($result)) {
+            Cache::put($cacheKey, $result, $this->cacheTtl);
+        }
+
+        return $result;
     }
 
     private function getRandomUserAgent(): string

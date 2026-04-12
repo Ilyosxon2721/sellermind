@@ -43,11 +43,13 @@ class UzumToken extends Model
     }
 
     /**
-     * Скоро истечёт (осталось меньше 2 минут)
+     * Скоро истечёт (осталось меньше N минут из config)
      */
     public function isExpiringSoon(): bool
     {
-        return $this->expires_at->diffInSeconds(now()) < config('uzum-crawler.token_pool.refresh_before_expire_seconds', 120);
+        $refreshBeforeMinutes = config('uzum-crawler.token_pool.refresh_before', 2);
+
+        return $this->expires_at->lte(now()->addMinutes($refreshBeforeMinutes));
     }
 
     /**
@@ -63,7 +65,7 @@ class UzumToken extends Model
      */
     public function shouldRotate(): bool
     {
-        return $this->requests_count >= config('uzum-crawler.token_pool.max_requests_per_token', 8);
+        return $this->requests_count >= config('uzum-crawler.token_pool.max_requests', 8);
     }
 
     /**
@@ -111,7 +113,7 @@ class UzumToken extends Model
      */
     public function scopeNeedingRotation($query)
     {
-        $maxRequests = config('uzum-crawler.token_pool.max_requests_per_token', 8);
+        $maxRequests = config('uzum-crawler.token_pool.max_requests', 8);
 
         return $query->where('requests_count', '>=', $maxRequests);
     }
@@ -121,8 +123,8 @@ class UzumToken extends Model
      */
     public function scopeExpiringSoon($query)
     {
-        $threshold = now()->addSeconds(
-            config('uzum-crawler.token_pool.refresh_before_expire_seconds', 120)
+        $threshold = now()->addMinutes(
+            config('uzum-crawler.token_pool.refresh_before', 2)
         );
 
         return $query->where('expires_at', '<=', $threshold);
