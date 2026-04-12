@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\MarketplaceAccount;
 use App\Models\UzumFinanceOrder;
 use App\Services\Marketplaces\UzumClient;
+use App\Services\Uzum\UzumFinanceOrderEnricher;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -67,6 +68,18 @@ class UzumSyncFinanceOrders extends Command
                 $totalErrors += $result['errors'];
 
                 $this->info("  Created: {$result['created']}, Updated: {$result['updated']}, Errors: {$result['errors']}");
+
+                // Backfill delivery_type через перекрёстную проверку с uzum_orders.
+                try {
+                    $enriched = app(UzumFinanceOrderEnricher::class)->enrichForAccount($account);
+                    $this->info("  Delivery types updated: {$enriched}");
+                } catch (\Throwable $e) {
+                    $this->warn('  Enrich delivery_type failed: '.$e->getMessage());
+                    Log::warning('UzumSyncFinanceOrders: enrich failed', [
+                        'account_id' => $account->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             } catch (\Throwable $e) {
                 $this->error("  Error: {$e->getMessage()}");
                 Log::error('UzumSyncFinanceOrders account failed', [

@@ -291,8 +291,15 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                     </svg>
                 </div>
-                <p class="text-lg font-semibold text-gray-900">Заказы не найдены</p>
-                <p class="text-gray-500 mt-1">Нажмите "Синхронизировать" для загрузки заказов из Uzum Market</p>
+                <p class="text-lg font-semibold text-gray-900" x-text="modeLabels[orderMode] + ' заказы не найдены'"></p>
+                <p class="text-gray-500 mt-1">
+                    <template x-if="orderMode !== 'fbo'">
+                        <span>Нажмите «Синхронизировать» для загрузки заказов из Uzum Market</span>
+                    </template>
+                    <template x-if="orderMode === 'fbo'">
+                        <span>Нажмите «Синхронизировать» — мы загрузим FBO заказы из Finance API Uzum</span>
+                    </template>
+                </p>
             </div>
 
             <!-- Orders Table View -->
@@ -768,12 +775,15 @@ function uzumOrdersPage() {
             { value: 'returns', label: 'Возвраты' },
         ],
 
-        // FBO Status Tabs (orders from Finance API)
+        // FBO Status Tabs (orders from Finance API → uzum_finance_orders).
+        // Бэкенд маппит статусы Finance API в наши internal статусы:
+        //   PROCESSING        → in_assembly
+        //   COMPLETED / TO_WITHDRAW → issued
+        //   CANCELED          → cancelled
         fboStatusTabs: [
             { value: 'all', label: 'Все' },
-            { value: 'processing', label: 'В обработке' },
-            { value: 'shipped', label: 'Отгружены' },
-            { value: 'delivered', label: 'Доставлены' },
+            { value: 'in_assembly', label: 'В обработке' },
+            { value: 'issued', label: 'Доставлены' },
             { value: 'cancelled', label: 'Отменены' },
         ],
 
@@ -834,33 +844,21 @@ function uzumOrdersPage() {
 
             if (!Array.isArray(result)) result = [];
 
-            // Filter by tab status
+            // Filter by tab status (общий для всех режимов: бэкенд маппит
+            // статусы Finance API в те же internal значения, что и FBS API)
             if (this.activeTab && this.activeTab !== 'all') {
-                if (this.orderMode === 'fbo') {
-                    // FBO status mapping (from Finance API)
-                    const fboStatusMap = {
-                        'processing': ['NEW', 'PROCESSING', 'ACCEPTED', 'PACKING', 'IN_TRANSIT'],
-                        'shipped': ['SHIPPED', 'DELIVERED_TO_PVZ'],
-                        'delivered': ['DELIVERED', 'ISSUED', 'COMPLETED'],
-                        'cancelled': ['CANCELLED', 'RETURNED', 'REFUNDED']
-                    };
-                    const validStatuses = fboStatusMap[this.activeTab] || [this.activeTab.toUpperCase()];
-                    result = result.filter(o => validStatuses.includes(o.status?.toUpperCase()));
-                } else {
-                    // FBS / DBS / EDBS используют общий маппинг статусов из uzum_orders
-                    const statusMap = {
-                        'new': ['new'],
-                        'in_assembly': ['in_assembly'],
-                        'in_supply': ['in_supply'],
-                        'accepted_uzum': ['accepted_uzum', 'shipped_to_uzum'],
-                        'waiting_pickup': ['waiting_pickup'],
-                        'issued': ['issued', 'delivered'],
-                        'cancelled': ['cancelled', 'canceled'],
-                        'returns': ['returns', 'returned']
-                    };
-                    const validStatuses = statusMap[this.activeTab] || [this.activeTab];
-                    result = result.filter(o => validStatuses.includes(o.status));
-                }
+                const statusMap = {
+                    'new': ['new'],
+                    'in_assembly': ['in_assembly'],
+                    'in_supply': ['in_supply'],
+                    'accepted_uzum': ['accepted_uzum', 'shipped_to_uzum'],
+                    'waiting_pickup': ['waiting_pickup'],
+                    'issued': ['issued', 'delivered'],
+                    'cancelled': ['cancelled', 'canceled'],
+                    'returns': ['returns', 'returned']
+                };
+                const validStatuses = statusMap[this.activeTab] || [this.activeTab];
+                result = result.filter(o => validStatuses.includes(o.status));
             }
 
             // Filter by shop
@@ -1022,11 +1020,15 @@ function uzumOrdersPage() {
             }
         },
 
+        // Загрузка FBO заказов из uzum_finance_orders через единый endpoint
+        // /api/marketplace/orders с параметром delivery_type=fbo.
+        // Бэкенд группирует item-уровень по order_id и возвращает в том же
+        // формате, что и обычные uzum_orders (уже с items[], total_amount и т.д.).
         async loadFboOrders(silent = false) {
             if (!silent) this.loading = true;
             try {
                 const companyId = window.Alpine?.store('auth')?.currentCompany?.id || 1;
-                let url = `/api/marketplace/uzum/accounts/${this.accountId}/finance-orders?company_id=${companyId}`;
+                let url = `/api/marketplace/orders?company_id=${companyId}&marketplace_account_id=${this.accountId}&delivery_type=fbo`;
                 if (this.dateFrom) url += `&from=${this.dateFrom}`;
                 if (this.dateTo) url += `&to=${this.dateTo}`;
                 if (this.selectedShopId) url += `&shop_id=${this.selectedShopId}`;
@@ -1034,62 +1036,21 @@ function uzumOrdersPage() {
                 const res = await this.authFetch(url);
                 if (res.ok) {
                     const data = await res.json();
-                    // Finance orders come as orderItems with delivery_type from API
-                    // Add unique index to id to prevent duplicate key issues in x-for
-                    this.fboOrders = (data.orderItems || data.orders || []).map((item, index) => {
-                        // Extract image URL from productImage object if needed
-                        let imageUrl = null;
-                        if (item.productImage) {
-                            if (typeof item.productImage === 'string') {
-                                imageUrl = item.productImage;
-                            } else if (item.productImage.photo) {
-                                // Get high quality image from any resolution
-                                const sizes = ['540', '480', '240', '120', '80'];
-                                for (const size of sizes) {
-                                    if (item.productImage.photo[size]?.high) {
-                                        imageUrl = item.productImage.photo[size].high;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
+                    this.fboOrders = (data.orders || []).map(order => ({
+                        ...order,
+                        processing: false,
+                        printing: false,
+                    }));
 
-                        return {
-                            id: `${item.orderId || item.id}_${index}`,
-                            external_order_id: item.orderId || item.id,
-                            status: item.status || 'PROCESSING',
-                            total_amount: item.sellPrice || item.totalPrice || item.sellerPrice || item.amount || 0,
-                            ordered_at: item.date || item.createdAt || item.dateCreated,
-                            shop_id: item.shopId,
-                            shopId: item.shopId,
-                            // Use delivery_type from API (determined by checking uzum_orders table)
-                            deliveryType: item.delivery_type || 'FBO',
-                            skuTitle: item.skuTitle,
-                            productTitle: item.productTitle,
-                            productImage: imageUrl,
-                            amount: item.amount || 1,
-                            commission: item.commission || 0,
-                            sellerProfit: item.sellerProfit || 0,
-                            logisticDeliveryFee: item.logisticDeliveryFee || 0,
-                            raw_payload: item,
-                            items: item.items || [item]
-                        };
-                    });
-
-                    // Считаем статистику только по FBO (Finance API возвращает все типы,
-                    // но для отображения нам нужны только FBO здесь — остальные приходят
-                    // из uzum_orders таблицы и считаются в calculateOrderStats).
+                    // Считаем статистику FBO из загруженных заказов
                     const sumAmount = (list) => list.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
-                    const fboOnly = this.fboOrders.filter(o => (o.deliveryType || '').toUpperCase() === 'FBO');
-
                     this.fboStats = {
                         ...this.fboStats,
                         total_orders: this.fboOrders.length,
                         total_amount: sumAmount(this.fboOrders),
-                        fbo_count: fboOnly.length,
-                        fbo_amount: sumAmount(fboOnly),
+                        fbo_count: this.fboOrders.length,
+                        fbo_amount: sumAmount(this.fboOrders),
                     };
-
                 }
             } catch (e) {
                 console.error('Failed to load FBO orders', e);
@@ -1462,27 +1423,18 @@ function uzumOrdersPage() {
         },
 
         getStatusCount(status) {
+            // Источник заказов зависит от режима:
+            //   FBO — this.fboOrders (из uzum_finance_orders)
+            //   остальные — this.orders (из uzum_orders, фильтр по схеме)
+            let modeOrders;
             if (this.orderMode === 'fbo') {
-                // Объединяем FBO из таблицы и Finance API (аналогично filteredOrders)
-                const fromTable = (this.orders || []).filter(o => this.getOrderScheme(o) === 'FBO');
-                const fromFinance = (this.fboOrders || []).filter(o => this.getOrderScheme(o) === 'FBO');
-                const seenFboIds = new Set(fromTable.map(o => String(o.external_order_id)));
-                const fboOnlyOrders = [...fromTable, ...fromFinance.filter(o => !seenFboIds.has(String(o.external_order_id)))];
-
-                if (status === 'all') return fboOnlyOrders.length;
-                const fboStatusMap = {
-                    'processing': ['NEW', 'PROCESSING', 'ACCEPTED', 'PACKING', 'IN_TRANSIT'],
-                    'shipped': ['SHIPPED', 'DELIVERED_TO_PVZ'],
-                    'delivered': ['DELIVERED', 'ISSUED', 'COMPLETED'],
-                    'cancelled': ['CANCELLED', 'RETURNED', 'REFUNDED']
-                };
-                const validStatuses = fboStatusMap[status] || [status.toUpperCase()];
-                return fboOnlyOrders.filter(o => validStatuses.includes(o.status?.toUpperCase())).length;
+                modeOrders = (this.fboOrders || []).filter(o => this.getOrderScheme(o) === 'FBO');
+            } else {
+                const targetScheme = this.orderMode.toUpperCase();
+                modeOrders = (this.orders || []).filter(o => this.getOrderScheme(o) === targetScheme);
             }
 
-            // Для FBS / DBS / EDBS — фильтруем по текущей схеме
-            const targetScheme = this.orderMode.toUpperCase();
-            const modeOrders = (this.orders || []).filter(o => this.getOrderScheme(o) === targetScheme);
+            if (status === 'all') return modeOrders.length;
 
             const statusMap = {
                 'new': ['new'],

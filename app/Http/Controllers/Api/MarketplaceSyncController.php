@@ -10,6 +10,7 @@ use App\Jobs\Marketplace\SyncMarketplacePricesJob;
 use App\Jobs\Marketplace\SyncMarketplaceProductsJob;
 use App\Jobs\Marketplace\SyncMarketplaceStocksJob;
 use App\Jobs\Marketplace\SyncUzumStocksJob;
+use App\Jobs\SyncUzumFinanceOrdersJob;
 use App\Jobs\SyncWildberriesSupplies;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceSyncLog;
@@ -169,8 +170,19 @@ class MarketplaceSyncController extends Controller
         }
 
         if ($request->boolean('async', true)) {
+            $connection = $this->asyncConnection();
+
             SyncMarketplaceOrdersJob::dispatch($account, $from, $to, $statuses)
-                ->onConnection($this->asyncConnection());
+                ->onConnection($connection);
+
+            // Для Uzum дополнительно запускаем синхронизацию финансовых заказов —
+            // это единственный источник FBO данных (FBS API их не возвращает).
+            // Job сам проставит delivery_type через UzumFinanceOrderEnricher.
+            if ($account->isUzum()) {
+                $days = $from ? max(1, $from->diffInDays(now()) + 1) : 30;
+                SyncUzumFinanceOrdersJob::dispatch($account, false, $days)
+                    ->onConnection($connection);
+            }
 
             return response()->json([
                 'message' => 'Синхронизация заказов запущена в фоновом режиме.',
@@ -180,6 +192,12 @@ class MarketplaceSyncController extends Controller
 
         try {
             $this->syncService->syncOrders($account, $from, $to, $statuses);
+
+            // Sync Uzum finance orders (источник FBO) после FBS sync.
+            if ($account->isUzum()) {
+                $days = $from ? max(1, $from->diffInDays(now()) + 1) : 30;
+                SyncUzumFinanceOrdersJob::dispatchSync($account, false, $days);
+            }
 
             return response()->json([
                 'message' => 'Заказы успешно синхронизированы.',

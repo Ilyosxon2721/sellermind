@@ -1165,10 +1165,21 @@ class MarketplaceOrderController extends Controller
     }
 
     /**
-     * Подгрузка Uzum заказов из новой таблицы
+     * Подгрузка Uzum заказов из новой таблицы.
+     *
+     * Источники:
+     *   FBS / DBS / EDBS — таблица uzum_orders (заполняется из FBS API).
+     *   FBO              — таблица uzum_finance_orders (заполняется из Finance API).
+     *                       FBS API не возвращает FBO заказы, поэтому для них
+     *                       нужен отдельный источник данных.
      */
     private function loadUzumOrders(Request $request, MarketplaceAccount $account): array
     {
+        // FBO заказы живут в отдельной таблице — обслуживаем их отдельной веткой.
+        if ($request->delivery_type && strtoupper((string) $request->delivery_type) === 'FBO') {
+            return $this->loadUzumFboOrders($request, $account);
+        }
+
         $query = \App\Models\UzumOrder::query()->where('marketplace_account_id', $account->id);
 
         if ($request->status) {
@@ -1224,6 +1235,100 @@ class MarketplaceOrderController extends Controller
                 'scheme' => $scheme,
             ];
         })->all();
+    }
+
+    /**
+     * Подгрузка FBO заказов Uzum из uzum_finance_orders.
+     *
+     * Finance API возвращает item-level записи (по одной на каждую позицию заказа),
+     * поэтому здесь мы группируем их по order_id и собираем единый объект заказа
+     * со списком позиций — формат совпадает с тем, что отдаёт loadUzumOrders().
+     */
+    private function loadUzumFboOrders(Request $request, MarketplaceAccount $account): array
+    {
+        $query = \App\Models\UzumFinanceOrder::query()
+            ->where('marketplace_account_id', $account->id)
+            ->where('delivery_type', 'FBO');
+
+        if ($request->from) {
+            $query->where('order_date', '>=', Carbon::parse($request->from)->startOfDay());
+        }
+        if ($request->to) {
+            $query->where('order_date', '<=', Carbon::parse($request->to)->endOfDay());
+        }
+        if ($request->shop_id) {
+            $shopIds = collect(explode(',', $request->shop_id))->filter()->map(fn ($v) => trim($v))->all();
+            $query->whereIn('shop_id', $shopIds);
+        }
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+
+        // Limit before grouping: 5000 строк item-уровня хватит на ~1500 заказов
+        $items = $query->orderByDesc('order_date')->limit(5000)->get();
+
+        // Группируем по order_id, собираем единый "заказ" со списком позиций.
+        // Статус Finance API (PROCESSING/COMPLETED/CANCELED) маппим во внутренний
+        // статус, который фронт уже умеет отображать (issued/cancelled и т.д.).
+        $statusMap = [
+            'PROCESSING' => 'in_assembly',
+            'COMPLETED' => 'issued',
+            'TO_WITHDRAW' => 'issued',
+            'CANCELED' => 'cancelled',
+        ];
+
+        $grouped = $items->groupBy('order_id')->map(function ($itemsForOrder, $orderId) use ($statusMap) {
+            /** @var \Illuminate\Support\Collection $itemsForOrder */
+            $first = $itemsForOrder->first();
+
+            $totalAmount = (float) $itemsForOrder->sum(fn ($i) => (float) $i->sell_price * (int) $i->amount);
+
+            $orderItems = $itemsForOrder->map(function ($i) {
+                return [
+                    'id' => $i->id,
+                    'skuId' => $i->product_id,
+                    'skuTitle' => $i->sku_title,
+                    'productTitle' => $i->sku_title,
+                    'productImage' => $i->product_image_url,
+                    'amount' => (int) $i->amount,
+                    'quantity' => (int) $i->amount,
+                    'sellerPrice' => (float) $i->sell_price,
+                    'price' => (float) $i->sell_price,
+                    'commission' => (float) $i->commission,
+                    'sellerProfit' => (float) $i->seller_profit,
+                    'logisticDeliveryFee' => (float) $i->logistic_delivery_fee,
+                ];
+            })->values()->all();
+
+            $rawStatus = strtoupper((string) $first->status);
+            $normalizedStatus = $statusMap[$rawStatus] ?? strtolower($rawStatus);
+
+            return [
+                'id' => 'fbo_'.$orderId, // Уникальный id для x-for на фронте
+                'marketplace_account_id' => $first->marketplace_account_id,
+                'external_order_id' => (string) $orderId,
+                'status' => $normalizedStatus,
+                'status_normalized' => $normalizedStatus,
+                'uzum_status' => $first->status,
+                'total_amount' => $totalAmount,
+                'currency' => 'UZS',
+                'ordered_at' => $first->order_date,
+                'shop_id' => $first->shop_id,
+                'shopId' => $first->shop_id,
+                'delivery_type' => 'FBO',
+                'deliveryType' => 'FBO',
+                'scheme' => 'FBO',
+                'items' => $orderItems,
+                'raw_payload' => [
+                    'shopId' => $first->shop_id,
+                    'orderItems' => $orderItems,
+                    'dateCreated' => $first->order_date?->getTimestampMs(),
+                    'scheme' => 'FBO',
+                ],
+            ];
+        })->values()->all();
+
+        return $grouped;
     }
 
     private function statsWb(Request $request, MarketplaceAccount $account): array
